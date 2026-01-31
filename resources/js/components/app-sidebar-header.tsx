@@ -1,5 +1,7 @@
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
+import { Bell } from 'lucide-react';
 import type { BreadcrumbItem as BreadcrumbItemType } from '@/types';
 
 export function AppSidebarHeader({
@@ -12,6 +14,11 @@ export function AppSidebarHeader({
             <div className="flex items-center gap-2">
                 <SidebarTrigger className="-ml-1" />
                 <Breadcrumbs breadcrumbs={breadcrumbs} />
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-neutral-500">
+                    <Bell className="h-4 w-4" />
+                </Button>
             </div>
         </header>
     );

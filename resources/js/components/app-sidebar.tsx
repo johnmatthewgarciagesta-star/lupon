@@ -20,56 +20,70 @@ import {
     BarChart3,
     ClipboardList,
     Users,
-    Settings
+    Settings,
+    Trophy,
+    ShieldAlert
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
     {
+        title: 'LTIA',
+        href: '/ltia',
+        icon: Trophy,
+    },
+    {
         title: 'Dashboard',
-        href: dashboard(),
+        href: '/dashboard',
         icon: LayoutGrid,
     },
     {
         title: 'Case Management',
-        href: dashboard(), // Placeholder
+        href: '/cases',
         icon: Briefcase,
     },
     {
         title: 'Documents',
-        href: dashboard(), // Placeholder
+        href: '/documents',
         icon: FileText,
     },
     {
         title: 'Analytics',
-        href: dashboard(), // Placeholder
+        href: '/analytics', // Placeholder path
         icon: BarChart3,
     },
     {
         title: 'Reports',
-        href: dashboard(), // Placeholder
+        href: '/system-reports', // Placeholder path
         icon: ClipboardList,
     },
     {
-        title: 'Users',
-        href: dashboard(), // Placeholder
-        icon: Users,
+        title: 'Audit Trail',
+        href: '/audit',
+        icon: ShieldAlert,
     },
     {
+        title: 'Users',
+        href: '/users', // Placeholder path
+        icon: Users,
+    },
+
+
+    {
         title: 'Settings',
-        href: dashboard(), // Placeholder
+        href: '/settings', // Placeholder path
         icon: Settings,
     },
 ];
 
 export function AppSidebar() {
     return (
-        <Sidebar collapsible="icon" variant="sidebar" className="bg-[#1c2434] text-white">
+        <Sidebar collapsible="icon" variant="sidebar">
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href={dashboard()} prefetch>
+                            <Link href="/dashboard">
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>

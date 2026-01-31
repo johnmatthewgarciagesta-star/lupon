@@ -6,7 +6,7 @@ import {
     CheckCircle,
     TrendingUp,
     Plus,
-    Bell,
+
     FileText,
     Download,
     Printer,
@@ -31,7 +31,8 @@ export default function Dashboard() {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
 
-            <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+            <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 text-slate-900 dark:text-slate-100">
+
 
                 {/* Header */}
                 <div className="flex items-center justify-between space-y-2">
@@ -42,9 +43,7 @@ export default function Dashboard() {
                         </p>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Button size="icon" variant="outline" className="rounded-full w-10 h-10">
-                            <Bell className="h-5 w-5" />
-                        </Button>
+
                         <Button className="bg-[#1c2434] hover:bg-[#2c3a4f] text-white">
                             <Plus className="mr-2 h-4 w-4" /> New Case
                         </Button>
@@ -258,15 +257,7 @@ export default function Dashboard() {
                                 <div className="text-xs text-muted-foreground font-normal">Create summary</div>
                             </div>
                         </Button>
-                        <Button variant="outline" className="h-auto py-4 justify-start space-x-4 hover:border-[#1c2434] hover:bg-slate-50 dark:hover:bg-slate-900 group">
-                            <div className="p-2 bg-slate-100 rounded-lg group-hover:bg-white border group-hover:border-[#1c2434]/20 transition-colors">
-                                <Download className="h-5 w-5 text-[#1c2434]" />
-                            </div>
-                            <div className="text-left">
-                                <div className="font-semibold text-[#1c2434] dark:text-white">Export Data</div>
-                                <div className="text-xs text-muted-foreground font-normal">Download records</div>
-                            </div>
-                        </Button>
+
                         <Button variant="outline" className="h-auto py-4 justify-start space-x-4 hover:border-[#1c2434] hover:bg-slate-50 dark:hover:bg-slate-900 group">
                             <div className="p-2 bg-slate-100 rounded-lg group-hover:bg-white border group-hover:border-[#1c2434]/20 transition-colors">
                                 <Printer className="h-5 w-5 text-[#1c2434]" />
