@@ -11,25 +11,20 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
+    Route::get('dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
-    Route::get('cases', function () {
-        return Inertia::render('cases/index');
-    })->name('cases.index');
+    Route::get('cases', [App\Http\Controllers\CaseController::class, 'index'])->name('cases.index');
 
-    Route::get('documents', function () {
-        return Inertia::render('documents/index');
-    })->name('documents.index');
+    Route::post('cases', [App\Http\Controllers\CaseController::class, 'store'])->name('cases.store');
+
+    Route::get('documents', [App\Http\Controllers\DocumentController::class, 'index'])->name('documents.index');
 
     Route::get('analytics', function () {
         return Inertia::render('analytics/index');
     })->name('analytics.index');
 
-    Route::get('system-reports', function () {
-        return Inertia::render('reports/index');
-    })->name('reports.index');
+    Route::get('system-reports', [App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
+    Route::get('reports/generate', [App\Http\Controllers\ReportController::class, 'generate'])->name('reports.generate');
 
     Route::get('users', function () {
         return Inertia::render('users/index');
@@ -43,7 +38,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('audit/index');
     })->name('audit.index');
 
+
+    Route::get('documents/create/{type}', [App\Http\Controllers\DocumentController::class, 'create'])->name('documents.create');
+    Route::post('documents/save-layout', [App\Http\Controllers\DocumentController::class, 'saveLayout'])->name('documents.save-layout');
+
+    Route::put('/cases/{id}', [App\Http\Controllers\CaseController::class, 'update'])->name('cases.update');
+
+    Route::get('documents/view/{id}', [App\Http\Controllers\DocumentController::class, 'viewCase'])->name('documents.view');
+
+    Route::post('documents/generate', [App\Http\Controllers\DocumentController::class, 'generate'])->name('documents.generate');
 });
+
+
 
 
 require __DIR__ . '/settings.php';

@@ -20,6 +20,7 @@ import {
     ChevronRight,
     Eye
 } from 'lucide-react';
+import { SubmitApplicationDialog } from '@/components/ltia/submit-application-dialog';
 
 export default function LTIAPage() {
     const breadcrumbs = [
@@ -47,10 +48,7 @@ export default function LTIAPage() {
                             <Download className="mr-2 h-4 w-4" />
                             Download Guidelines
                         </Button>
-                        <Button className="h-9 bg-[#1c2434] hover:bg-[#2c3a4f] text-white">
-                            <FileText className="mr-2 h-4 w-4" />
-                            Submit Application
-                        </Button>
+                        <SubmitApplicationDialog />
                     </div>
                 </div>
 

@@ -14,8 +14,8 @@ import {
 import {
     FileText,
     Bell,
-    CheckCircle,
     FileCheck,
+    FileMinus,
     Search,
     Download,
     Printer,
@@ -23,10 +23,22 @@ import {
     Plus,
     File,
     Scale,
+    AlertTriangle,
     Gavel,
     Scroll,
-    AlertCircle
+    Calendar,
+    Handshake,
+    CheckCircle2,
+    Mail,
+    Reply,
+    UserX,
+    BadgeCheck,
+    ClipboardList,
+    BarChart,
+    Users,
+    UserCheck,
 } from 'lucide-react';
+import { GenerateDocumentDialog } from '@/components/documents/generate-document-dialog';
 
 const recentDocuments = [
     {
@@ -62,39 +74,159 @@ const recentDocuments = [
 ];
 
 const templates = [
+    // KP Form 7: Complaint Form
+    {
+        title: 'Complaint Form',
+        description: 'KP Form No. 7 - Formal complaint filing',
+        icon: FileText,
+        type: 'complaint'
+    },
     {
         title: 'Summons',
-        description: 'Official notice to appear before the Lupon',
+        description: 'KP Form No. 9 - Official notice to appear',
         icon: Bell,
+        type: 'summons'
     },
     {
-        title: 'Notice of Hearing',
-        description: 'Formal hearing notification document',
-        icon: FileText,
+        title: 'Amicable Settlement',
+        description: 'KP Form No. 16 - Agreement between parties',
+        icon: Handshake,
+        type: 'amicable_settlement'
     },
     {
-        title: 'Settlement Agreement',
-        description: 'Amicable settlement between parties',
-        icon: FileCheck,
+        title: 'Arbitration Award',
+        description: 'KP Form No. 15 - Decision by Pangkat/Chairman',
+        icon: Gavel,
+        type: 'arbitration_award'
+    },
+    {
+        title: 'Repudiation',
+        description: 'KP Form No. 17 - Rejection of settlement',
+        icon: AlertTriangle,
+        type: 'repudiation'
+    },
+    {
+        title: 'Affidavit of Desistance',
+        description: 'Statement to desist from complaint',
+        icon: FileMinus,
+        type: 'affidavit_desistance'
+    },
+    {
+        title: 'Affidavit of Withdrawal',
+        description: 'Statement to withdraw complaint',
+        icon: FileMinus,
+        type: 'affidavit_withdrawal'
+    },
+    {
+        title: 'Notice of Hearing (Conciliation)',
+        description: 'Notice for Conciliation Proceedings',
+        icon: Calendar,
+        type: 'hearing_conciliation'
+    },
+    {
+        title: 'Notice of Hearing (Mediation)',
+        description: 'Notice for Mediation Proceedings',
+        icon: Calendar,
+        type: 'hearing_mediation'
+    },
+    {
+        title: 'Notice of Hearing (Fail. to Appear)',
+        description: 'Failure to appear at hearing',
+        icon: Calendar,
+        type: 'hearing_failure_appear'
+    },
+    {
+        title: 'Notice of Hearing (Counterclaim)',
+        description: 'Failure to appear - Counterclaim',
+        icon: Calendar,
+        type: 'hearing_failure_appear_counterclaim'
     },
     {
         title: 'Certificate to File Action',
-        description: 'Authorization to proceed to court',
+        description: 'Authorization to file action',
         icon: Scale,
+        type: 'cert_file_action'
     },
     {
-        title: 'Minutes of Hearing',
-        description: 'Official record of proceedings',
-        icon: File,
+        title: 'Certificate to File Action (Court)',
+        description: 'Authorization for court filing',
+        icon: Scale,
+        type: 'cert_file_action_court'
     },
     {
-        title: 'Reprimand Notice',
-        description: 'Official warning or reprimand',
-        icon: AlertCircle,
+        title: 'Certificate to Bar Action',
+        description: 'Barring future action',
+        icon: Gavel,
+        type: 'cert_bar_action'
     },
+    {
+        title: 'Certificate to Bar Counterclaim',
+        description: 'Barring future counterclaim',
+        icon: Gavel,
+        type: 'cert_bar_counterclaim'
+    },
+    {
+        title: 'Motion for Execution',
+        description: 'Request to enforce agreement',
+        icon: Scroll,
+        type: 'motion_execution'
+    },
+    {
+        title: 'Notice of Hearing (Execution)',
+        description: 'Hearing for motion of execution',
+        icon: Scroll,
+        type: 'notice_execution'
+    },
+    {
+        title: 'Notice for Constitution of Pangkat',
+        description: 'Notice to constitute Pangkat',
+        icon: Users,
+        type: 'notice_constitution'
+    },
+    {
+        title: 'Notice to Chosen Pangkat Member',
+        description: 'Notification of selection',
+        icon: UserCheck,
+        type: 'notice_chosen_member'
+    },
+    {
+        title: 'Officers Return',
+        description: 'Return of service',
+        icon: Reply,
+        type: 'officers_return'
+    },
+    {
+        title: 'Letter of Demand',
+        description: 'Formal demand letter',
+        icon: Mail,
+        type: 'letter_of_demand'
+    },
+    {
+        title: 'Katunayan ng Pagkakasundo',
+        description: 'Certificate of Agreement (Tagalog)',
+        icon: BadgeCheck,
+        type: 'katunayan_pagkakasundo'
+    }
 ];
 
-export default function Documents() {
+interface DocumentsProps {
+    documents: {
+        data: Array<{
+            id: number;
+            type: string;
+            created_at: string;
+            status: string;
+            case?: {
+                case_number: string;
+                title: string;
+            };
+        }>;
+        links: any[];
+        total?: number;
+    };
+}
+
+export default function Documents({ documents }: DocumentsProps) {
     const breadcrumbs = [
         {
             title: 'Documents',
@@ -134,13 +266,14 @@ export default function Documents() {
                             <div className="p-2 bg-slate-100 rounded-lg dark:bg-slate-800">
                                 <FileText className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                             </div>
-                            <div className="text-2xl font-bold text-[#1c2434] dark:text-white">1,247</div>
+                            <div className="text-2xl font-bold text-[#1c2434] dark:text-white">{documents?.total ?? 0}</div>
                         </CardHeader>
                         <CardContent>
                             <div className="text-sm font-medium text-[#1c2434] dark:text-white">Total Documents</div>
                             <p className="text-xs text-muted-foreground">All generated documents</p>
                         </CardContent>
                     </Card>
+                    {/* ... other stats kept static for now or can be passed as props later ... */}
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <div className="p-2 bg-slate-100 rounded-lg dark:bg-slate-800">
@@ -167,8 +300,8 @@ export default function Documents() {
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <div className="p-2 bg-slate-100 rounded-lg dark:bg-slate-800">
-                                <Scale className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900">
+                                <BadgeCheck className="h-6 w-6 text-orange-600 dark:text-orange-400" />
                             </div>
                             <div className="text-2xl font-bold text-[#1c2434] dark:text-white">121</div>
                         </CardHeader>
@@ -194,9 +327,15 @@ export default function Documents() {
                                     <div className="flex-1 space-y-1">
                                         <p className="text-sm font-medium leading-none">{template.title}</p>
                                         <p className="text-xs text-muted-foreground">{template.description}</p>
-                                        <Button size="sm" className="h-7 text-xs bg-[#1c2434] text-white hover:bg-[#2c3a4f] mt-2">
-                                            Generate
-                                        </Button>
+
+                                        {/* Link all forms to Visual Editor (using type) */}
+                                        <a
+                                            href={`/documents/create/${template.type}`}
+                                            target="_blank"
+                                            className="inline-flex items-center justify-center rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-[#1c2434] text-white hover:bg-[#2c3a4f] h-7 px-3 mt-2"
+                                        >
+                                            Open Visual Editor
+                                        </a>
                                     </div>
                                 </div>
                             ))}
@@ -204,11 +343,12 @@ export default function Documents() {
                     </CardContent>
                 </Card>
 
-                {/* Recent Documents */}
+                {/* Recent Documents - Dynamic */}
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle>Recent Documents</CardTitle>
                         <div className="flex items-center space-x-2">
+                            {/* Filters ... */}
                             <Select defaultValue="all">
                                 <SelectTrigger className="w-[120px] h-9">
                                     <SelectValue placeholder="All Types" />
@@ -230,36 +370,38 @@ export default function Documents() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            {recentDocuments.map((doc) => (
-                                <div key={doc.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                                    <div className="flex items-center space-x-4">
-                                        <div className="p-2 bg-slate-100 rounded-lg dark:bg-slate-800">
-                                            <doc.icon className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                            {documents.data.length === 0 ? (
+                                <p className="text-center text-muted-foreground py-8">No documents found.</p>
+                            ) : (
+                                documents.data.map((doc) => (
+                                    <div key={doc.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+                                        <div className="flex items-center space-x-4">
+                                            <div className="p-2 bg-slate-100 rounded-lg dark:bg-slate-800">
+                                                <FileText className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium leading-none">
+                                                    {doc.type.replace(/_/g, ' ').toUpperCase()}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                    {doc.case ? `Case: ${doc.case.case_number}` : 'No Case Linked'} • {new Date(doc.created_at).toLocaleDateString()}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-medium leading-none">{doc.title}</p>
-                                            <p className="text-xs text-muted-foreground mt-1">{doc.description}</p>
+                                        <div className="flex items-center space-x-2">
+                                            <Badge variant="outline">{doc.status}</Badge>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#1c2434]">
+                                                <Eye className="h-4 w-4" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#1c2434]">
+                                                <Download className="h-4 w-4" />
+                                            </Button>
                                         </div>
                                     </div>
-                                    <div className="flex items-center space-x-2">
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#1c2434]">
-                                            <Eye className="h-4 w-4" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#1c2434]">
-                                            <Download className="h-4 w-4" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#1c2434]">
-                                            <Printer className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            ))}
+                                ))
+                            )}
                         </div>
-                        <div className="mt-4 flex justify-center">
-                            <Button variant="outline" className="text-xs">
-                                View All Documents
-                            </Button>
-                        </div>
+                        {/* Pagination would go here */}
                     </CardContent>
                 </Card>
             </div>

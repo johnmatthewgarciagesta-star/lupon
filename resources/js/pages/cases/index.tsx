@@ -1,5 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
-import { Head } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,14 +13,6 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import {
     Download,
     Plus,
     Filter,
@@ -32,91 +24,53 @@ import {
     Printer,
     Search
 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+// import { debounce } from 'lodash'; // Using helper or manual debounce
 
-const cases = [
-    {
-        id: 'LT-2024-0248',
-        type: 'Property Dispute',
-        complainant: 'Juan Dela Cruz',
-        respondent: 'Pedro Santos',
-        date: 'May 15, 2024',
-        status: 'Pending',
-    },
-    {
-        id: 'LT-2024-0247',
-        type: 'Noise Complaint',
-        complainant: 'Maria Santos',
-        respondent: 'Ana Garcia',
-        date: 'May 14, 2024',
-        status: 'Resolved',
-    },
-    {
-        id: 'LT-2024-0246',
-        type: 'Debt Collection',
-        complainant: 'Pedro Reyes',
-        respondent: 'Carlos Lopez',
-        date: 'May 13, 2024',
-        status: 'Mediation',
-    },
-    {
-        id: 'LT-2024-0245',
-        type: 'Family Dispute',
-        complainant: 'Ana Garcia',
-        respondent: 'Roberto Garcia',
-        date: 'May 12, 2024',
-        status: 'Resolved',
-    },
-    {
-        id: 'LT-2024-0244',
-        type: 'Boundary Issue',
-        complainant: 'Roberto Cruz',
-        respondent: 'Miguel Torres',
-        date: 'May 11, 2024',
-        status: 'Pending',
-    },
-    {
-        id: 'LT-2024-0243',
-        type: 'Property Dispute',
-        complainant: 'Sofia Mendoza',
-        respondent: 'Luis Ramos',
-        date: 'May 10, 2024',
-        status: 'Mediation',
-    },
-    {
-        id: 'LT-2024-0242',
-        type: 'Noise Complaint',
-        complainant: 'Diego Fernandez',
-        respondent: 'Carmen Silva',
-        date: 'May 09, 2024',
-        status: 'Resolved',
-    },
-    {
-        id: 'LT-2024-0241',
-        type: 'Debt Collection',
-        complainant: 'Elena Morales',
-        respondent: 'Jose Castillo',
-        date: 'May 08, 2024',
-        status: 'Pending',
-    },
-    {
-        id: 'LT-2024-0240',
-        type: 'Family Dispute',
-        complainant: 'Ricardo Navarro',
-        respondent: 'Isabel Navarro',
-        date: 'May 07, 2024',
-        status: 'Mediation',
-    },
-    {
-        id: 'LT-2024-0239',
-        type: 'Boundary Issue',
-        complainant: 'Lucia Herrera',
-        respondent: 'Antonio Diaz',
-        date: 'May 06, 2024',
-        status: 'Resolved',
-    },
-];
+// Helper for debounce if not available
+function debounce(func: Function, wait: number) {
+    let timeout: NodeJS.Timeout;
+    return function (...args: any[]) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
+    };
+}
 
-export default function CaseManagement() {
+interface Case {
+    id: number;
+    case_number: string;
+    title: string;
+    nature_of_case: string;
+    complainant: string;
+    respondent: string;
+    status: string;
+    date_filed: string;
+}
+
+interface PaginationProps {
+    data: Case[];
+    links: {
+        url: string | null;
+        label: string;
+        active: boolean;
+    }[];
+    current_page: number;
+    last_page: number;
+    from: number;
+    to: number;
+    total: number;
+}
+
+interface Props {
+    cases: PaginationProps;
+    filters: {
+        search: string;
+        status: string;
+        nature: string;
+    };
+}
+
+export default function CaseManagement({ cases, filters }: Props) {
     const breadcrumbs = [
         {
             title: 'Case Management',
@@ -124,12 +78,55 @@ export default function CaseManagement() {
         },
     ];
 
+    const [search, setSearch] = useState(filters.search || '');
+    const [status, setStatus] = useState(filters.status || 'all');
+    const [nature, setNature] = useState(filters.nature || 'all');
+
+    // Debounced search
+    const updateSearch = useCallback(
+        debounce((value: string) => {
+            router.get(
+                '/cases',
+                { search: value, status, nature },
+                { preserveState: true, replace: true }
+            );
+        }, 300),
+        [status, nature]
+    );
+
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearch(e.target.value);
+        updateSearch(e.target.value);
+    };
+
+    const handleFilterChange = (key: string, value: string) => {
+        if (key === 'status') setStatus(value);
+        if (key === 'nature') setNature(value);
+
+        router.get(
+            '/cases',
+            {
+                search,
+                status: key === 'status' ? value : status,
+                nature: key === 'nature' ? value : nature,
+            },
+            { preserveState: true, replace: true }
+        );
+    };
+
+    const clearFilters = () => {
+        setSearch('');
+        setStatus('all');
+        setNature('all');
+        router.get('/cases', {}, { preserveState: true, replace: true });
+    };
+
     const getStatusVariant = (status: string) => {
         switch (status) {
             case 'Resolved':
-                return 'secondary'; // Using secondary for resolved based on image (greyish)
+                return 'secondary';
             case 'Pending':
-                return 'outline'; // Using outline for pending
+                return 'outline';
             case 'Mediation':
                 return 'secondary';
             default:
@@ -137,7 +134,6 @@ export default function CaseManagement() {
         }
     };
 
-    // Custom badge styles to match the image precisely
     const getBadgeStyles = (status: string) => {
         switch (status) {
             case 'Resolved':
@@ -147,7 +143,8 @@ export default function CaseManagement() {
             case 'Mediation':
                 return 'bg-slate-200 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 border-0';
             default:
-                return '';
+                // Fallback for custom statuses
+                return 'bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200';
         }
     };
 
@@ -166,10 +163,6 @@ export default function CaseManagement() {
                     </div>
                     <div className="flex items-center space-x-2">
 
-                        <Button className="h-9 bg-[#1c2434] hover:bg-[#2c3a4f] text-white">
-                            <Plus className="mr-2 h-4 w-4" />
-                            New Case
-                        </Button>
                     </div>
                 </div>
 
@@ -186,6 +179,8 @@ export default function CaseManagement() {
                                     <Input
                                         placeholder="Search by case number, name, or type..."
                                         className="pl-8"
+                                        value={search}
+                                        onChange={handleSearchChange}
                                     />
                                 </div>
                             </div>
@@ -193,15 +188,17 @@ export default function CaseManagement() {
                                 <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                     Status
                                 </label>
-                                <Select defaultValue="all">
+                                <Select value={status} onValueChange={(val) => handleFilterChange('status', val)}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="All Status" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Status</SelectItem>
-                                        <SelectItem value="pending">Pending</SelectItem>
-                                        <SelectItem value="resolved">Resolved</SelectItem>
-                                        <SelectItem value="mediation">Mediation</SelectItem>
+                                        <SelectItem value="Pending">Pending</SelectItem>
+                                        <SelectItem value="Resolved">Resolved</SelectItem>
+                                        <SelectItem value="Mediation">Mediation</SelectItem>
+                                        <SelectItem value="Dismissed">Dismissed</SelectItem>
+                                        <SelectItem value="Certified">Certified</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -209,7 +206,7 @@ export default function CaseManagement() {
                                 <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                     Case Type
                                 </label>
-                                <Select defaultValue="all">
+                                <Select value={nature} onValueChange={(val) => handleFilterChange('nature', val)}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="All Types" />
                                     </SelectTrigger>
@@ -218,21 +215,22 @@ export default function CaseManagement() {
                                         <SelectItem value="property">Property Dispute</SelectItem>
                                         <SelectItem value="noise">Noise Complaint</SelectItem>
                                         <SelectItem value="money">Debt Collection</SelectItem>
+                                        <SelectItem value="family">Family Dispute</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm" className="h-8">
+                            {/* <Button variant="outline" size="sm" className="h-8">
                                 <Filter className="mr-2 h-3 w-3" />
                                 More Filters
-                            </Button>
-                            <Button variant="ghost" size="sm" className="h-8 text-muted-foreground">
+                            </Button> */}
+                            <Button variant="ghost" size="sm" className="h-8 text-muted-foreground" onClick={clearFilters}>
                                 <X className="mr-2 h-3 w-3" />
                                 Clear Filters
                             </Button>
                             <div className="ml-auto text-sm text-muted-foreground">
-                                Showing <span className="font-medium">248</span> cases
+                                Showing <span className="font-medium">{cases.from || 0}-{cases.to || 0}</span> of {cases.total} cases
                             </div>
                         </div>
                     </CardContent>
@@ -286,64 +284,68 @@ export default function CaseManagement() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
-                                {cases.map((item) => (
-                                    <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
-                                        <td className="p-4">
-                                            <Checkbox />
-                                        </td>
-                                        <td className="py-3 px-4 font-medium text-[#1c2434] dark:text-white">{item.id}</td>
-                                        <td className="py-3 px-4 text-muted-foreground">{item.type}</td>
-                                        <td className="py-3 px-4 text-muted-foreground">{item.complainant}</td>
-                                        <td className="py-3 px-4 text-muted-foreground">{item.respondent}</td>
-                                        <td className="py-3 px-4 text-muted-foreground">{item.date}</td>
-                                        <td className="py-3 px-4">
-                                            <Badge variant="outline" className={`font-normal rounded-full ${getBadgeStyles(item.status)}`}>
-                                                {item.status}
-                                            </Badge>
-                                        </td>
-                                        <td className="py-3 px-4 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#1c2434]">
-                                                    <Eye className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#1c2434]">
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#1c2434]">
-                                                    <MoreVertical className="h-4 w-4" />
-                                                </Button>
-                                            </div>
+                                {cases.data.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                                            No cases found.
                                         </td>
                                     </tr>
-                                ))}
+                                ) : (
+                                    cases.data.map((item) => (
+                                        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
+                                            <td className="p-4">
+                                                <Checkbox />
+                                            </td>
+                                            <td className="py-3 px-4 font-medium text-[#1c2434] dark:text-white">{item.case_number}</td>
+                                            <td className="py-3 px-4 text-muted-foreground">{item.nature_of_case}</td>
+                                            <td className="py-3 px-4 text-muted-foreground">{item.complainant}</td>
+                                            <td className="py-3 px-4 text-muted-foreground">{item.respondent}</td>
+                                            <td className="py-3 px-4 text-muted-foreground">
+                                                {new Date(item.date_filed).toLocaleDateString()}
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                <Badge variant="outline" className={`font - normal rounded - full ${getBadgeStyles(item.status)} `}>
+                                                    {item.status}
+                                                </Badge>
+                                            </td>
+                                            <td className="py-3 px-4 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#1c2434]"
+                                                        onClick={() => router.visit(`/ documents / view / ${item.id} `)} title="View/Edit Case">
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#1c2434]">
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#1c2434]">
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     </div>
 
+                    {/* Pagination Links */}
                     <div className="flex items-center justify-between px-4 py-4 border-t">
                         <div className="text-sm text-muted-foreground">
-                            Showing 1-10 of 248 cases
+                            Showing {cases.from || 0} to {cases.to || 0} of {cases.total} results
                         </div>
                         <div className="flex items-center space-x-2">
-                            <Button variant="outline" size="sm" className="h-8 w-8 p-0" disabled>
-                                &lt;
-                            </Button>
-                            <Button variant="default" size="sm" className="h-8 w-8 p-0 bg-[#1c2434] text-white">
-                                1
-                            </Button>
-                            <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-                                2
-                            </Button>
-                            <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-                                3
-                            </Button>
-                            <span className="text-muted-foreground">...</span>
-                            <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-                                25
-                            </Button>
-                            <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-                                &gt;
-                            </Button>
+                            {cases.links.map((link, i) => (
+                                <Button
+                                    key={i}
+                                    variant={link.active ? "default" : "outline"}
+                                    size="sm"
+                                    className={`h-8 min-w-[32px] px-2 ${link.active ? 'bg-[#1c2434] text-white' : ''}`}
+                                    disabled={!link.url}
+                                    onClick={() => link.url && router.visit(link.url, { data: { search, status, nature }, preserveState: true })}
+                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                />
+                            ))}
                         </div>
                     </div>
                 </div>

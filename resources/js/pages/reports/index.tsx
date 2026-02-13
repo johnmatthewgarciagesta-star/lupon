@@ -1,4 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
+import { useState } from 'react';
 import { Head } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -107,11 +108,59 @@ const recentReports = [
     },
 ];
 
-export default function Reports() {
+export default function Reports({ stats }: { stats: any }) {
     const breadcrumbs = [
         {
             title: 'Reports',
             href: '/system-reports',
+        },
+    ];
+
+    const [reportType, setReportType] = useState('summary');
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [searchCaseNo, setSearchCaseNo] = useState('');
+
+    const handleGenerate = () => {
+        setIsGenerating(true);
+        // Use window.location for file download
+        window.location.href = `/reports/generate?type=${reportType}`;
+        // Reset loading state after a short delay (since download doesn't trigger page load)
+        setTimeout(() => setIsGenerating(false), 3000);
+    };
+
+    const handleSearch = () => {
+        if (!searchCaseNo) return;
+        window.open(`/documents/view/${encodeURIComponent(searchCaseNo)}`, '_blank');
+    };
+
+    const quickReports = [
+        {
+            title: 'Monthly Summary',
+            value: stats.cases_this_month,
+            label: 'Cases This Month',
+            description: 'New cases filed this month',
+            icon: FileText,
+        },
+        {
+            title: 'Pending Cases',
+            value: stats.pending_cases,
+            label: 'Pending',
+            description: 'Cases currently active',
+            icon: Clock,
+        },
+        {
+            title: 'Resolved Cases',
+            value: stats.resolved_cases,
+            label: 'Resolved',
+            description: 'Cases settled or dismissed',
+            icon: CheckCircle,
+        },
+        {
+            title: 'Total Cases',
+            value: stats.total_cases,
+            label: 'Total',
+            description: 'All cases in the system',
+            icon: Users,
         },
     ];
 
@@ -123,137 +172,97 @@ export default function Reports() {
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
-                        <h2 className="text-2xl font-bold tracking-tight">Reports</h2>
+                        <h2 className="text-2xl font-bold tracking-tight">System Reports</h2>
                         <p className="text-muted-foreground">
-                            Generate and manage system reports
+                            Overview of case statistics and activity
                         </p>
                     </div>
-                    <div className="flex items-center space-x-2">
-                        <Button variant="outline" className="h-9">
-                            <Calendar className="mr-2 h-4 w-4" />
-                            Schedule Report
-                        </Button>
-                        <Button className="h-9 bg-[#1c2434] hover:bg-[#2c3a4f] text-white">
-                            <Download className="mr-2 h-4 w-4" />
-                            Generate Report
-                        </Button>
-                    </div>
                 </div>
 
-                {/* Report Generator */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Report Generator</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="grid gap-4 md:grid-cols-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    Report Type
-                                </label>
-                                <Select defaultValue="summary">
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select Type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="summary">Case Summary Report</SelectItem>
-                                        <SelectItem value="analysis">Detailed Analysis</SelectItem>
-                                        <SelectItem value="outcomes">Outcomes Report</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    Date Range
-                                </label>
-                                <Select defaultValue="30">
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select Range" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="30">Last 30 Days</SelectItem>
-                                        <SelectItem value="90">Last 3 Months</SelectItem>
-                                        <SelectItem value="year">Last Year</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    Case Status
-                                </label>
-                                <Select defaultValue="all">
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select Status" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Statuses</SelectItem>
-                                        <SelectItem value="resolved">Resolved</SelectItem>
-                                        <SelectItem value="pending">Pending</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    Export Format
-                                </label>
-                                <Select defaultValue="pdf">
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select Format" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="pdf">PDF Document</SelectItem>
-                                        <SelectItem value="excel">Excel Spreadsheet</SelectItem>
-                                        <SelectItem value="csv">CSV File</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2 pt-2">
-                            <Button className="bg-[#1c2434] hover:bg-[#2c3a4f] text-white">
-                                <Play className="mr-2 h-4 w-4" />
-                                Generate Report
-                            </Button>
-                            <Button variant="outline">
-                                <Eye className="mr-2 h-4 w-4" />
-                                Preview
-                            </Button>
-                            <Button variant="outline">
-                                <Save className="mr-2 h-4 w-4" />
-                                Save Template
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Quick Reports Grid */}
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {/* Quick Info Cards */}
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     {quickReports.map((report) => (
-                        <div key={report.title} className="flex flex-col justify-between p-6 rounded-lg border bg-card text-card-foreground shadow-sm relative overflow-hidden">
-                            <div className="absolute top-4 right-4">
-                                <Badge variant="secondary" className="bg-slate-100 text-slate-500 font-normal text-[10px] hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-400">
-                                    Quick
-                                </Badge>
-                            </div>
-                            <div className="space-y-4">
-                                <div className="p-2 bg-slate-100 rounded-lg dark:bg-slate-800 w-fit">
-                                    <report.icon className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold leading-none tracking-tight">{report.title}</h3>
-                                    <p className="text-sm text-muted-foreground mt-1">{report.description}</p>
-                                </div>
-                                <Button variant="outline" className="w-full">
-                                    Generate
-                                </Button>
-                            </div>
-                        </div>
+                        <Card key={report.title}>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">
+                                    {report.title}
+                                </CardTitle>
+                                <report.icon className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{report.value}</div>
+                                <p className="text-xs text-muted-foreground">
+                                    {report.description}
+                                </p>
+                            </CardContent>
+                        </Card>
                     ))}
                 </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                    {/* Report Generator */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Generate Report</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex gap-4">
+                                <div className="flex-1">
+                                    <Select value={reportType} onValueChange={setReportType}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="summary">Case Summary</SelectItem>
+                                            <SelectItem value="nature">Nature of Cases</SelectItem>
+                                            <SelectItem value="status">Status Report</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <Button
+                                    onClick={handleGenerate}
+                                    disabled={isGenerating}
+                                    className="bg-[#1c2434] hover:bg-[#2c3a4f] text-white">
+                                    {isGenerating ? (
+                                        <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                    ) : (
+                                        <FileText className="mr-2 h-4 w-4" />
+                                    )}
+                                    Generate PDF
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
 
-                {/* Recent Reports List */}
+                    {/* Case Lookup */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Look Up Case Document</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex gap-4">
+                                <div className="flex-1">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter Case No. (e.g. 2024-001)"
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        value={searchCaseNo}
+                                        onChange={(e) => setSearchCaseNo(e.target.value)}
+                                    />
+                                </div>
+                                <Button
+                                    onClick={handleSearch}
+                                    disabled={!searchCaseNo}
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                                    <CheckCircle className="mr-2 h-4 w-4" /> {/* Using CheckCircle as generic icon or Search if available */}
+                                    View
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Recent Cases List */}
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle>Recent Reports</CardTitle>
+                        <CardTitle>Recent Cases</CardTitle>
                         <Button variant="link" className="text-xs h-auto p-0 text-muted-foreground">View All &gt;</Button>
                     </CardHeader>
                     <CardContent>
@@ -261,52 +270,50 @@ export default function Reports() {
                             <table className="w-full text-sm text-left">
                                 <thead className="text-xs text-muted-foreground uppercase border-b bg-transparent">
                                     <tr>
-                                        <th className="py-3 font-medium">Report Name</th>
-                                        <th className="py-3 font-medium">Type</th>
-                                        <th className="py-3 font-medium">Generated</th>
-                                        <th className="py-3 font-medium">Format</th>
-                                        <th className="py-3 font-medium">Size</th>
-                                        <th className="py-3 font-medium text-right">Actions</th>
+                                        <th className="py-3 font-medium">Case No.</th>
+                                        <th className="py-3 font-medium">Title</th>
+                                        <th className="py-3 font-medium">Nature</th>
+                                        <th className="py-3 font-medium">Status</th>
+                                        <th className="py-3 font-medium">Date Filed</th>
+                                        <th className="py-3 font-medium text-right">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
-                                    {recentReports.map((item) => (
-                                        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
-                                            <td className="py-4 font-medium text-[#1c2434] dark:text-white flex items-center gap-3">
-                                                <div className="p-1.5 bg-slate-100 rounded dark:bg-slate-800">
-                                                    <item.icon className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                                                </div>
-                                                {item.name}
-                                            </td>
-                                            <td className="py-4 text-muted-foreground">{item.type}</td>
-                                            <td className="py-4 text-muted-foreground">{item.generated}</td>
-                                            <td className="py-4">
-                                                <Badge variant="secondary" className="bg-slate-100 text-slate-600 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-400 font-normal">
-                                                    {item.format}
-                                                </Badge>
-                                            </td>
-                                            <td className="py-4 text-muted-foreground">{item.size}</td>
-                                            <td className="py-4 text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#1c2434]">
-                                                        <Eye className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#1c2434]">
-                                                        <Download className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#1c2434]">
-                                                        <Share2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
+                                    {stats.recent_cases.length > 0 ? (
+                                        stats.recent_cases.map((item: any) => (
+                                            <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
+                                                <td className="py-4 font-medium">{item.case_number}</td>
+                                                <td className="py-4 text-[#1c2434] dark:text-blue-400 font-medium">
+                                                    {item.title}
+                                                </td>
+                                                <td className="py-4 text-muted-foreground">{item.nature}</td>
+                                                <td className="py-4">
+                                                    <Badge variant={item.status === 'Pending' ? 'secondary' : 'outline'}
+                                                        className={item.status === 'Pending' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}>
+                                                        {item.status}
+                                                    </Badge>
+                                                </td>
+                                                <td className="py-4 text-muted-foreground">{item.date_filed}</td>
+                                                <td className="py-4 text-right">
+                                                    <a href={`/documents/view/${item.id}`} target="_blank" className="inline-flex items-center justify-center p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="View Document">
+                                                        <Eye className="w-4 h-4" />
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                                                No cases found.
                                             </td>
                                         </tr>
-                                    ))}
+                                    )}
                                 </tbody>
                             </table>
                         </div>
                     </CardContent>
                 </Card>
-            </div>
-        </AppLayout>
+            </div >
+        </AppLayout >
     );
 }

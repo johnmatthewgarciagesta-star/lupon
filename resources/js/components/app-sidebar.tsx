@@ -47,11 +47,7 @@ const mainNavItems: NavItem[] = [
         href: '/documents',
         icon: FileText,
     },
-    {
-        title: 'Analytics',
-        href: '/analytics', // Placeholder path
-        icon: BarChart3,
-    },
+
     {
         title: 'Reports',
         href: '/system-reports', // Placeholder path
