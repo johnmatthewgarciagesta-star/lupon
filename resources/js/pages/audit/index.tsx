@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
@@ -19,24 +19,87 @@ import {
     Search,
     FileText,
     Users,
-    Settings,
     Filter,
     Eye,
-    Lock,
-    UserX,
-    Key,
     ChevronLeft,
     ChevronRight,
-    ClipboardList
 } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import debounce from 'lodash/debounce';
 
-export default function AuditTrailPage() {
+interface AuditLog {
+    id: number;
+    user?: { name: string; role: string };
+    action: string;
+    module: string;
+    details: string;
+    ip_address: string;
+    created_at: string;
+}
+
+interface PageProps {
+    logs: {
+        data: AuditLog[];
+        links: any[];
+        current_page: number;
+        last_page: number;
+        total: number;
+        from: number;
+        to: number;
+    };
+    stats: {
+        total: number;
+        today: number;
+        active_users_24h: number;
+        by_module: Record<string, number>;
+    };
+    filters: {
+        search?: string;
+        module?: string;
+        action?: string;
+        user?: string;
+        date?: string;
+    };
+    users: Array<{ id: number; name: string }>;
+}
+
+export default function AuditTrailPage({ logs, stats, filters, users }: PageProps) {
     const breadcrumbs = [
         {
             title: 'Audit Trail',
             href: '/audit',
         },
     ];
+
+    const [search, setSearch] = useState(filters.search || '');
+    const [moduleFilter, setModuleFilter] = useState(filters.module || 'all');
+    const [actionFilter, setActionFilter] = useState(filters.action || 'all');
+    const [userFilter, setUserFilter] = useState(filters.user || 'all');
+    const [dateFilter, setDateFilter] = useState(filters.date || '');
+
+    const applyFilters = useCallback(
+        debounce((newFilters) => {
+            router.get('/audit', { ...filters, ...newFilters }, { preserveState: true, preserveScroll: true });
+        }, 500),
+        []
+    );
+
+    const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearch(e.target.value);
+        applyFilters({ search: e.target.value });
+    };
+
+    const handleFilterChange = (key: string, value: string) => {
+        const filterMap: Record<string, any> = { module: setModuleFilter, action: setActionFilter, user: setUserFilter };
+        if (filterMap[key]) filterMap[key](value);
+        applyFilters({ [key]: value });
+    };
+
+    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setDateFilter(e.target.value);
+        applyFilters({ date: e.target.value });
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -50,12 +113,6 @@ export default function AuditTrailPage() {
                         <p className="text-muted-foreground">
                             System activity and security logs
                         </p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Button className="h-9 bg-[#1c2434] hover:bg-[#2c3a4f] text-white">
-                            <Filter className="mr-2 h-4 w-4" />
-                            Advanced Filters
-                        </Button>
                     </div>
                 </div>
 
@@ -71,8 +128,8 @@ export default function AuditTrailPage() {
                             </Badge>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-[#1c2434] dark:text-white">1,247</div>
-                            <p className="text-xs text-muted-foreground">Total Activities</p>
+                            <div className="text-2xl font-bold text-[#1c2434] dark:text-white">{stats.today}</div>
+                            <p className="text-xs text-muted-foreground">Activities Today</p>
                         </CardContent>
                     </Card>
                     <Card>
@@ -81,26 +138,26 @@ export default function AuditTrailPage() {
                                 <Users className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                             </div>
                             <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400">
-                                Active
+                                Active Users
                             </Badge>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-[#1c2434] dark:text-white">23</div>
-                            <p className="text-xs text-muted-foreground">Active Users</p>
+                            <div className="text-2xl font-bold text-[#1c2434] dark:text-white">{stats.active_users_24h}</div>
+                            <p className="text-xs text-muted-foreground">Active in last 24h</p>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <div className="p-2 bg-slate-100 rounded-lg dark:bg-slate-800">
-                                <ShieldAlert className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                                <FileText className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                             </div>
                             <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400">
-                                24h
+                                Documents
                             </Badge>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-[#1c2434] dark:text-white">3</div>
-                            <p className="text-xs text-muted-foreground">Security Alerts</p>
+                            <div className="text-2xl font-bold text-[#1c2434] dark:text-white">{stats.by_module['Documents'] || 0}</div>
+                            <p className="text-xs text-muted-foreground">Generated Documents</p>
                         </CardContent>
                     </Card>
                     <Card>
@@ -113,7 +170,7 @@ export default function AuditTrailPage() {
                             </Badge>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-[#1c2434] dark:text-white">45.2K</div>
+                            <div className="text-2xl font-bold text-[#1c2434] dark:text-white">{stats.total}</div>
                             <p className="text-xs text-muted-foreground">Log Entries</p>
                         </CardContent>
                     </Card>
@@ -124,54 +181,64 @@ export default function AuditTrailPage() {
                     <div className="grid gap-4 md:grid-cols-5 items-end">
                         <div className="space-y-2">
                             <span className="text-sm font-medium">Date Range</span>
-                            <Input type="date" className="w-full" />
+                            <Input type="date" className="w-full" value={dateFilter} onChange={handleDateChange} />
                         </div>
                         <div className="space-y-2">
                             <span className="text-sm font-medium">User</span>
-                            <Select>
+                            <Select value={userFilter} onValueChange={(val) => handleFilterChange('user', val)}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="All Users" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Users</SelectItem>
-                                    <SelectItem value="admin">Admin User</SelectItem>
-                                    <SelectItem value="juan">Juan Dela Cruz</SelectItem>
+                                    {users.map(u => (
+                                        <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-2">
                             <span className="text-sm font-medium">Action Type</span>
-                            <Select>
+                            <Select value={actionFilter} onValueChange={(val) => handleFilterChange('action', val)}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="All Actions" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Actions</SelectItem>
-                                    <SelectItem value="login">Login</SelectItem>
-                                    <SelectItem value="create">Create</SelectItem>
-                                    <SelectItem value="update">Update</SelectItem>
-                                    <SelectItem value="delete">Delete</SelectItem>
+                                    <SelectItem value="LOGIN">Login</SelectItem>
+                                    <SelectItem value="CREATE">Create</SelectItem>
+                                    <SelectItem value="UPDATE">Update</SelectItem>
+                                    <SelectItem value="DELETE">Delete</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-2">
                             <span className="text-sm font-medium">Module</span>
-                            <Select>
+                            <Select value={moduleFilter} onValueChange={(val) => handleFilterChange('module', val)}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="All Modules" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Modules</SelectItem>
-                                    <SelectItem value="cases">Cases</SelectItem>
-                                    <SelectItem value="documents">Documents</SelectItem>
-                                    <SelectItem value="users">Users</SelectItem>
+                                    <SelectItem value="Cases">Cases</SelectItem>
+                                    <SelectItem value="Documents">Documents</SelectItem>
+                                    <SelectItem value="Users">Users</SelectItem>
+                                    <SelectItem value="Auth">Auth</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
-                        <Button className="bg-[#1c2434] hover:bg-[#2c3a4f] text-white">
-                            <Search className="mr-2 h-4 w-4" />
-                            Search
-                        </Button>
+                        <div className="space-y-2">
+                            <span className="text-sm font-medium">Search</span>
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search logs..."
+                                    className="pl-8"
+                                    value={search}
+                                    onChange={handleSearch}
+                                />
+                            </div>
+                        </div>
                     </div>
                 </Card>
 
@@ -179,177 +246,127 @@ export default function AuditTrailPage() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle>Activity Log</CardTitle>
-                        <div className="relative w-full max-w-sm">
-                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="Search logs..." className="pl-8" />
-                        </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="text-xs text-muted-foreground uppercase border-b">
-                                    <tr>
-                                        <th className="py-3 px-4 font-medium">Timestamp</th>
-                                        <th className="py-3 px-4 font-medium">User</th>
-                                        <th className="py-3 px-4 font-medium">Action</th>
-                                        <th className="py-3 px-4 font-medium">Module</th>
-                                        <th className="py-3 px-4 font-medium">Details</th>
-                                        <th className="py-3 px-4 font-medium">IP Address</th>
-                                        <th className="py-3 px-4 font-medium text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y">
-                                    {[
-                                        { time: '2025-01-15 14:32:15', rel: '2 minutes ago', user: 'Juan Dela Cruz', role: 'Lupon Member', action: 'UPDATE', module: 'Cases', details: 'Updated case status to "Mediation Scheduled" Case #2025-001', ip: '192.168.1.45' },
-                                        { time: '2025-01-15 14:28:42', rel: '6 minutes ago', user: 'Maria Santos', role: 'Secretary', action: 'CREATE', module: 'Documents', details: 'Generated Summons document Case #2025-015', ip: '192.168.1.23' },
-                                        { time: '2025-01-15 14:15:33', rel: '19 minutes ago', user: 'Admin User', role: 'Administrator', action: 'LOGIN', module: 'System', details: 'User logged in successfully Session ID: 7f8a9b2c', ip: '192.168.1.10' },
-                                        { time: '2025-01-15 14:05:18', rel: '29 minutes ago', user: 'Pedro Reyes', role: 'Lupon Chairman', action: 'UPDATE', module: 'Cases', details: 'Assigned mediators to case Case #2025-012', ip: '192.168.1.67' },
-                                        { time: '2025-01-15 13:58:45', rel: '36 minutes ago', user: 'Maria Santos', role: 'Secretary', action: 'CREATE', module: 'Cases', details: 'Created new case record Case #2025-015', ip: '192.168.1.23' },
-                                        { time: '2025-01-15 13:42:12', rel: '52 minutes ago', user: 'Admin User', role: 'Administrator', action: 'UPDATE', module: 'Settings', details: 'Modified system notification settings Email notifications enabled', ip: '192.168.1.10' },
-                                        { time: '2025-01-15 13:35:28', rel: '59 minutes ago', user: 'Juan Dela Cruz', role: 'Lupon Member', action: 'DELETE', module: 'Documents', details: 'Deleted draft document Document ID: DOC-2025-089', ip: '192.168.1.45' },
-                                        { time: '2025-01-15 13:22:55', rel: '1 hour ago', user: 'Pedro Reyes', role: 'Lupon Chairman', action: 'LOGOUT', module: 'System', details: 'User logged out Session duration: 2h 15m', ip: '192.168.1.67' },
-                                    ].map((item, index) => (
-                                        <tr key={index} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
-                                            <td className="py-3 px-4">
-                                                <div className="font-medium">{item.time}</div>
-                                                <div className="text-xs text-muted-foreground">{item.rel}</div>
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="h-8 w-8 rounded-full bg-slate-200"></div>
-                                                    <div>
-                                                        <div className="font-medium text-sm">{item.user}</div>
-                                                        <div className="text-xs text-muted-foreground">{item.role}</div>
+                        <div className="rounded-md border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Timestamp</TableHead>
+                                        <TableHead>User</TableHead>
+                                        <TableHead>Action</TableHead>
+                                        <TableHead>Module</TableHead>
+                                        <TableHead>Details</TableHead>
+                                        <TableHead>IP Address</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {logs.data.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                                No activity logs found.
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        logs.data.map((log) => (
+                                            <TableRow key={log.id}>
+                                                <TableCell className="whitespace-nowrap">
+                                                    <div className="font-medium">{new Date(log.created_at).toLocaleTimeString()}</div>
+                                                    <div className="text-xs text-muted-foreground">{new Date(log.created_at).toLocaleDateString()}</div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
+                                                            {log.user?.name ? log.user.name.charAt(0).toUpperCase() : '?'}
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-medium text-sm">{log.user?.name || 'System / Unknown'}</div>
+                                                            <div className="text-xs text-muted-foreground">{log.user?.role || ''}</div>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                <Badge variant="outline" className="bg-slate-50 dark:bg-slate-900">
-                                                    {item.action}
-                                                </Badge>
-                                            </td>
-                                            <td className="py-3 px-4 text-muted-foreground">{item.module}</td>
-                                            <td className="py-3 px-4 text-sm max-w-[300px]">
-                                                {item.details}
-                                            </td>
-                                            <td className="py-3 px-4 text-muted-foreground font-mono text-xs">{item.ip}</td>
-                                            <td className="py-3 px-4 text-right">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                    <Eye className="h-4 w-4" />
-                                                </Button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline" className={`
+                                                        ${log.action === 'CREATE' ? 'bg-green-50 text-green-700 border-green-200' : ''}
+                                                        ${log.action === 'UPDATE' ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
+                                                        ${log.action === 'DELETE' ? 'bg-red-50 text-red-700 border-red-200' : ''}
+                                                    `}>
+                                                        {log.action}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-muted-foreground">{log.module}</TableCell>
+                                                <TableCell className="text-sm max-w-[300px] truncate" title={log.details}>
+                                                    {log.details}
+                                                </TableCell>
+                                                <TableCell className="text-muted-foreground font-mono text-xs">{log.ip_address}</TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
                         </div>
-                        <div className="flex items-center justify-between mt-4 text-xs text-muted-foreground">
-                            <div>Showing 1-8 of 1,247 entries</div>
-                            <div className="flex gap-2">
-                                <Button variant="outline" size="icon" className="h-8 w-8" disabled><ChevronLeft className="h-3 w-3" /></Button>
-                                <Button variant="outline" size="icon" className="h-8 w-8 bg-[#1c2434] text-white hover:bg-[#2c3a4f] hover:text-white">1</Button>
-                                <Button variant="outline" size="icon" className="h-8 w-8">2</Button>
-                                <Button variant="outline" size="icon" className="h-8 w-8">3</Button>
-                                <div className="flex items-center justify-center w-8">...</div>
-                                <Button variant="outline" size="icon" className="h-8 w-8">156</Button>
-                                <Button variant="outline" size="icon" className="h-8 w-8"><ChevronRight className="h-3 w-3" /></Button>
+
+                        {/* Pagination */}
+                        {logs.data.length > 0 && (
+                            <div className="flex items-center justify-between mt-4 text-xs text-muted-foreground">
+                                <div>
+                                    Showing {logs.from} to {logs.to} of {logs.total} entries
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => router.visit(logs.links[0].url)}
+                                        disabled={!logs.links[0].url}
+                                    >
+                                        Previous
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => router.visit(logs.links[logs.links.length - 1].url)}
+                                        disabled={!logs.links[logs.links.length - 1].url}
+                                    >
+                                        Next
+                                    </Button>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </CardContent>
                 </Card>
 
-                {/* Bottom Section */}
+                {/* Bottom Section - Activity by Module */}
                 <div className="grid gap-6 md:grid-cols-2">
-                    {/* Activity by Module */}
                     <Card>
                         <CardHeader>
                             <CardTitle>Activity by Module</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="font-medium">Cases</span>
-                                    <span className="font-bold text-xs">542 activities</span>
+                            {Object.entries(stats.by_module).map(([module, count]) => (
+                                <div key={module} className="space-y-2">
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="font-medium">{module}</span>
+                                        <span className="font-bold text-xs">{count} activities</span>
+                                    </div>
+                                    <Progress value={(count / stats.total) * 100} className="h-2 bg-slate-100 dark:bg-slate-800" />
                                 </div>
-                                <Progress value={75} className="h-2 bg-slate-100 dark:bg-slate-800" />
-                            </div>
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="font-medium">Documents</span>
-                                    <span className="font-bold text-xs">389 activities</span>
-                                </div>
-                                <Progress value={55} className="h-2 bg-slate-100 dark:bg-slate-800" />
-                            </div>
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="font-medium">Users</span>
-                                    <span className="font-bold text-xs">156 activities</span>
-                                </div>
-                                <Progress value={20} className="h-2 bg-slate-100 dark:bg-slate-800" />
-                            </div>
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="font-medium">Settings</span>
-                                    <span className="font-bold text-xs">98 activities</span>
-                                </div>
-                                <Progress value={12} className="h-2 bg-slate-100 dark:bg-slate-800" />
-                            </div>
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="font-medium">Reports</span>
-                                    <span className="font-bold text-xs">62 activities</span>
-                                </div>
-                                <Progress value={8} className="h-2 bg-slate-100 dark:bg-slate-800" />
-                            </div>
+                            ))}
                         </CardContent>
                     </Card>
 
-                    {/* Recent Security Events */}
+                    {/* Placeholder for Security Events - can be real later */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Recent Security Events</CardTitle>
+                            <CardTitle>Security Status</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="flex gap-4">
-                                <div className="mt-1 bg-slate-100 p-2 rounded-lg dark:bg-slate-800 h-fit">
-                                    <ShieldAlert className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                                </div>
-                                <div className="space-y-1">
-                                    <div className="flex items-center justify-between">
-                                        <h4 className="text-sm font-semibold">Failed Login Attempt</h4>
-                                        <span className="text-xs text-muted-foreground">5 min ago</span>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">Multiple failed login attempts from IP 203.45.67.89</p>
-                                </div>
-                            </div>
-                            <div className="flex gap-4">
-                                <div className="mt-1 bg-slate-100 p-2 rounded-lg dark:bg-slate-800 h-fit">
-                                    <UserX className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                                </div>
-                                <div className="space-y-1">
-                                    <div className="flex items-center justify-between">
-                                        <h4 className="text-sm font-semibold">Account Locked</h4>
-                                        <span className="text-xs text-muted-foreground">2 hours ago</span>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">User account locked due to suspicious activity</p>
-                                </div>
-                            </div>
-                            <div className="flex gap-4">
-                                <div className="mt-1 bg-slate-100 p-2 rounded-lg dark:bg-slate-800 h-fit">
-                                    <Key className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                                </div>
-                                <div className="space-y-1">
-                                    <div className="flex items-center justify-between">
-                                        <h4 className="text-sm font-semibold">Password Changed</h4>
-                                        <span className="text-xs text-muted-foreground">5 hours ago</span>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">Admin user changed password successfully</p>
-                                </div>
+                        <CardContent>
+                            <div className="flex items-center justify-center py-8 flex-col text-center text-muted-foreground">
+                                <ShieldAlert className="h-12 w-12 mb-4 text-slate-300" />
+                                <p>No critical security alerts detected in the last 24 hours.</p>
                             </div>
                         </CardContent>
                     </Card>
                 </div>
-
             </div>
         </AppLayout>
     );

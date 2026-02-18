@@ -5,6 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import {
     Select,
     SelectContent,
     SelectItem,
@@ -209,18 +217,20 @@ const templates = [
     }
 ];
 
+interface Document {
+    id: number;
+    title: string;
+    type: string;
+    case_number: string;
+    status: string;
+    date: string; // issued_at
+    created_by?: number;
+    creator?: { name: string };
+}
+
 interface DocumentsProps {
     documents: {
-        data: Array<{
-            id: number;
-            type: string;
-            created_at: string;
-            status: string;
-            case?: {
-                case_number: string;
-                title: string;
-            };
-        }>;
+        data: Array<Document>;
         links: any[];
         total?: number;
     };
@@ -369,39 +379,73 @@ export default function Documents({ documents }: DocumentsProps) {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-4">
-                            {documents.data.length === 0 ? (
-                                <p className="text-center text-muted-foreground py-8">No documents found.</p>
-                            ) : (
-                                documents.data.map((doc) => (
-                                    <div key={doc.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
-                                        <div className="flex items-center space-x-4">
-                                            <div className="p-2 bg-slate-100 rounded-lg dark:bg-slate-800">
-                                                <FileText className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-medium leading-none">
-                                                    {doc.type.replace(/_/g, ' ').toUpperCase()}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground mt-1">
-                                                    {doc.case ? `Case: ${doc.case.case_number}` : 'No Case Linked'} • {new Date(doc.created_at).toLocaleDateString()}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <Badge variant="outline">{doc.status}</Badge>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#1c2434]">
-                                                <Eye className="h-4 w-4" />
-                                            </Button>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#1c2434]">
-                                                <Download className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
+                        <div className="rounded-md border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Document Type</TableHead>
+                                        <TableHead>Case Number</TableHead>
+                                        <TableHead>Encoded By</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Date Issued</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {documents.data.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                                No documents found.
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        documents.data.map((doc) => (
+                                            <TableRow key={doc.id}>
+                                                <TableCell className="font-medium">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-slate-100 rounded-lg dark:bg-slate-800">
+                                                            <FileText className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                                                        </div>
+                                                        {doc.type.replace(/_/g, ' ').toUpperCase()}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>{doc.case_number}</TableCell>
+                                                <TableCell>
+                                                    {doc.creator ? (
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800">
+                                                                <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400">
+                                                                    {doc.creator.name.charAt(0).toUpperCase()}
+                                                                </span>
+                                                            </div>
+                                                            <span className="text-sm text-muted-foreground">{doc.creator.name}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-muted-foreground">-</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline">{doc.status}</Badge>
+                                                </TableCell>
+                                                <TableCell className="text-muted-foreground">
+                                                    {new Date(doc.date).toLocaleDateString()}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex justify-end gap-2">
+                                                        <Button variant="ghost" size="icon" title="View">
+                                                            <Eye className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" title="Download">
+                                                            <Download className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
                         </div>
-                        {/* Pagination would go here */}
                     </CardContent>
                 </Card>
             </div>

@@ -26,17 +26,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('system-reports', [App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
     Route::get('reports/generate', [App\Http\Controllers\ReportController::class, 'generate'])->name('reports.generate');
 
-    Route::get('users', function () {
-        return Inertia::render('users/index');
-    })->name('users.index');
+    Route::resource('users', App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit']);
 
     Route::get('ltia', function () {
         return Inertia::render('ltia/index');
     })->name('ltia.index');
 
-    Route::get('audit', function () {
-        return Inertia::render('audit/index');
-    })->name('audit.index');
+    Route::get('audit', [App\Http\Controllers\AuditController::class, 'index'])->name('audit.index');
 
 
     Route::get('documents/create/{type}', [App\Http\Controllers\DocumentController::class, 'create'])->name('documents.create');

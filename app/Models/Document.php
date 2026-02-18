@@ -16,6 +16,7 @@ class Document extends Model
         'file_path',
         'status',
         'issued_at',
+        'created_by',
     ];
 
     protected $casts = [
@@ -26,5 +27,10 @@ class Document extends Model
     public function case()
     {
         return $this->belongsTo(LuponCase::class, 'case_id');
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

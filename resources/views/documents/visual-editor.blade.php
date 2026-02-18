@@ -501,6 +501,14 @@
             const container = document.getElementById('hidden-inputs-container');
             container.innerHTML = ''; // Clear previous
 
+            if (caseId && caseId !== 'null') {
+                const caseInput = document.createElement('input');
+                caseInput.type = 'hidden';
+                caseInput.name = 'case_id';
+                caseInput.value = caseId;
+                container.appendChild(caseInput);
+            }
+
             const fields = document.querySelectorAll('.doc-field');
             const parent = document.getElementById('page-canvas');
             const parentW = parent.offsetWidth;

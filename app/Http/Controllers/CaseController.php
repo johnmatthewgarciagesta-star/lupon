@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 
 use App\Models\LuponCase;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use App\Services\AuditService;
 
 class CaseController extends Controller
 {
@@ -78,13 +80,16 @@ class CaseController extends Controller
                 'complaint_narrative' => $request->narrative,
                 'admin_notes' => 'Submitted via Visual Editor',
                 'document_data' => $request->all(),
+                'created_by' => auth()->id(),
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Case #' . $case->case_number . ' filed successfully!',
-                'case_id' => $case->id
-            ]);
+            AuditService::log('CREATE', 'Cases', "Created Case #{$case->case_number}", $case->case_number);
+
+            if ($request->expectsJson()) {
+                return response()->json(['success' => true, 'message' => 'Case filed successfully.']);
+            }
+
+            return redirect()->route('cases.index')->with('success', 'Case filed successfully.');
 
         } catch (\Exception $e) {
             Log::error('Case Submission Error: ' . $e->getMessage());
@@ -129,10 +134,13 @@ class CaseController extends Controller
             $case->document_data = $request->all(); // Overwrite with new full state
             $case->save();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Case updated successfully!'
-            ]);
+            AuditService::log('UPDATE', 'Cases', "Updated details for Case #{$case->case_number}", $case->case_number);
+
+            if ($request->expectsJson()) {
+                return response()->json(['success' => true, 'message' => 'Case updated successfully.']);
+            }
+
+            return redirect()->back()->with('success', 'Case updated successfully.');
 
         } catch (\Exception $e) {
             Log::error('Case Update Error: ' . $e->getMessage());
@@ -149,10 +157,9 @@ class CaseController extends Controller
             $case = LuponCase::findOrFail($id);
             $case->delete(); // Soft delete
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Case archived successfully!'
-            ]);
+            AuditService::log('DELETE', 'Cases', "Archived Case #{$case->case_number}", $case->case_number);
+
+            return redirect()->back()->with('success', 'Case archived successfully.');
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,

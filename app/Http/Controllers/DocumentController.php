@@ -8,6 +8,9 @@ use Spatie\Browsershot\Browsershot;
 
 use App\Config\FormLayouts;
 
+use Illuminate\Support\Facades\Storage;
+use App\Services\AuditService;
+
 use App\Models\FormLayout;
 
 class DocumentController extends Controller
@@ -253,8 +256,34 @@ class DocumentController extends Controller
                     'content' => $data, // Save all form data
                     'status' => 'Issued',
                     'issued_at' => now(),
+                    'created_by' => auth()->id(),
                     // 'file_path' => $filename, // Consider saving file to storage if needed
                 ]);
+
+                AuditService::log('CREATE', 'Documents', "Generated {$type} for Case #{$request->input('case_id')}", $request->input('case_id'));
+
+                // Sync Parties to Parent Case
+                $case = \App\Models\LuponCase::find($request->input('case_id'));
+                if ($case) {
+                    $updated = false;
+                    if (!empty($data['complainant'])) {
+                        $case->complainant = $data['complainant'];
+                        $updated = true;
+                    }
+                    if (!empty($data['respondent'])) {
+                        $case->respondent = $data['respondent'];
+                        $updated = true;
+                    }
+
+                    if ($updated) {
+                        // Update Title
+                        $comp = $case->complainant ?? 'Unknown';
+                        $resp = $case->respondent ?? 'Unknown';
+                        $case->title = "$comp vs $resp";
+                        $case->save();
+                    }
+                }
+
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error("Failed to save document record: " . $e->getMessage());
                 // Don't block download if saving record fails, but log it.

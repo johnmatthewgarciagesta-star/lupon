@@ -22,7 +22,9 @@ import {
     Edit,
     Archive,
     Printer,
-    Search
+    Search,
+    MoreHorizontal,
+    RefreshCcw,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 // import { debounce } from 'lodash'; // Using helper or manual debounce
@@ -39,12 +41,15 @@ function debounce(func: Function, wait: number) {
 interface Case {
     id: number;
     case_number: string;
-    title: string;
     nature_of_case: string;
-    complainant: string;
-    respondent: string;
+    description: string;
     status: string;
     date_filed: string;
+    complainant?: string;
+    respondent?: string;
+    created_by?: number;
+    creator?: { name: string };
+    deleted_at?: string | null;
 }
 
 interface PaginationProps {
@@ -145,6 +150,19 @@ export default function CaseManagement({ cases, filters }: Props) {
             default:
                 // Fallback for custom statuses
                 return 'bg-slate-100 text-slate-600 hover:bg-slate-100 border border-slate-200';
+        }
+    };
+
+    const archiveCase = (caseItem: Case) => {
+        if (confirm('Are you sure you want to archive this case?')) {
+            router.delete(`/cases/${caseItem.id}`);
+        }
+    };
+
+    const restoreCase = (caseItem: Case) => {
+        if (confirm('Are you sure you want to restore this case?')) {
+            // We'll need a route for this eventually, for now just show alert or implement RestoreController
+            alert("Restore functionality coming in Phase 2 (Audit Trail)");
         }
     };
 
@@ -304,22 +322,31 @@ export default function CaseManagement({ cases, filters }: Props) {
                                                 {new Date(item.date_filed).toLocaleDateString()}
                                             </td>
                                             <td className="py-3 px-4">
-                                                <Badge variant="outline" className={`font - normal rounded - full ${getBadgeStyles(item.status)} `}>
+                                                <Badge variant="outline" className={`font-normal rounded-full ${getBadgeStyles(item.status)}`}>
                                                     {item.status}
                                                 </Badge>
                                             </td>
-                                            <td className="py-3 px-4 text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#1c2434]"
-                                                        onClick={() => router.visit(`/ documents / view / ${item.id} `)} title="View/Edit Case">
+                                            <td>
+                                                <div className="flex items-center gap-2">
+                                                    <Button variant="ghost" size="icon" title="View Details" onClick={() => router.visit(`/cases/${item.id}`)}>
                                                         <Eye className="h-4 w-4" />
                                                     </Button>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#1c2434]">
-                                                        <Edit className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-[#1c2434]">
-                                                        <MoreVertical className="h-4 w-4" />
-                                                    </Button>
+                                                    {item.creator && (
+                                                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800" title={`Encoded by: ${item.creator.name}`}>
+                                                            <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                                                {item.creator.name.charAt(0).toUpperCase()}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {item.deleted_at ? (
+                                                        <Button variant="ghost" size="icon" title="Restore Case" onClick={() => restoreCase(item)} className="text-green-500 hover:text-green-700">
+                                                            <RefreshCcw className="h-4 w-4" />
+                                                        </Button>
+                                                    ) : (
+                                                        <Button variant="ghost" size="icon" title="Archive Case" onClick={() => archiveCase(item)} className="text-red-500 hover:text-red-700">
+                                                            <Archive className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
