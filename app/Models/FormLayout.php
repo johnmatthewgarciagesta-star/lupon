@@ -14,6 +14,6 @@ class FormLayout extends Model
 
     protected $casts = [
         'layout_json' => 'array',
-        'is_hidden'   => 'boolean',
+        'is_hidden' => 'boolean',
     ];
 }

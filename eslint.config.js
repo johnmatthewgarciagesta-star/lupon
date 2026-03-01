@@ -62,7 +62,21 @@ export default [
                     fixStyle: 'separate-type-imports',
                 },
             ],
+            '@typescript-eslint/no-unused-vars': 'warn',
+            '@typescript-eslint/no-explicit-any': 'warn',
+            '@typescript-eslint/ban-ts-comment': 'warn',
         },
+    },
+    {
+        files: ['**/*.{js,jsx,ts,tsx}'],
+        rules: {
+            'react/no-unstable-nested-components': 'warn',
+            'react-hooks/exhaustive-deps': 'warn',
+            'react-hooks/rules-of-hooks': 'warn',
+            'react-hooks/static-components': 'warn',
+            'react-hooks/use-memo': 'warn',
+            '@typescript-eslint/no-unsafe-function-type': 'warn'
+        }
     },
     {
         ignores: ['vendor', 'node_modules', 'public', 'bootstrap/ssr', 'tailwind.config.js', 'vite.config.ts'],

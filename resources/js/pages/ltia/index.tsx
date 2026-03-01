@@ -1,9 +1,4 @@
-import AppLayout from '@/layouts/app-layout';
 import { Head } from '@inertiajs/react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import {
     Trophy,
     Medal,
@@ -21,6 +16,11 @@ import {
     Eye
 } from 'lucide-react';
 import { SubmitApplicationDialog } from '@/components/ltia/submit-application-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import AppLayout from '@/layouts/app-layout';
 
 export default function LTIAPage() {
     const breadcrumbs = [

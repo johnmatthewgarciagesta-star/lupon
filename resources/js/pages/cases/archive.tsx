@@ -1,9 +1,4 @@
-import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
     Eye,
     RefreshCcw,
@@ -12,6 +7,11 @@ import {
     FolderClock
 } from 'lucide-react';
 import { useCallback, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import AppLayout from '@/layouts/app-layout';
 
 function debounce(func: Function, wait: number) {
     let timeout: NodeJS.Timeout;

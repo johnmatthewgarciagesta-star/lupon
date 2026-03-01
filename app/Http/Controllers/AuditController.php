@@ -67,7 +67,7 @@ class AuditController extends Controller
                 'today' => $todayActivities,
                 'active_users_24h' => $activeUsers,
                 'by_module' => $moduleStats,
-            ]
+            ],
         ]);
     }
 }

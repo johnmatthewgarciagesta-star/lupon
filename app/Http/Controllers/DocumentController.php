@@ -2,21 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-
-use Spatie\Browsershot\Browsershot;
-
 use App\Config\FormLayouts;
-
-use Illuminate\Support\Facades\Storage;
-use App\Services\AuditService;
-
 use App\Models\FormLayout;
-
+use App\Services\AuditService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\SimpleType\TblWidth;
-use PhpOffice\PhpWord\Style\Language;
-use PhpOffice\PhpWord\IOFactory;
+use Spatie\Browsershot\Browsershot;
 
 class DocumentController extends Controller
 {
@@ -28,13 +22,13 @@ class DocumentController extends Controller
             ->get()
             ->map(function ($doc) {
                 return [
-                    'id'          => $doc->id,
-                    'type'        => $doc->type,
-                    'status'      => $doc->status,
-                    'date'        => ($doc->issued_at ?? $doc->created_at)?->toISOString(),
-                    'case_id'     => $doc->case_id,
+                    'id' => $doc->id,
+                    'type' => $doc->type,
+                    'status' => $doc->status,
+                    'date' => ($doc->issued_at ?? $doc->created_at)?->toISOString(),
+                    'case_id' => $doc->case_id,
                     'case_number' => $doc->case?->case_number,
-                    'creator'     => $doc->creator ? ['name' => $doc->creator->name] : null,
+                    'creator' => $doc->creator ? ['name' => $doc->creator->name] : null,
                 ];
             })
             ->values()
@@ -47,34 +41,34 @@ class DocumentController extends Controller
             ->toArray();
 
         $stats = [
-            'total'        => array_sum($allDocs),
-            'complaints'   => ($allDocs['complaint']   ?? 0),
-            'summons'      => ($allDocs['summons']      ?? 0),
-            'settlements'  => ($allDocs['amicable_settlement']  ?? 0)
-                            + ($allDocs['arbitration_award']    ?? 0)
+            'total' => array_sum($allDocs),
+            'complaints' => ($allDocs['complaint'] ?? 0),
+            'summons' => ($allDocs['summons'] ?? 0),
+            'settlements' => ($allDocs['amicable_settlement'] ?? 0)
+                            + ($allDocs['arbitration_award'] ?? 0)
                             + ($allDocs['katunayan_pagkakasundo'] ?? 0),
-            'certificates' => ($allDocs['cert_file_action']        ?? 0)
-                            + ($allDocs['cert_file_action_court']   ?? 0)
-                            + ($allDocs['cert_bar_action']          ?? 0)
-                            + ($allDocs['cert_bar_counterclaim']    ?? 0),
-            'notices'      => ($allDocs['notice_of_hearing'] ?? 0)
-                            + ($allDocs['notice_to_appear']  ?? 0)
+            'certificates' => ($allDocs['cert_file_action'] ?? 0)
+                            + ($allDocs['cert_file_action_court'] ?? 0)
+                            + ($allDocs['cert_bar_action'] ?? 0)
+                            + ($allDocs['cert_bar_counterclaim'] ?? 0),
+            'notices' => ($allDocs['notice_of_hearing'] ?? 0)
+                            + ($allDocs['notice_to_appear'] ?? 0)
                             + ($allDocs['hearing_conciliation'] ?? 0)
-                            + ($allDocs['hearing_mediation']    ?? 0)
+                            + ($allDocs['hearing_mediation'] ?? 0)
                             + ($allDocs['hearing_failure_appear'] ?? 0)
                             + ($allDocs['hearing_failure_appear_counterclaim'] ?? 0)
                             + ($allDocs['notice_execution'] ?? 0)
                             + ($allDocs['notice_constitution'] ?? 0)
                             + ($allDocs['notice_chosen_member'] ?? 0),
-            'others'       => ($allDocs['minutes_of_hearing'] ?? 0)
-                            + ($allDocs['letter_of_demand']   ?? 0)
-                            + ($allDocs['subpoena']            ?? 0)
-                            + ($allDocs['repudiation']         ?? 0)
+            'others' => ($allDocs['minutes_of_hearing'] ?? 0)
+                            + ($allDocs['letter_of_demand'] ?? 0)
+                            + ($allDocs['subpoena'] ?? 0)
+                            + ($allDocs['repudiation'] ?? 0)
                             + ($allDocs['affidavit_desistance'] ?? 0)
                             + ($allDocs['affidavit_withdrawal'] ?? 0)
-                            + ($allDocs['motion_execution']     ?? 0)
-                            + ($allDocs['officers_return']      ?? 0)
-                            + ($allDocs['custom_form']          ?? 0),
+                            + ($allDocs['motion_execution'] ?? 0)
+                            + ($allDocs['officers_return'] ?? 0)
+                            + ($allDocs['custom_form'] ?? 0),
         ];
 
         // Fetch custom-built forms to show in the "Templates" grid
@@ -83,11 +77,11 @@ class DocumentController extends Controller
             ->get()
             ->map(function ($doc) {
                 return [
-                    'id'          => $doc->id,
-                    'title'       => $doc->content['title'] ?? 'Custom Form',
+                    'id' => $doc->id,
+                    'title' => $doc->content['title'] ?? 'Custom Form',
                     'description' => $doc->content['description'] ?? 'Custom uploaded document',
-                    'type'        => 'custom_template',
-                    'icon_name'   => 'FileSignature',
+                    'type' => 'custom_template',
+                    'icon_name' => 'FileSignature',
                 ];
             });
 
@@ -97,8 +91,8 @@ class DocumentController extends Controller
             ->toArray();
 
         return \Inertia\Inertia::render('documents/index', [
-            'documents'       => $documents,
-            'stats'           => $stats,
+            'documents' => $documents,
+            'stats' => $stats,
             'customTemplates' => $customTemplates,
             'hiddenTemplates' => $hiddenTemplates,
         ]);
@@ -108,7 +102,7 @@ class DocumentController extends Controller
     {
         // Optional: pre-link to a case when opened via ?case_id=X
         $caseId = request('case_id');
-        $case   = $caseId ? \App\Models\LuponCase::find($caseId) : null;
+        $case = $caseId ? \App\Models\LuponCase::find($caseId) : null;
 
         // Get Layout from DB or Config
         $savedLayout = FormLayout::where('document_type', $type)->first();
@@ -149,9 +143,9 @@ class DocumentController extends Controller
     public function fillCustom($id)
     {
         $template = \App\Models\Document::findOrFail($id);
-        $type     = 'custom_' . $id;
-        $caseId   = request('case_id');
-        $case     = $caseId ? \App\Models\LuponCase::find($caseId) : null;
+        $type = 'custom_'.$id;
+        $caseId = request('case_id');
+        $case = $caseId ? \App\Models\LuponCase::find($caseId) : null;
 
         // Custom fields from form builder
         $fields = $template->content['fields'] ?? [];
@@ -159,35 +153,43 @@ class DocumentController extends Controller
         // Ensure fields have default positions and 'name' if not set
         foreach ($fields as &$field) {
             // Map builder 'id' to 'name' for the visual editor
-            if (!isset($field['name']) && isset($field['id'])) {
+            if (! isset($field['name']) && isset($field['id'])) {
                 $field['name'] = $field['id'];
             }
-            if (!isset($field['x'])) $field['x'] = '10%';
-            if (!isset($field['y'])) $field['y'] = '10%';
-            if (!isset($field['w'])) $field['w'] = '30%';
-            if (!isset($field['h'])) $field['h'] = 'auto';
+            if (! isset($field['x'])) {
+                $field['x'] = '10%';
+            }
+            if (! isset($field['y'])) {
+                $field['y'] = '10%';
+            }
+            if (! isset($field['w'])) {
+                $field['w'] = '30%';
+            }
+            if (! isset($field['h'])) {
+                $field['h'] = 'auto';
+            }
         }
         unset($field);
 
         // Generate background from uploaded PDF
-        $imageBase64 = $this->generateBackgroundImage($type, storage_path('app/public/' . $template->file_path));
+        $imageBase64 = $this->generateBackgroundImage($type, storage_path('app/public/'.$template->file_path));
 
         return view('documents.form-fill', [
-            'type'        => $type,
+            'type' => $type,
             'imageBase64' => $imageBase64,
-            'fields'      => $fields,
-            'case'        => $case,
-            'isCustom'    => true,
-            'templateId'  => $id
+            'fields' => $fields,
+            'case' => $case,
+            'isCustom' => true,
+            'templateId' => $id,
         ]);
     }
 
     public function show($id)
     {
         $document = \App\Models\Document::with(['case', 'creator'])->findOrFail($id);
-        $data     = $document->content ?? [];
-        $type     = $document->type;
-        $case     = $document->case;
+        $data = $document->content ?? [];
+        $type = $document->type;
+        $case = $document->case;
 
         // Get Layout
         $savedLayout = FormLayout::where('document_type', $type)->first();
@@ -212,7 +214,7 @@ class DocumentController extends Controller
         unset($field);
 
         $imageBase64 = $this->generateBackgroundImage($type);
-        $readonly    = request('mode') !== 'edit';
+        $readonly = request('mode') !== 'edit';
         $missingData = empty($data);
 
         return view('documents.visual-editor', compact('type', 'imageBase64', 'fields', 'readonly', 'case', 'missingData'));
@@ -250,7 +252,7 @@ class DocumentController extends Controller
         unset($field);
 
         $imageBase64 = $this->generateBackgroundImage($type);
-        $readonly    = request('mode') !== 'edit';
+        $readonly = request('mode') !== 'edit';
         $missingData = empty($data);
 
         return view('documents.visual-editor', compact('type', 'imageBase64', 'fields', 'readonly', 'case', 'missingData'));
@@ -268,7 +270,7 @@ class DocumentController extends Controller
         if (str_starts_with($type, 'custom_')) {
             $id = str_replace('custom_', '', $type);
             $template = \App\Models\Document::findOrFail($id);
-            $pdfPath = storage_path('app/public/' . $template->file_path);
+            $pdfPath = storage_path('app/public/'.$template->file_path);
             $fields = $template->content['fields'] ?? [];
         } else {
             // Get Standard Layout
@@ -277,7 +279,7 @@ class DocumentController extends Controller
 
         // Apply Layout Overrides from Visual Editor (Session-based)
         if ($request->filled('layout_overrides')) {
-            // ... Logic to merge overrides if needed, but if we saved layout, 
+            // ... Logic to merge overrides if needed, but if we saved layout,
             // we might rely on DB. However, 'layout_overrides' handles per-submission tweaks.
             // We'll keep the merge logic to allow one-off changes without saving.
             $overrides = json_decode($request->input('layout_overrides'), true);
@@ -314,13 +316,13 @@ class DocumentController extends Controller
         }
         $data['fields'] = $fields;
 
-        if (!file_exists($pdfPath)) {
-            $pdfPath = public_path("forms/complaint.pdf");
+        if (! file_exists($pdfPath)) {
+            $pdfPath = public_path('forms/complaint.pdf');
         }
 
         // Output path for the generated image
         // We use a temporary file or a specific path in storage
-        $outputImage = storage_path("app/public/temp_{$type}_" . uniqid() . ".png");
+        $outputImage = storage_path("app/public/temp_{$type}_".uniqid().'.png');
 
         // Ghostscript Command - Absolute Path
         // Version 10.06.0 detected
@@ -332,7 +334,7 @@ class DocumentController extends Controller
         // Execute command
         exec($cmd, $output, $returnCode);
 
-        if ($returnCode !== 0 || !file_exists($outputImage)) {
+        if ($returnCode !== 0 || ! file_exists($outputImage)) {
             // Fallback if Ghostscript fails (not installed?)
             // We can return an error or try the PDF.js method as backup.
             // For now, let's log/throw to let user know GS is missing.
@@ -353,9 +355,9 @@ class DocumentController extends Controller
 
         // Render the print-friendly view with explicit variables.
         $html = view('documents.templates.print', [
-            'type'        => $type,
-            'fields'      => $fields,
-            'data'        => $fieldValues,        // name → value map
+            'type' => $type,
+            'fields' => $fields,
+            'data' => $fieldValues,        // name → value map
             'imageBase64' => $base64Image,
         ])->render();
 
@@ -378,10 +380,10 @@ class DocumentController extends Controller
                 ->setOption('args', ['--disable-web-security']) // Allow loading local resources if needed
                 ->pdf();
         } catch (\Exception $e) {
-            return response("PDF Generation Error: " . $e->getMessage(), 500);
+            return response('PDF Generation Error: '.$e->getMessage(), 500);
         }
 
-        $filename = "{$type}_" . date('Ymd_His') . ".pdf";
+        $filename = "{$type}_".date('Ymd_His').'.pdf';
         $disposition = $request->input('action') === 'preview' ? 'inline' : 'attachment';
 
         // Always save a Document record so it appears in the Documents list
@@ -394,11 +396,11 @@ class DocumentController extends Controller
             $contentToSave = array_diff_key($data, array_flip($skipKeys));
 
             \App\Models\Document::create([
-                'case_id'    => $caseId,
-                'type'       => $type,
-                'content'    => $contentToSave,
-                'status'     => 'Issued',
-                'issued_at'  => now(),
+                'case_id' => $caseId,
+                'type' => $type,
+                'content' => $contentToSave,
+                'status' => 'Issued',
+                'issued_at' => now(),
                 'created_by' => auth()->id(),
             ]);
 
@@ -412,11 +414,11 @@ class DocumentController extends Controller
                 $case = \App\Models\LuponCase::find($caseId);
                 if ($case) {
                     $updated = false;
-                    if (!empty($data['complainant'])) {
+                    if (! empty($data['complainant'])) {
                         $case->complainant = $data['complainant'];
                         $updated = true;
                     }
-                    if (!empty($data['respondent'])) {
+                    if (! empty($data['respondent'])) {
                         $case->respondent = $data['respondent'];
                         $updated = true;
                     }
@@ -429,7 +431,7 @@ class DocumentController extends Controller
                 }
             }
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("Failed to save document record: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Failed to save document record: '.$e->getMessage());
             // Don't block the PDF download if DB save fails
         }
 
@@ -444,10 +446,10 @@ class DocumentController extends Controller
      */
     public function saveLayout(Request $request)
     {
-        $type      = $request->input('document_type');
+        $type = $request->input('document_type');
         $positions = $request->input('positions'); // array: name → {x, y, w, h}
 
-        if (!$type || !is_array($positions)) {
+        if (! $type || ! is_array($positions)) {
             return response()->json(['error' => 'Invalid data'], 422);
         }
 
@@ -476,7 +478,7 @@ class DocumentController extends Controller
 
         // Merge incoming positions onto the base config layout
         $baseFields = FormLayouts::getLayout($type);
-        $fieldMap   = [];
+        $fieldMap = [];
         foreach ($baseFields as $i => $f) {
             $fieldMap[$f['name']] = $i;
         }
@@ -494,7 +496,7 @@ class DocumentController extends Controller
         // Upsert into DB
         FormLayout::updateOrCreate(
             ['document_type' => $type],
-            ['layout_json'   => $baseFields]
+            ['layout_json' => $baseFields]
         );
 
         return response()->json(['success' => true, 'message' => 'Layout saved!']);
@@ -511,24 +513,26 @@ class DocumentController extends Controller
     private function generateBackgroundImage(string $type, $customPath = null): string
     {
         $pdfPath = $customPath ?? public_path("forms/{$type}.pdf");
-        if (!file_exists($pdfPath)) {
+        if (! file_exists($pdfPath)) {
             $pdfPath = public_path('forms/complaint.pdf');
         }
 
-        $outputImage = storage_path('app/public/temp_editor_' . $type . '_' . uniqid() . '.png');
-        $gsPath      = '"C:\Program Files\gs\gs10.06.0\bin\gswin64c.exe"';
-        $cmd         = "{$gsPath} -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r300 -dFirstPage=1 -dLastPage=1"
-                     . " -sOutputFile=\"{$outputImage}\" \"{$pdfPath}\" 2>&1";
+        $outputImage = storage_path('app/public/temp_editor_'.$type.'_'.uniqid().'.png');
+        $gsPath = '"C:\Program Files\gs\gs10.06.0\bin\gswin64c.exe"';
+        $cmd = "{$gsPath} -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r300 -dFirstPage=1 -dLastPage=1"
+                     ." -sOutputFile=\"{$outputImage}\" \"{$pdfPath}\" 2>&1";
 
         exec($cmd, $output, $returnCode);
 
         if ($returnCode === 0 && file_exists($outputImage)) {
             $base64 = base64_encode(file_get_contents($outputImage));
             @unlink($outputImage);
+
             return $base64;
         }
 
-        \Illuminate\Support\Facades\Log::error('Ghostscript failed for ' . $type . ': ' . implode("\n", $output));
+        \Illuminate\Support\Facades\Log::error('Ghostscript failed for '.$type.': '.implode("\n", $output));
+
         return '';
     }
 
@@ -537,39 +541,38 @@ class DocumentController extends Controller
      */
     public function generateWord(Request $request)
     {
-        $type   = $request->input('type', 'complaint');
+        $type = $request->input('type', 'complaint');
         $fields = FormLayouts::getLayout($type);
 
         // Only keep actual form field values
-        $skipKeys    = ['fields', 'imageBase64', 'action', 'layout_overrides', '_token', 'type', 'case_id'];
+        $skipKeys = ['fields', 'imageBase64', 'action', 'layout_overrides', '_token', 'type', 'case_id'];
         $fieldValues = array_diff_key($request->all(), array_flip($skipKeys));
 
         // Build field name → label map
         $labelMap = [];
         foreach ($fields as $field) {
-            $name  = $field['name']  ?? '';
+            $name = $field['name'] ?? '';
             $label = $field['label'] ?? '';
-            if ($name && !isset($labelMap[$name])) {
+            if ($name && ! isset($labelMap[$name])) {
                 $labelMap[$name] = $label ?: ucwords(str_replace('_', ' ', $name));
             }
         }
 
         $formTitle = ucwords(str_replace('_', ' ', $type));
-        $filename  = $formTitle . '.docx';
+        $filename = $formTitle.'.docx';
 
         // ── Create PhpWord document ──────────────────────────────────────────
-        $phpWord = new PhpWord();
+        $phpWord = new PhpWord;
         $phpWord->setDefaultFontName('Calibri');
         $phpWord->setDefaultFontSize(12);
 
-
         // A4 page, narrow margins (TWIPs: 1440 = 1 inch)
         $section = $phpWord->addSection([
-            'paperSize'    => 'A4',
-            'marginTop'    => 1080,
+            'paperSize' => 'A4',
+            'marginTop' => 1080,
             'marginBottom' => 1080,
-            'marginLeft'   => 1080,
-            'marginRight'  => 1080,
+            'marginLeft' => 1080,
+            'marginRight' => 1080,
         ]);
 
         // ── Document heading ─────────────────────────────────────────────────
@@ -592,39 +595,43 @@ class DocumentController extends Controller
         $section->addTextBreak(1);
 
         // ── Field rows ───────────────────────────────────────────────────────
-        $footerNames  = ['made_this_1','made_this_2','made_this_3','made_this_day','made_this_month','year','notary'];
-        $mainFields   = [];
+        $footerNames = ['made_this_1', 'made_this_2', 'made_this_3', 'made_this_day', 'made_this_month', 'year', 'notary'];
+        $mainFields = [];
         $footerFields = [];
 
         foreach ($fields as $field) {
             $name = $field['name'] ?? '';
-            if (!$name) continue;
+            if (! $name) {
+                continue;
+            }
             in_array($name, $footerNames) ? ($footerFields[] = $field) : ($mainFields[] = $field);
         }
 
         $tableStyle = [
             'borderSize' => 0,
             'cellMargin' => 100,
-            'width'      => 5000,
-            'unit'       => TblWidth::PERCENT,
+            'width' => 5000,
+            'unit' => TblWidth::PERCENT,
         ];
 
         $table = $section->addTable($tableStyle);
 
         foreach ($mainFields as $field) {
-            $name       = $field['name'] ?? '';
+            $name = $field['name'] ?? '';
             $isTextarea = isset($field['type']) && $field['type'] === 'textarea';
             $isCheckbox = isset($field['type']) && $field['type'] === 'checkbox';
-            $value      = $fieldValues[$name] ?? '';
-            $label      = $labelMap[$name] ?? ucwords(str_replace('_', ' ', $name));
+            $value = $fieldValues[$name] ?? '';
+            $label = $labelMap[$name] ?? ucwords(str_replace('_', ' ', $name));
 
-            if (trim((string)$value) === '') continue;
+            if (trim((string) $value) === '') {
+                continue;
+            }
 
             // Label row
             $table->addRow();
             $labelCell = $table->addCell(9000, ['borderSize' => 0]);
             $labelCell->addText(
-                $label . ':',
+                $label.':',
                 ['bold' => true, 'size' => 10, 'name' => 'Times New Roman', 'color' => '333333'],
                 ['spaceAfter' => 0]
             );
@@ -632,8 +639,8 @@ class DocumentController extends Controller
             // Value row with bottom border
             $table->addRow();
             $valueCell = $table->addCell(9000, [
-                'borderSize'        => 0,
-                'borderBottomSize'  => 8,
+                'borderSize' => 0,
+                'borderBottomSize' => 8,
                 'borderBottomColor' => '000000',
                 'borderBottomSpace' => 0,
             ]);
@@ -641,12 +648,12 @@ class DocumentController extends Controller
             if ($isCheckbox) {
                 $checked = ($value === 'X' || $value == 1);
                 $valueCell->addText(
-                    ($checked ? '☑' : '☐') . '  ' . $label,
+                    ($checked ? '☑' : '☐').'  '.$label,
                     ['size' => 12, 'name' => 'Times New Roman', 'color' => '000000'],
                     ['spaceAfter' => 0]
                 );
             } else {
-                $lines = explode("\n", str_replace("\r\n", "\n", (string)$value));
+                $lines = explode("\n", str_replace("\r\n", "\n", (string) $value));
                 foreach ($lines as $i => $line) {
                     $valueCell->addText(
                         htmlspecialchars(trim($line)),
@@ -662,7 +669,7 @@ class DocumentController extends Controller
         }
 
         // ── Certification / Execution details ─────────────────────────────────
-        if (!empty($footerFields)) {
+        if (! empty($footerFields)) {
             $section->addTextBreak(1);
             $section->addText(
                 'Done this ___ day of _______________, 20___',
@@ -671,12 +678,14 @@ class DocumentController extends Controller
             );
 
             foreach ($footerFields as $field) {
-                $name  = $field['name'] ?? '';
+                $name = $field['name'] ?? '';
                 $value = $fieldValues[$name] ?? '';
                 $label = $labelMap[$name] ?? ucwords(str_replace('_', ' ', $name));
-                if (trim((string)$value) === '') continue;
+                if (trim((string) $value) === '') {
+                    continue;
+                }
                 $section->addText(
-                    $label . ': ' . $value,
+                    $label.': '.$value,
                     ['size' => 11, 'name' => 'Times New Roman'],
                     ['alignment' => 'center']
                 );
@@ -696,7 +705,7 @@ class DocumentController extends Controller
 
         $sigRight = $sigTable->addCell(4320, ['borderSize' => 0]);
         $sigRight->addText('____________________________', ['size' => 11], ['alignment' => 'center']);
-        $sigRight->addText('Respondent Signature',  ['size' => 9, 'italic' => true], ['alignment' => 'center']);
+        $sigRight->addText('Respondent Signature', ['size' => 9, 'italic' => true], ['alignment' => 'center']);
 
         $section->addTextBreak(1);
         $section->addText(
@@ -706,22 +715,22 @@ class DocumentController extends Controller
         );
 
         // ── Save to temp and stream ──────────────────────────────────────────
-        $tmpPath = storage_path('app/public/word_' . uniqid() . '.docx');
-        $writer  = IOFactory::createWriter($phpWord, 'Word2007');
+        $tmpPath = storage_path('app/public/word_'.uniqid().'.docx');
+        $writer = IOFactory::createWriter($phpWord, 'Word2007');
         $writer->save($tmpPath);
 
         // Record the document in the DB
         try {
             \App\Models\Document::create([
-                'case_id'    => $request->input('case_id') ?: null,
-                'type'       => $type,
-                'content'    => $fieldValues,
-                'status'     => 'Issued',
-                'issued_at'  => now(),
+                'case_id' => $request->input('case_id') ?: null,
+                'type' => $type,
+                'content' => $fieldValues,
+                'status' => 'Issued',
+                'issued_at' => now(),
                 'created_by' => auth()->id(),
             ]);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Word doc DB save failed: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Word doc DB save failed: '.$e->getMessage());
         }
 
         return response()->download($tmpPath, $filename, [
@@ -736,17 +745,17 @@ class DocumentController extends Controller
             'file' => 'required|file|max:20480|mimes:pdf,doc,docx,png,jpg,jpeg',
         ]);
 
-        $file     = $request->file('file');
+        $file = $request->file('file');
         $origName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-        $ext      = $file->getClientOriginalExtension();
-        $path     = $file->store('documents/uploads', 'public');
+        $ext = $file->getClientOriginalExtension();
+        $path = $file->store('documents/uploads', 'public');
 
         $document = \App\Models\Document::create([
-            'type'       => 'upload',
-            'status'     => 'Draft',
-            'file_path'  => $path,
-            'content'    => ['original_name' => $file->getClientOriginalName(), 'extension' => $ext],
-            'issued_at'  => now(),
+            'type' => 'upload',
+            'status' => 'Draft',
+            'file_path' => $path,
+            'content' => ['original_name' => $file->getClientOriginalName(), 'extension' => $ext],
+            'issued_at' => now(),
             'created_by' => auth()->id(),
         ]);
 
@@ -756,7 +765,8 @@ class DocumentController extends Controller
                 "Uploaded document: {$file->getClientOriginalName()}",
                 $document
             );
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+        }
 
         return redirect()->route('documents.index')
             ->with('success', 'Document uploaded successfully.');
@@ -766,24 +776,24 @@ class DocumentController extends Controller
     public function createForm(Request $request)
     {
         $request->validate([
-            'title'       => 'required|string|max:255',
+            'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
-            'fields'      => 'required|string', // JSON string
-            'type'        => 'nullable|string',
+            'fields' => 'required|string', // JSON string
+            'type' => 'nullable|string',
         ]);
 
         $fields = json_decode($request->input('fields'), true) ?? [];
 
         $document = \App\Models\Document::create([
-            'type'      => 'custom_form',
-            'status'    => 'Draft',
-            'content'   => [
-                'title'       => $request->input('title'),
+            'type' => 'custom_form',
+            'status' => 'Draft',
+            'content' => [
+                'title' => $request->input('title'),
                 'description' => $request->input('description'),
-                'fields'      => $fields,
-                'form_type'   => 'answer_sheet',
+                'fields' => $fields,
+                'form_type' => 'answer_sheet',
             ],
-            'issued_at'  => now(),
+            'issued_at' => now(),
             'created_by' => auth()->id(),
         ]);
 
@@ -793,7 +803,8 @@ class DocumentController extends Controller
                 "Created answer sheet: {$request->input('title')}",
                 $document
             );
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+        }
 
         return redirect()->route('documents.index')
             ->with('success', 'Answer sheet created successfully.');
@@ -819,10 +830,10 @@ class DocumentController extends Controller
     public function storeCustom(Request $request)
     {
         $request->validate([
-            'title'       => 'required|string|max:255',
+            'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
-            'pdf'         => 'nullable|file|mimes:pdf|max:20480',
-            'fields'      => 'nullable|string',
+            'pdf' => 'nullable|file|mimes:pdf|max:20480',
+            'fields' => 'nullable|string',
         ]);
 
         $filePath = null;
@@ -850,14 +861,14 @@ class DocumentController extends Controller
         }
 
         $document = \App\Models\Document::create([
-            'type'       => 'custom_form',
-            'status'     => 'Draft',
+            'type' => 'custom_form',
+            'status' => 'Draft',
             'created_by' => auth()->id(),
-            'file_path'  => $filePath,
-            'content'    => [
-                'title'       => $request->input('title'),
+            'file_path' => $filePath,
+            'content' => [
+                'title' => $request->input('title'),
                 'description' => $request->input('description'),
-                'fields'      => $fields,
+                'fields' => $fields,
             ],
         ]);
 
@@ -867,7 +878,8 @@ class DocumentController extends Controller
                 "Uploaded document: {$request->input('title')}",
                 $document
             );
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+        }
 
         return redirect()->route('documents.index')
             ->with('success', "Document '{$request->input('title')}' saved successfully.");
@@ -881,29 +893,29 @@ class DocumentController extends Controller
     {
         // Get standard fields from config
         $standardFields = \App\Config\FormLayouts::getLayout($type);
-        
+
         // Map to builder format
-        $fields = array_map(function($f) {
+        $fields = array_map(function ($f) {
             return [
-                'id'          => $f['name'] ?? uniqid(),
-                'type'        => $f['type'] ?? 'text',
-                'label'       => $f['label'] ?? ucwords(str_replace(['_', '-'], ' ', $f['name'] ?? '')),
+                'id' => $f['name'] ?? uniqid(),
+                'type' => $f['type'] ?? 'text',
+                'label' => $f['label'] ?? ucwords(str_replace(['_', '-'], ' ', $f['name'] ?? '')),
                 'placeholder' => $f['placeholder'] ?? '',
-                'required'    => true,
+                'required' => true,
             ];
         }, $standardFields);
 
         // Pre-fill metadata based on type
         $title = ucwords(str_replace(['_', '-'], ' ', $type));
-        
+
         return \Inertia\Inertia::render('documents/new', [
             'existingTemplate' => [
-                'id'          => 0, // Flag for "new from standard"
-                'title'       => $title,
+                'id' => 0, // Flag for "new from standard"
+                'title' => $title,
                 'description' => "Customized version of {$title}",
-                'fields'      => $fields,
-                'file_path'   => null,
-            ]
+                'fields' => $fields,
+                'file_path' => null,
+            ],
         ]);
     }
 
@@ -914,15 +926,15 @@ class DocumentController extends Controller
     public function editTemplate($id)
     {
         $document = \App\Models\Document::findOrFail($id);
-        
+
         return \Inertia\Inertia::render('documents/new', [
             'existingTemplate' => [
-                'id'          => $document->id,
-                'title'       => $document->content['title'] ?? '',
+                'id' => $document->id,
+                'title' => $document->content['title'] ?? '',
                 'description' => $document->content['description'] ?? '',
-                'fields'      => $document->content['fields'] ?? [],
-                'file_path'   => $document->file_path,
-            ]
+                'fields' => $document->content['fields'] ?? [],
+                'file_path' => $document->file_path,
+            ],
         ]);
     }
 
@@ -935,21 +947,21 @@ class DocumentController extends Controller
         $document = \App\Models\Document::findOrFail($id);
 
         $request->validate([
-            'title'       => 'required|string|max:255',
+            'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
-            'pdf'         => 'nullable|file|mimes:pdf|max:20480',
-            'fields'      => 'nullable|string',
+            'pdf' => 'nullable|file|mimes:pdf|max:20480',
+            'fields' => 'nullable|string',
         ]);
 
         $fields = json_decode($request->input('fields', '[]'), true) ?? [];
 
         $data = $document->content ?? [];
-        $data['title']       = $request->input('title');
+        $data['title'] = $request->input('title');
         $data['description'] = $request->input('description');
-        $data['fields']      = $fields;
+        $data['fields'] = $fields;
 
         $updatePayload = [
-            'content' => $data
+            'content' => $data,
         ];
 
         if ($request->hasFile('pdf')) {
@@ -968,7 +980,8 @@ class DocumentController extends Controller
                 "Updated template: {$request->input('title')}",
                 $document
             );
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+        }
 
         return redirect()->route('documents.index')
             ->with('success', "Template '{$request->input('title')}' updated successfully.");
@@ -979,7 +992,7 @@ class DocumentController extends Controller
         // Handle hiding "official" templates (id=0)
         if ($id == 0 && request()->has('document_type')) {
             $type = request('document_type');
-            
+
             \App\Models\FormLayout::updateOrCreate(
                 ['document_type' => $type],
                 ['is_hidden' => true]
@@ -989,7 +1002,7 @@ class DocumentController extends Controller
         }
 
         $document = \App\Models\Document::findOrFail($id);
-        
+
         // Delete the file if it exists
         if ($document->file_path && \Storage::disk('public')->exists($document->file_path)) {
             \Storage::disk('public')->delete($document->file_path);

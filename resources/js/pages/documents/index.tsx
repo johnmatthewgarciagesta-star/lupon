@@ -1,15 +1,15 @@
-import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router } from '@inertiajs/react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { useMemo, useState } from 'react';
 import {
     FileText, Bell, FileCheck, FileMinus, Search, Download, Eye, Plus,
     Scale, AlertTriangle, Gavel, Handshake, Calendar, BadgeCheck, X,
     FileSignature, ClipboardCheck, UserPlus, Send, History, Trash2
 } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import AppLayout from '@/layouts/app-layout';
 
 // ─── Template definitions (All 22 Templates) ──────────────────────────────────
 const TEMPLATES = [

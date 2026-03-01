@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\LuponCase;
 use App\Models\Document;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
+use App\Models\LuponCase;
 use Carbon\Carbon;
+use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
@@ -21,7 +20,6 @@ class DashboardController extends Controller
         $newCasesThisMonth = LuponCase::whereMonth('date_filed', Carbon::now()->month)
             ->whereYear('date_filed', Carbon::now()->year)
             ->count();
-
 
         // 2. Recent Cases (Table)
         $recentCases = LuponCase::orderBy('date_filed', 'desc')
@@ -53,7 +51,6 @@ class DashboardController extends Controller
             'pending' => $totalForPie > 0 ? round(($statusDistribution['pending'] / $totalForPie) * 100) : 0,
             'unresolved' => $totalForPie > 0 ? round((($statusDistribution['dismissed'] + $statusDistribution['other']) / $totalForPie) * 100) : 0,
         ];
-
 
         // 4. Case Type Distribution (Donut Chart)
         // Group by nature_of_case and count
@@ -88,7 +85,6 @@ class DashboardController extends Controller
                 'total' => $found ? $found['total'] : 0,
             ];
         }
-
 
         // Map to standardized categories if needed, or pass raw
         // For now, passing raw top 5
@@ -130,8 +126,8 @@ class DashboardController extends Controller
             'documentStats' => [
                 'total' => $totalDocuments,
                 'by_type' => $documentsByType,
-                'recent' => $recentDocuments
-            ]
+                'recent' => $recentDocuments,
+            ],
         ]);
     }
 }

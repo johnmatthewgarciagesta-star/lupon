@@ -1,4 +1,5 @@
 
+import { FileText, Loader2, Upload } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,7 +21,6 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Loader2, Upload } from 'lucide-react';
 
 export function SubmitApplicationDialog() {
     const [open, setOpen] = useState(false);

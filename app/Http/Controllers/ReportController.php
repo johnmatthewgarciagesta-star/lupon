@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Inertia\Inertia;
 use App\Models\LuponCase;
-use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 use Spatie\Browsershot\Browsershot;
 
 class ReportController extends Controller
@@ -15,7 +14,7 @@ class ReportController extends Controller
     public function index()
     {
         return Inertia::render('reports/index', [
-            'stats' => $this->getStats()
+            'stats' => $this->getStats(),
         ]);
     }
 
@@ -39,14 +38,14 @@ class ReportController extends Controller
                 ->setOption('args', ['--disable-web-security'])
                 ->pdf();
 
-            $filename = "System_Report_{$type}_" . date('Ymd_His') . ".pdf";
+            $filename = "System_Report_{$type}_".date('Ymd_His').'.pdf';
 
             return response($pdf)
                 ->header('Content-Type', 'application/pdf')
                 ->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
 
         } catch (\Exception $e) {
-            return response()->json(['error' => 'PDF Generation Failed: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'PDF Generation Failed: '.$e->getMessage()], 500);
         }
     }
 

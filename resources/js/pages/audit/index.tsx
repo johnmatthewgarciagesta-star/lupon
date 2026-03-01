@@ -1,17 +1,5 @@
-import AppLayout from '@/layouts/app-layout';
 import { Head, router } from '@inertiajs/react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Input } from '@/components/ui/input';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+import debounce from 'lodash/debounce';
 import {
     Activity,
     ShieldAlert,
@@ -25,8 +13,20 @@ import {
     ChevronRight,
 } from 'lucide-react';
 import { useState, useCallback } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import debounce from 'lodash/debounce';
+import AppLayout from '@/layouts/app-layout';
 
 interface AuditLog {
     id: number;

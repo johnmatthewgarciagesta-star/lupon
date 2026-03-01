@@ -1,4 +1,5 @@
 
+import { FileText, Loader2, CheckCircle } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,6 +11,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
     Select,
     SelectContent,
@@ -17,8 +19,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { FileText, Loader2, CheckCircle } from 'lucide-react';
 
 interface GenerateDocumentDialogProps {
     templateTitle: string;

@@ -31,10 +31,10 @@ class FormLayouts
             // KP Form 9 - Summons
             'summons' => [
                 ['name' => 'respondent',        'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',        'x' => '8.5%',  'y' => '29%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',           'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',          'x' => '71.5%', 'y' => '18.5%','w' => '15%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'case_no',           'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',          'x' => '71.5%', 'y' => '18.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-left'],
                 ['name' => 'hearing_date_time', 'label' => 'Hearing Date & Time', 'placeholder' => 'e.g. February 28, 2026 at 9:00 AM', 'x' => '20%',   'y' => '40%', 'w' => '60%', 'h' => 'auto'],
-                ['name' => 'served_personal',   'label' => 'Served (Personal)', 'x' => '10%',   'y' => '55%', 'w' => '30px','h' => '30px', 'type' => 'checkbox', 'class' => 'bg-transparent flex items-center justify-center font-bold text-xl'],
-                ['name' => 'served_substituted','label' => 'Served (Substituted)','x' => '10%', 'y' => '60%', 'w' => '30px','h' => '30px', 'type' => 'checkbox', 'class' => 'bg-transparent flex items-center justify-center font-bold text-xl'],
+                ['name' => 'served_personal',   'label' => 'Served (Personal)', 'x' => '10%',   'y' => '55%', 'w' => '30px', 'h' => '30px', 'type' => 'checkbox', 'class' => 'bg-transparent flex items-center justify-center font-bold text-xl'],
+                ['name' => 'served_substituted', 'label' => 'Served (Substituted)', 'x' => '10%', 'y' => '60%', 'w' => '30px', 'h' => '30px', 'type' => 'checkbox', 'class' => 'bg-transparent flex items-center justify-center font-bold text-xl'],
                 ...$footerFields,
             ],
 
@@ -42,8 +42,8 @@ class FormLayouts
             'amicable_settlement' => [
                 ['name' => 'complainant', 'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant',        'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
                 ['name' => 'respondent',  'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',         'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',     'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',           'x' => '75%', 'y' => '22.5%','w' => '15%','h' => 'auto', 'class' => 'text-right'],
-                ['name' => 'agreement',   'label' => 'Terms of Settlement','x' => '10%', 'y' => '40%', 'w' => '80%', 'h' => '30%', 'type' => 'textarea'],
+                ['name' => 'case_no',     'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',           'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
+                ['name' => 'agreement',   'label' => 'Terms of Settlement', 'x' => '10%', 'y' => '40%', 'w' => '80%', 'h' => '30%', 'type' => 'textarea'],
                 ...$footerFields,
             ],
 
@@ -51,7 +51,7 @@ class FormLayouts
             'arbitration_award' => [
                 ['name' => 'complainant',   'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant',     'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
                 ['name' => 'respondent',    'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',      'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',       'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',        'x' => '75%', 'y' => '22.5%','w' => '15%','h' => 'auto', 'class' => 'text-right'],
+                ['name' => 'case_no',       'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',        'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
                 ['name' => 'award_details', 'label' => 'Award Details',   'x' => '10%', 'y' => '40%', 'w' => '80%', 'h' => '30%', 'type' => 'textarea'],
                 ...$footerFields,
             ],
@@ -60,7 +60,7 @@ class FormLayouts
             'repudiation' => [
                 ['name' => 'complainant',  'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant', 'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
                 ['name' => 'respondent',   'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',  'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',      'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',    'x' => '75%', 'y' => '22.5%','w' => '15%','h' => 'auto', 'class' => 'text-right'],
+                ['name' => 'case_no',      'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',    'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
                 ['name' => 'scan_content', 'label' => 'Grounds for Repudiation', 'x' => '10%', 'y' => '35%', 'w' => '80%', 'h' => '25%', 'type' => 'textarea',
                     'default' => 'I hereby repudiate the arbitration award/amicable settlement on the grounds that my consent was obtained through fraud, violence, or intimidation.'],
                 ['name' => 'notary',       'label' => 'Subscribed and Sworn Before', 'x' => '10%', 'y' => '70%', 'w' => '40%', 'h' => 'auto'],
@@ -71,7 +71,7 @@ class FormLayouts
             'affidavit_desistance' => [
                 ['name' => 'complainant', 'label' => 'Complainant (Affiant)', 'x' => '10%', 'y' => '22%', 'w' => '50%', 'h' => 'auto'],
                 ['name' => 'respondent',  'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',            'x' => '10%', 'y' => '28%', 'w' => '50%', 'h' => 'auto'],
-                ['name' => 'case_no',     'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',              'x' => '75%', 'y' => '22.5%','w' => '15%','h' => 'auto', 'class' => 'text-right'],
+                ['name' => 'case_no',     'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',              'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
                 ['name' => 'body_text',   'label' => 'Affidavit Content',     'x' => '10%', 'y' => '38%', 'w' => '80%', 'h' => '30%', 'type' => 'textarea',
                     'default' => 'I, the undersigned complainant, do hereby freely and voluntarily desist from pursuing the above-captioned case.'],
                 ['name' => 'notary',      'label' => 'Subscribed and Sworn Before', 'x' => '10%', 'y' => '72%', 'w' => '40%', 'h' => 'auto'],
@@ -82,7 +82,7 @@ class FormLayouts
             'affidavit_withdrawal' => [
                 ['name' => 'complainant', 'label' => 'Complainant (Affiant)', 'x' => '10%', 'y' => '22%', 'w' => '50%', 'h' => 'auto'],
                 ['name' => 'respondent',  'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',            'x' => '10%', 'y' => '28%', 'w' => '50%', 'h' => 'auto'],
-                ['name' => 'case_no',     'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',              'x' => '75%', 'y' => '22.5%','w' => '15%','h' => 'auto', 'class' => 'text-right'],
+                ['name' => 'case_no',     'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',              'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
                 ['name' => 'body_text',   'label' => 'Withdrawal Statement',  'x' => '10%', 'y' => '38%', 'w' => '80%', 'h' => '30%', 'type' => 'textarea',
                     'default' => 'I, the undersigned, do hereby voluntarily withdraw the complaint filed against the respondent.'],
                 ['name' => 'notary',      'label' => 'Subscribed and Sworn Before', 'x' => '10%', 'y' => '72%', 'w' => '40%', 'h' => 'auto'],
@@ -93,8 +93,8 @@ class FormLayouts
             'hearing_conciliation' => [
                 ['name' => 'complainant',   'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant',      'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
                 ['name' => 'respondent',    'label' => 'Respondent / To',  'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',       'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',         'x' => '75%', 'y' => '22.5%','w' => '15%','h' => 'auto', 'class' => 'text-right'],
-                ['name' => 'hearing_date',  'label' => 'Hearing Date & Time','x' => '25%','y' => '40%', 'w' => '50%', 'h' => 'auto'],
+                ['name' => 'case_no',       'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',         'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
+                ['name' => 'hearing_date',  'label' => 'Hearing Date & Time', 'x' => '25%', 'y' => '40%', 'w' => '50%', 'h' => 'auto'],
                 ...$footerFields,
             ],
 
@@ -102,8 +102,8 @@ class FormLayouts
             'hearing_mediation' => [
                 ['name' => 'complainant',  'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant',        'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
                 ['name' => 'respondent',   'label' => 'Respondent / To',    'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',      'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',           'x' => '75%', 'y' => '22.5%','w' => '15%','h' => 'auto', 'class' => 'text-right'],
-                ['name' => 'hearing_date', 'label' => 'Hearing Date & Time','x' => '25%', 'y' => '40%', 'w' => '50%', 'h' => 'auto'],
+                ['name' => 'case_no',      'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',           'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
+                ['name' => 'hearing_date', 'label' => 'Hearing Date & Time', 'x' => '25%', 'y' => '40%', 'w' => '50%', 'h' => 'auto'],
                 ...$footerFields,
             ],
 
@@ -111,8 +111,8 @@ class FormLayouts
             'hearing_failure_appear' => [
                 ['name' => 'complainant',  'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant',            'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
                 ['name' => 'respondent',   'label' => 'Absent Party / To',      'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',      'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',               'x' => '75%', 'y' => '22.5%','w' => '15%','h' => 'auto', 'class' => 'text-right'],
-                ['name' => 'hearing_date', 'label' => 'Next Hearing Date & Time','x' => '25%','y' => '40%', 'w' => '50%', 'h' => 'auto'],
+                ['name' => 'case_no',      'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',               'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
+                ['name' => 'hearing_date', 'label' => 'Next Hearing Date & Time', 'x' => '25%', 'y' => '40%', 'w' => '50%', 'h' => 'auto'],
                 ...$footerFields,
             ],
 
@@ -120,8 +120,8 @@ class FormLayouts
             'hearing_failure_appear_counterclaim' => [
                 ['name' => 'complainant',  'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant',            'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
                 ['name' => 'respondent',   'label' => 'Respondent / To',        'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',      'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',               'x' => '75%', 'y' => '22.5%','w' => '15%','h' => 'auto', 'class' => 'text-right'],
-                ['name' => 'hearing_date', 'label' => 'Next Hearing Date & Time','x' => '25%','y' => '40%', 'w' => '50%', 'h' => 'auto'],
+                ['name' => 'case_no',      'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',               'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
+                ['name' => 'hearing_date', 'label' => 'Next Hearing Date & Time', 'x' => '25%', 'y' => '40%', 'w' => '50%', 'h' => 'auto'],
                 ...$footerFields,
             ],
 
@@ -129,7 +129,7 @@ class FormLayouts
             'cert_file_action' => [
                 ['name' => 'complainant', 'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant', 'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
                 ['name' => 'respondent',  'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',  'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',     'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',    'x' => '75%', 'y' => '22.5%','w' => '15%','h' => 'auto', 'class' => 'text-right'],
+                ['name' => 'case_no',     'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',    'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
                 ['name' => 'cert_body',   'label' => 'Certification Text', 'x' => '10%', 'y' => '35%', 'w' => '80%', 'h' => '35%', 'type' => 'textarea',
                     'default' => 'This is to certify that the above-captioned case was not settled before this Lupong Tagapamayapa and is hereby certified for filing with the appropriate government office or court.'],
                 ...$footerFields,
@@ -139,7 +139,7 @@ class FormLayouts
             'cert_file_action_court' => [
                 ['name' => 'complainant', 'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant', 'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
                 ['name' => 'respondent',  'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',  'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',     'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',    'x' => '75%', 'y' => '22.5%','w' => '15%','h' => 'auto', 'class' => 'text-right'],
+                ['name' => 'case_no',     'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',    'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
                 ['name' => 'cert_body',   'label' => 'Certification Text', 'x' => '10%', 'y' => '35%', 'w' => '80%', 'h' => '35%', 'type' => 'textarea',
                     'default' => 'This is to certify that the above-captioned case was not settled before this Lupong Tagapamayapa and is hereby certified for filing with the appropriate court.'],
                 ...$footerFields,
@@ -149,7 +149,7 @@ class FormLayouts
             'cert_bar_action' => [
                 ['name' => 'complainant', 'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant', 'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
                 ['name' => 'respondent',  'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',  'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',     'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',    'x' => '75%', 'y' => '22.5%','w' => '15%','h' => 'auto', 'class' => 'text-right'],
+                ['name' => 'case_no',     'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',    'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
                 ['name' => 'cert_body',   'label' => 'Certification Text', 'x' => '10%', 'y' => '35%', 'w' => '80%', 'h' => '35%', 'type' => 'textarea',
                     'default' => 'This is to certify that the dispute between the parties has been settled and no further action may be filed by either party.'],
                 ...$footerFields,
@@ -159,7 +159,7 @@ class FormLayouts
             'cert_bar_counterclaim' => [
                 ['name' => 'complainant', 'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant', 'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
                 ['name' => 'respondent',  'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',  'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',     'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',    'x' => '75%', 'y' => '22.5%','w' => '15%','h' => 'auto', 'class' => 'text-right'],
+                ['name' => 'case_no',     'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',    'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
                 ['name' => 'cert_body',   'label' => 'Certification Text', 'x' => '10%', 'y' => '35%', 'w' => '80%', 'h' => '35%', 'type' => 'textarea',
                     'default' => 'This is to certify that no counterclaim may be filed in connection with the above-captioned settled case.'],
                 ...$footerFields,
@@ -169,7 +169,7 @@ class FormLayouts
             'motion_execution' => [
                 ['name' => 'complainant',  'label' => 'Complainant / Movant', 'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
                 ['name' => 'respondent',   'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',           'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',      'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',             'x' => '75%', 'y' => '22.5%','w' => '15%','h' => 'auto', 'class' => 'text-right'],
+                ['name' => 'case_no',      'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',             'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
                 ['name' => 'body_text',    'label' => 'Motion Content',       'x' => '10%', 'y' => '38%', 'w' => '80%', 'h' => '30%', 'type' => 'textarea',
                     'default' => 'Movant respectfully prays that a writ of execution be issued to enforce the amicable settlement/arbitration award.'],
                 ...$footerFields,
@@ -179,7 +179,7 @@ class FormLayouts
             'notice_execution' => [
                 ['name' => 'complainant',  'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant', 'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
                 ['name' => 'respondent',   'label' => 'Respondent / Addressee',  'placeholder' => 'Full legal name of the respondent', 'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',      'label' => 'Case Number',            'placeholder' => 'e.g. 2024-001', 'x' => '75%', 'y' => '22.5%','w' => '15%','h' => 'auto', 'class' => 'text-right'],
+                ['name' => 'case_no',      'label' => 'Case Number',            'placeholder' => 'e.g. 2024-001', 'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
                 ['name' => 'hearing_date', 'label' => 'Hearing Date & Time',    'placeholder' => 'e.g. February 28, 2026 at 9:00 AM', 'x' => '25%', 'y' => '40%', 'w' => '50%', 'h' => 'auto'],
                 ...$footerFields,
             ],
@@ -188,7 +188,7 @@ class FormLayouts
             'notice_constitution' => [
                 ['name' => 'complainant',  'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant', 'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
                 ['name' => 'respondent',   'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',  'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',      'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',    'x' => '75%', 'y' => '22.5%','w' => '15%','h' => 'auto', 'class' => 'text-right'],
+                ['name' => 'case_no',      'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',    'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
                 ['name' => 'body', 'label' => 'Notice Body', 'x' => '10%', 'y' => '35%', 'w' => '80%', 'h' => '30%', 'type' => 'textarea',
                     'default' => 'You are hereby notified that the Pangkat ng Tagapagkasundo has been constituted to hear and settle the above-captioned case.'],
                 ...$footerFields,
@@ -197,7 +197,7 @@ class FormLayouts
             // Notice to Chosen Pangkat Member
             'notice_chosen_member' => [
                 ['name' => 'pangkat_names', 'label' => 'Pangkat Member (Full Name)', 'x' => '10%', 'y' => '28%', 'w' => '60%', 'h' => 'auto'],
-                ['name' => 'case_no',       'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',                   'x' => '75%', 'y' => '22.5%','w' => '15%','h' => 'auto', 'class' => 'text-right'],
+                ['name' => 'case_no',       'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',                   'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
                 ['name' => 'complainant',   'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant',                'x' => '10%', 'y' => '35%', 'w' => '40%', 'h' => 'auto'],
                 ['name' => 'respondent',    'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',                 'x' => '10%', 'y' => '40%', 'w' => '40%', 'h' => 'auto'],
                 ['name' => 'hearing_date',  'label' => 'First Session Date & Time',  'x' => '25%', 'y' => '50%', 'w' => '50%', 'h' => 'auto'],
@@ -207,9 +207,9 @@ class FormLayouts
             // Officers Return
             'officers_return' => [
                 ['name' => 'respondent',    'label' => 'Person Served / To',    'x' => '10%', 'y' => '22%', 'w' => '50%', 'h' => 'auto'],
-                ['name' => 'case_no',       'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',              'x' => '75%', 'y' => '22.5%','w' => '15%','h' => 'auto', 'class' => 'text-right'],
-                ['name' => 'served_personal',   'label' => 'Served Personally',    'x' => '10%', 'y' => '40%', 'w' => '30px','h' => '30px', 'type' => 'checkbox', 'class' => 'bg-transparent flex items-center justify-center font-bold text-xl'],
-                ['name' => 'served_substituted','label' => 'Served via Substitution','x' => '10%','y' => '46%', 'w' => '30px','h' => '30px', 'type' => 'checkbox', 'class' => 'bg-transparent flex items-center justify-center font-bold text-xl'],
+                ['name' => 'case_no',       'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',              'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
+                ['name' => 'served_personal',   'label' => 'Served Personally',    'x' => '10%', 'y' => '40%', 'w' => '30px', 'h' => '30px', 'type' => 'checkbox', 'class' => 'bg-transparent flex items-center justify-center font-bold text-xl'],
+                ['name' => 'served_substituted', 'label' => 'Served via Substitution', 'x' => '10%', 'y' => '46%', 'w' => '30px', 'h' => '30px', 'type' => 'checkbox', 'class' => 'bg-transparent flex items-center justify-center font-bold text-xl'],
                 ['name' => 'body_text',     'label' => 'Return Details',        'x' => '10%', 'y' => '55%', 'w' => '80%', 'h' => '20%', 'type' => 'textarea',
                     'default' => 'I hereby certify that I served the above notice/summons on the person named above.'],
                 ...$footerFields,
@@ -219,7 +219,7 @@ class FormLayouts
             'letter_of_demand' => [
                 ['name' => 'respondent',    'label' => 'Addressee (Debtor/Obligor)', 'x' => '10%', 'y' => '22%', 'w' => '50%', 'h' => 'auto'],
                 ['name' => 'complainant',   'label' => 'Sender (Creditor/Obligee)',  'x' => '10%', 'y' => '28%', 'w' => '50%', 'h' => 'auto'],
-                ['name' => 'case_no',       'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',                  'x' => '75%', 'y' => '22.5%','w' => '15%','h' => 'auto', 'class' => 'text-right'],
+                ['name' => 'case_no',       'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',                  'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
                 ['name' => 'body_text',     'label' => 'Demand Details',            'x' => '10%', 'y' => '38%', 'w' => '80%', 'h' => '30%', 'type' => 'textarea',
                     'default' => 'You are hereby formally demanded to fulfill your obligation within _____ days from receipt of this letter.'],
                 ...$footerFields,
@@ -229,27 +229,27 @@ class FormLayouts
             'katunayan_pagkakasundo' => [
                 ['name' => 'complainant', 'label' => 'Nagrereklamo (Complainant)', 'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
                 ['name' => 'respondent',  'label' => 'Inirereklamo (Respondent)', 'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',     'label' => 'Bilang ng Kaso (Case No.)', 'x' => '75%', 'y' => '22.5%','w' => '15%','h' => 'auto', 'class' => 'text-right'],
+                ['name' => 'case_no',     'label' => 'Bilang ng Kaso (Case No.)', 'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
                 ['name' => 'agreement',   'label' => 'Mga Tuntunin ng Kasunduan (Terms of Agreement)', 'x' => '10%', 'y' => '40%', 'w' => '80%', 'h' => '30%', 'type' => 'textarea'],
                 ...$footerFields,
             ],
 
             // Fallback / Legacy keys
-            'hearing_notice'              => [], // Will fall through to default
-            'certification_bar_action'    => [], // Will fall through to default
-            'certification_to_file_action'=> [], // Will fall through to default
-            'notice_of_hearing'           => [], // Will fall through to default
-            'notice_for_constitution'     => [], // Will fall through to default
-            'notice_chosen_pangkat'       => [], // Will fall through to default
+            'hearing_notice' => [], // Will fall through to default
+            'certification_bar_action' => [], // Will fall through to default
+            'certification_to_file_action' => [], // Will fall through to default
+            'notice_of_hearing' => [], // Will fall through to default
+            'notice_for_constitution' => [], // Will fall through to default
+            'notice_chosen_pangkat' => [], // Will fall through to default
 
             // Generic Default
             'default' => [
                 ['name' => 'complainant', 'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant', 'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
                 ['name' => 'respondent',  'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',  'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',     'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',    'x' => '75%', 'y' => '22.5%','w' => '15%','h' => 'auto', 'class' => 'text-right'],
+                ['name' => 'case_no',     'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',    'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
                 ['name' => 'body_text',   'label' => 'Content',     'x' => '10%', 'y' => '40%', 'w' => '80%', 'h' => '30%', 'type' => 'textarea'],
                 ...$footerFields,
-            ]
+            ],
         ];
 
         // If the requested layout is empty (legacy fallback key), use default

@@ -1,14 +1,14 @@
-import AppLayout from '@/layouts/app-layout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { useRef, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import {
     Upload, FileText, Plus, Trash2, GripVertical,
     Type, AlignLeft, CheckSquare, FileCheck, AlertCircle, Sparkles, RotateCcw,
     ChevronUp, ChevronDown, ArrowUpDown, CalendarDays
 } from 'lucide-react';
 import * as pdfjs from 'pdfjs-dist';
+import { useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import AppLayout from '@/layouts/app-layout';
 
 // Set worker path from CDN for easiest integration in Vite
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;

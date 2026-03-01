@@ -2,12 +2,11 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\LuponCase;
 use App\Models\Document;
+use App\Models\LuponCase;
 use App\Models\User;
-use Carbon\Carbon;
 use Faker\Factory as Faker;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
 class MockDataSeeder extends Seeder
@@ -16,7 +15,7 @@ class MockDataSeeder extends Seeder
     {
         $faker = Faker::create('en_PH');
         $user = User::first();
-        if (!$user) {
+        if (! $user) {
             $user = User::factory()->create();
         }
 
@@ -25,7 +24,7 @@ class MockDataSeeder extends Seeder
             'complaint' => 'Complaint Form',
             'summons' => 'Summons Form',
             'amicable_settlement' => 'Amicable Settlement Form',
-            'arbitration_award' => 'KP Form No. 17 Form', 
+            'arbitration_award' => 'KP Form No. 17 Form',
             'repudiation' => 'Repudation Form',
             'affidavit_desistance' => 'Affidavit Of Desistance Form',
             'affidavit_withdrawal' => 'Affidavit Of Withdrawal Form',
@@ -43,7 +42,7 @@ class MockDataSeeder extends Seeder
             'notice_chosen_member' => 'Notice To Chosen Pangkat Member Form',
             'officers_return' => 'Officers Return Form',
             'letter_of_demand' => 'Letter Of Demand Form',
-            'katunayan_pagkakasundo' => 'Katunayan Ng Pagkakasundo Form'
+            'katunayan_pagkakasundo' => 'Katunayan Ng Pagkakasundo Form',
         ];
 
         $forms = array_keys($formNamesMap);
@@ -63,24 +62,24 @@ class MockDataSeeder extends Seeder
 
         try {
             // Truncate existing mock data to cleanly recreate.
-            LuponCase::query()->forceDelete(); 
+            LuponCase::query()->forceDelete();
             Document::query()->delete(); // Documents don't have soft deletes, but just in case
 
             foreach ($documentsToCreate as $index => $formType) {
-                $caseNo = '2026-' . str_pad($faker->unique()->numberBetween(1000, 9999), 4, '0', STR_PAD_LEFT);
+                $caseNo = '2026-'.str_pad($faker->unique()->numberBetween(1000, 9999), 4, '0', STR_PAD_LEFT);
                 $complainant = $faker->name();
                 $respondent = $faker->name();
                 $mockName = $formNamesMap[$formType];
 
                 $case = LuponCase::create([
                     'case_number' => $caseNo,
-                    'title' => $mockName . ' - ' . date('Y-m-d'), // Added date to easily check the newly created records
+                    'title' => $mockName.' - '.date('Y-m-d'), // Added date to easily check the newly created records
                     'nature_of_case' => $faker->randomElement(['Property Dispute', 'Noise Complaint', 'Debt Collection', 'Family Dispute']),
                     'complainant' => $complainant,
                     'respondent' => $respondent,
                     'status' => $faker->randomElement(['Pending', 'Resolved', 'Mediation', 'Dismissed', 'Certified']),
                     'date_filed' => date('Y-m-d'), // Set the date exactly to today for easy checking
-                    'complaint_narrative' => "This case pertains to a " . $mockName . ". " . $faker->paragraph(),
+                    'complaint_narrative' => 'This case pertains to a '.$mockName.'. '.$faker->paragraph(),
                     'created_by' => $user->id,
                 ]);
 
@@ -89,12 +88,12 @@ class MockDataSeeder extends Seeder
                     'respondent' => $case->respondent,
                     'case_no' => $case->case_number,
                     'made_this_1' => $faker->city,
-                    'made_this_2' => 'Province of ' . $faker->lastName,
+                    'made_this_2' => 'Province of '.$faker->lastName,
                     'made_this_3' => 'Philippines',
                     'made_this_day' => (string) $faker->numberBetween(1, 28),
                     'made_this_month' => $faker->monthName,
                     'year' => '2026',
-                    'body_text' => $faker->paragraph()
+                    'body_text' => $faker->paragraph(),
                 ];
 
                 Document::create([
@@ -109,10 +108,10 @@ class MockDataSeeder extends Seeder
             }
 
             DB::commit();
-            $this->command->info("Successfully generated 50 mock documents. The 22 resources/forms files are now precisely used as the mock data names.");
+            $this->command->info('Successfully generated 50 mock documents. The 22 resources/forms files are now precisely used as the mock data names.');
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->command->error("Error seeding: " . $e->getMessage());
+            $this->command->error('Error seeding: '.$e->getMessage());
         }
     }
 }

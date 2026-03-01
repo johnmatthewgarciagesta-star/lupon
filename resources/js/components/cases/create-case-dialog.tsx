@@ -1,4 +1,5 @@
 
+import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,7 +21,6 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus } from 'lucide-react';
 
 export function CreateCaseDialog() {
     const [open, setOpen] = useState(false);

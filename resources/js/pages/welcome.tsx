@@ -1,8 +1,8 @@
-import { login } from '@/routes';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Head, Link } from '@inertiajs/react';
 import { Scale } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { login } from '@/routes';
 
 export default function Welcome() {
     return (

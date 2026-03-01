@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-
 use App\Models\LuponCase;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
 use App\Services\AuditService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class CaseController extends Controller
 {
@@ -44,14 +42,15 @@ class CaseController extends Controller
             // Mapping frontend values to backend nature_of_case if needed
             // For now assuming exact match or 'like' if dropdowns are loose
             $nature = $request->nature;
-            if ($nature === 'property')
+            if ($nature === 'property') {
                 $query->where('nature_of_case', 'like', '%Property%');
-            elseif ($nature === 'noise')
+            } elseif ($nature === 'noise') {
                 $query->where('nature_of_case', 'like', '%Noise%');
-            elseif ($nature === 'money')
+            } elseif ($nature === 'money') {
                 $query->where('nature_of_case', 'like', '%Debt%');
-            else
+            } else {
                 $query->where('nature_of_case', $nature);
+            }
         }
 
         $cases = $query->orderBy('date_filed', 'desc')->paginate(10)->withQueryString();
@@ -109,7 +108,7 @@ class CaseController extends Controller
         try {
             $case = LuponCase::create([
                 'case_number' => $request->case_no,
-                'title' => $request->complainant . ' vs ' . $request->respondent,
+                'title' => $request->complainant.' vs '.$request->respondent,
                 'complainant' => $request->complainant,
                 'respondent' => $request->respondent,
                 'nature_of_case' => $request->nature ?? ucwords(str_replace(['_', '-'], ' ', $request->document_type ?? 'Unspecified')),
@@ -130,10 +129,11 @@ class CaseController extends Controller
             return redirect()->route('cases.index')->with('success', 'Case filed successfully.');
 
         } catch (\Exception $e) {
-            Log::error('Case Submission Error: ' . $e->getMessage());
+            Log::error('Case Submission Error: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error saving case: ' . $e->getMessage()
+                'message' => 'Error saving case: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -146,8 +146,9 @@ class CaseController extends Controller
             $case = LuponCase::findOrFail($id);
 
             // Update fields if present (allow partial updates)
-            if ($request->has('case_no'))
+            if ($request->has('case_no')) {
                 $case->case_number = $request->case_no;
+            }
 
             if ($request->has('complainant')) {
                 $case->complainant = $request->complainant;
@@ -160,13 +161,15 @@ class CaseController extends Controller
             if ($request->has('complainant') || $request->has('respondent')) {
                 $comp = $request->complainant ?? $case->complainant ?? explode(' vs ', $case->title)[0];
                 $resp = $request->respondent ?? $case->respondent ?? explode(' vs ', $case->title)[1] ?? 'Unknown';
-                $case->title = $comp . ' vs ' . $resp;
+                $case->title = $comp.' vs '.$resp;
             }
 
-            if ($request->has('narrative'))
+            if ($request->has('narrative')) {
                 $case->complaint_narrative = $request->narrative;
-            if ($request->has('date_filed'))
+            }
+            if ($request->has('date_filed')) {
                 $case->date_filed = $request->date_filed;
+            }
 
             // Update document data (layout overrides, new values)
             $case->document_data = $request->all(); // Overwrite with new full state
@@ -181,10 +184,11 @@ class CaseController extends Controller
             return redirect()->back()->with('success', 'Case updated successfully.');
 
         } catch (\Exception $e) {
-            Log::error('Case Update Error: ' . $e->getMessage());
+            Log::error('Case Update Error: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error updating case: ' . $e->getMessage()
+                'message' => 'Error updating case: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -201,7 +205,7 @@ class CaseController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error archiving case: ' . $e->getMessage()
+                'message' => 'Error archiving case: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -215,8 +219,9 @@ class CaseController extends Controller
 
         try {
             LuponCase::whereIn('id', $ids)->delete();
-            AuditService::log('DELETE', 'Cases', "Bulk Archived " . count($ids) . " Cases", "Bulk");
-            return redirect()->back()->with('success', count($ids) . ' cases archived successfully.');
+            AuditService::log('DELETE', 'Cases', 'Bulk Archived '.count($ids).' Cases', 'Bulk');
+
+            return redirect()->back()->with('success', count($ids).' cases archived successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Error archiving cases.');
         }

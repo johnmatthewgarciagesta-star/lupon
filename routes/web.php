@@ -35,7 +35,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('audit', [App\Http\Controllers\AuditController::class, 'index'])->name('audit.index');
 
-
     Route::get('documents/new', [App\Http\Controllers\DocumentController::class, 'newDocument'])->name('documents.new');
     Route::post('documents/store-custom', [App\Http\Controllers\DocumentController::class, 'storeCustom'])->name('documents.store-custom');
     Route::get('documents/edit-template/{id}', [App\Http\Controllers\DocumentController::class, 'editTemplate'])->name('documents.edit-template');
@@ -60,7 +59,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('documents/create-form', [App\Http\Controllers\DocumentController::class, 'createForm'])->name('documents.create-form');
 });
 
-
-
-
-require __DIR__ . '/settings.php';
+require __DIR__.'/settings.php';
