@@ -13,9 +13,24 @@ class ReportController extends Controller
 {
     public function index()
     {
-        return Inertia::render('reports/index', [
-            'stats' => $this->getStats(),
-        ]);
+        try {
+            return Inertia::render('reports/index', [
+                'stats' => $this->getStats(),
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Reports loading error: ' . $e->getMessage());
+            return Inertia::render('reports/index', [
+                'error' => 'A database error occurred while loading reports. Details: ' . $e->getMessage(),
+                'stats' => [
+                    'total_cases' => 0,
+                    'cases_this_month' => 0,
+                    'pending_cases' => 0,
+                    'resolved_cases' => 0,
+                    'cases_by_nature' => [],
+                    'recent_cases' => [],
+                ],
+            ]);
+        }
     }
 
     public function generate(Request $request)
@@ -38,14 +53,14 @@ class ReportController extends Controller
                 ->setOption('args', ['--disable-web-security'])
                 ->pdf();
 
-            $filename = "System_Report_{$type}_".date('Ymd_His').'.pdf';
+            $filename = "System_Report_{$type}_" . date('Ymd_His') . '.pdf';
 
             return response($pdf)
                 ->header('Content-Type', 'application/pdf')
                 ->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
 
         } catch (\Exception $e) {
-            return response()->json(['error' => 'PDF Generation Failed: '.$e->getMessage()], 500);
+            return response()->json(['error' => 'PDF Generation Failed: ' . $e->getMessage()], 500);
         }
     }
 

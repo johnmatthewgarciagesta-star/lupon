@@ -2,6 +2,8 @@ import { Link } from '@inertiajs/react';
 import AppLogoIcon from '@/components/app-logo-icon';
 import { home } from '@/routes';
 import type { AuthLayoutProps } from '@/types';
+import { Toaster } from '@/components/ui/sonner';
+import { GlobalToast } from '@/components/global-toast';
 
 export default function AuthSimpleLayout({
     children,
@@ -34,6 +36,8 @@ export default function AuthSimpleLayout({
                     {children}
                 </div>
             </div>
+            <Toaster />
+            <GlobalToast />
         </div>
     );
 }

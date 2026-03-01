@@ -3,6 +3,8 @@ import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
 import type { AppLayoutProps } from '@/types';
+import { Toaster } from '@/components/ui/sonner';
+import { GlobalToast } from '@/components/global-toast';
 
 export default function AppSidebarLayout({
     children,
@@ -15,6 +17,8 @@ export default function AppSidebarLayout({
                 <AppSidebarHeader breadcrumbs={breadcrumbs} />
                 {children}
             </AppContent>
+            <Toaster />
+            <GlobalToast />
         </AppShell>
     );
 }

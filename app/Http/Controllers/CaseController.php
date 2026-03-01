@@ -11,84 +11,104 @@ class CaseController extends Controller
 {
     public function index(Request $request)
     {
-        // Auto-archive cases older than 31 days
-        LuponCase::where('date_filed', '<=', now()->subDays(31))->delete();
+        try {
+            // Auto-archive cases older than 31 days
+            LuponCase::where('date_filed', '<=', now()->subDays(31))->delete();
 
-        $query = LuponCase::query();
+            $query = LuponCase::query();
 
-        // Search
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('case_number', 'like', "%{$search}%")
-                    ->orWhere('title', 'like', "%{$search}%")
-                    ->orWhere('complainant', 'like', "%{$search}%")
-                    ->orWhere('respondent', 'like', "%{$search}%");
-            });
-        }
-
-        // Filter by Status
-        if ($request->filled('status') && $request->status !== 'all') {
-            $query->where('status', $request->status);
-        }
-
-        // Filter by Date
-        if ($request->filled('date')) {
-            $query->whereDate('date_filed', $request->date);
-        }
-
-        // Filter by Nature
-        if ($request->filled('nature') && $request->nature !== 'all') {
-            // Mapping frontend values to backend nature_of_case if needed
-            // For now assuming exact match or 'like' if dropdowns are loose
-            $nature = $request->nature;
-            if ($nature === 'property') {
-                $query->where('nature_of_case', 'like', '%Property%');
-            } elseif ($nature === 'noise') {
-                $query->where('nature_of_case', 'like', '%Noise%');
-            } elseif ($nature === 'money') {
-                $query->where('nature_of_case', 'like', '%Debt%');
-            } else {
-                $query->where('nature_of_case', $nature);
+            // Search
+            if ($request->filled('search')) {
+                $search = $request->input('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where('case_number', 'like', "%{$search}%")
+                        ->orWhere('title', 'like', "%{$search}%")
+                        ->orWhere('complainant', 'like', "%{$search}%")
+                        ->orWhere('respondent', 'like', "%{$search}%");
+                });
             }
+
+            // Filter by Status
+            if ($request->filled('status') && $request->status !== 'all') {
+                $query->where('status', $request->status);
+            }
+
+            // Filter by Date
+            if ($request->filled('date')) {
+                $query->whereDate('date_filed', $request->date);
+            }
+
+            // Filter by Nature
+            if ($request->filled('nature') && $request->nature !== 'all') {
+                // Mapping frontend values to backend nature_of_case if needed
+                // For now assuming exact match or 'like' if dropdowns are loose
+                $nature = $request->nature;
+                if ($nature === 'property') {
+                    $query->where('nature_of_case', 'like', '%Property%');
+                } elseif ($nature === 'noise') {
+                    $query->where('nature_of_case', 'like', '%Noise%');
+                } elseif ($nature === 'money') {
+                    $query->where('nature_of_case', 'like', '%Debt%');
+                } else {
+                    $query->where('nature_of_case', $nature);
+                }
+            }
+
+            $cases = $query->orderBy('date_filed', 'desc')->paginate(10)->withQueryString();
+
+            return \Inertia\Inertia::render('cases/index', [
+                'cases' => $cases,
+                'filters' => $request->only(['search', 'status', 'nature', 'date']),
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Cases loading error: ' . $e->getMessage());
+
+            return \Inertia\Inertia::render('cases/index', [
+                'error' => 'A database error occurred while loading the cases. Please contact the administrator. Details: ' . $e->getMessage(),
+                'cases' => ['data' => [], 'links' => []],
+                'filters' => $request->only(['search', 'status', 'nature', 'date']),
+            ]);
         }
-
-        $cases = $query->orderBy('date_filed', 'desc')->paginate(10)->withQueryString();
-
-        return \Inertia\Inertia::render('cases/index', [
-            'cases' => $cases,
-            'filters' => $request->only(['search', 'status', 'nature', 'date']),
-        ]);
     }
 
     public function archives(Request $request)
     {
-        // Only get soft-deleted cases
-        $query = LuponCase::onlyTrashed();
+        try {
+            // Only get soft-deleted cases
+            $query = LuponCase::onlyTrashed();
 
-        // Search
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('case_number', 'like', "%{$search}%")
-                    ->orWhere('title', 'like', "%{$search}%")
-                    ->orWhere('complainant', 'like', "%{$search}%")
-                    ->orWhere('respondent', 'like', "%{$search}%");
-            });
+            // Search
+            if ($request->filled('search')) {
+                $search = $request->input('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where('case_number', 'like', "%{$search}%")
+                        ->orWhere('title', 'like', "%{$search}%")
+                        ->orWhere('complainant', 'like', "%{$search}%")
+                        ->orWhere('respondent', 'like', "%{$search}%");
+                });
+            }
+
+            // Filter by Date (the file date to show on archive dashboard)
+            if ($request->filled('date')) {
+                // Can be exact date or month/year depending on UI - let's do exactly date matching for now
+                $query->whereDate('date_filed', $request->date);
+            }
+
+            $cases = $query->orderBy('deleted_at', 'desc')->paginate(10)->withQueryString();
+
+            return \Inertia\Inertia::render('cases/archive', [
+                'cases' => $cases,
+                'filters' => $request->only(['search', 'date']),
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Archived cases loading error: ' . $e->getMessage());
+
+            return \Inertia\Inertia::render('cases/archive', [
+                'error' => 'A database error occurred while loading archived cases. Please contact the administrator. Details: ' . $e->getMessage(),
+                'cases' => ['data' => [], 'links' => []],
+                'filters' => $request->only(['search', 'date']),
+            ]);
         }
-
-        // Filter by Date (the file date to show on archive dashboard)
-        if ($request->filled('date')) {
-            // Can be exact date or month/year depending on UI - let's do exactly date matching for now
-            $query->whereDate('date_filed', $request->date);
-        }
-
-        $cases = $query->orderBy('deleted_at', 'desc')->paginate(10)->withQueryString();
-
-        return \Inertia\Inertia::render('cases/archive', [
-            'cases' => $cases,
-            'filters' => $request->only(['search', 'date']),
-        ]);
     }
 
     public function store(Request $request)
@@ -108,7 +128,7 @@ class CaseController extends Controller
         try {
             $case = LuponCase::create([
                 'case_number' => $request->case_no,
-                'title' => $request->complainant.' vs '.$request->respondent,
+                'title' => $request->complainant . ' vs ' . $request->respondent,
                 'complainant' => $request->complainant,
                 'respondent' => $request->respondent,
                 'nature_of_case' => $request->nature ?? ucwords(str_replace(['_', '-'], ' ', $request->document_type ?? 'Unspecified')),
@@ -129,11 +149,11 @@ class CaseController extends Controller
             return redirect()->route('cases.index')->with('success', 'Case filed successfully.');
 
         } catch (\Exception $e) {
-            Log::error('Case Submission Error: '.$e->getMessage());
+            Log::error('Case Submission Error: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error saving case: '.$e->getMessage(),
+                'message' => 'Error saving case: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -161,7 +181,7 @@ class CaseController extends Controller
             if ($request->has('complainant') || $request->has('respondent')) {
                 $comp = $request->complainant ?? $case->complainant ?? explode(' vs ', $case->title)[0];
                 $resp = $request->respondent ?? $case->respondent ?? explode(' vs ', $case->title)[1] ?? 'Unknown';
-                $case->title = $comp.' vs '.$resp;
+                $case->title = $comp . ' vs ' . $resp;
             }
 
             if ($request->has('narrative')) {
@@ -184,11 +204,11 @@ class CaseController extends Controller
             return redirect()->back()->with('success', 'Case updated successfully.');
 
         } catch (\Exception $e) {
-            Log::error('Case Update Error: '.$e->getMessage());
+            Log::error('Case Update Error: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error updating case: '.$e->getMessage(),
+                'message' => 'Error updating case: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -205,7 +225,7 @@ class CaseController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error archiving case: '.$e->getMessage(),
+                'message' => 'Error archiving case: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -219,9 +239,9 @@ class CaseController extends Controller
 
         try {
             LuponCase::whereIn('id', $ids)->delete();
-            AuditService::log('DELETE', 'Cases', 'Bulk Archived '.count($ids).' Cases', 'Bulk');
+            AuditService::log('DELETE', 'Cases', 'Bulk Archived ' . count($ids) . ' Cases', 'Bulk');
 
-            return redirect()->back()->with('success', count($ids).' cases archived successfully.');
+            return redirect()->back()->with('success', count($ids) . ' cases archived successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Error archiving cases.');
         }

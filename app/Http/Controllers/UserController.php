@@ -16,50 +16,66 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::query();
+        try {
+            $query = User::query();
 
-        // Search
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
+            // Search
+            if ($request->filled('search')) {
+                $search = $request->input('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            }
+
+            // Filter by Role
+            if ($request->filled('role') && $request->input('role') !== 'all') {
+                $query->where('role', $request->input('role'));
+            }
+
+            // Filter by Status
+            if ($request->filled('status') && $request->input('status') !== 'all') {
+                $query->where('status', $request->input('status'));
+            }
+
+            $users = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
+
+            // Stats Calculation
+            $totalUsers = User::count();
+            $activeUsers = User::where('status', 'Active')->count();
+            $inactiveUsers = User::where('status', 'Inactive')->count();
+
+            // Group by Role
+            $usersByRole = User::selectRaw('role, count(*) as count')
+                ->groupBy('role')
+                ->pluck('count', 'role')
+                ->toArray();
+
+            return Inertia::render('users/index', [
+                'users' => $users,
+                'filters' => $request->only(['search', 'role', 'status']),
+                'stats' => [
+                    'total' => $totalUsers,
+                    'active' => $activeUsers,
+                    'inactive' => $inactiveUsers,
+                    'byRole' => $usersByRole,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Users loading error: ' . $e->getMessage());
+
+            return Inertia::render('users/index', [
+                'error' => 'A database error occurred while loading users. Details: ' . $e->getMessage(),
+                'users' => ['data' => [], 'links' => []],
+                'filters' => $request->only(['search', 'role', 'status']),
+                'stats' => [
+                    'total' => 0,
+                    'active' => 0,
+                    'inactive' => 0,
+                    'byRole' => [],
+                ],
+            ]);
         }
-
-        // Filter by Role
-        if ($request->filled('role') && $request->input('role') !== 'all') {
-            $query->where('role', $request->input('role'));
-        }
-
-        // Filter by Status
-        if ($request->filled('status') && $request->input('status') !== 'all') {
-            $query->where('status', $request->input('status'));
-        }
-
-        $users = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
-
-        // Stats Calculation
-        $totalUsers = User::count();
-        $activeUsers = User::where('status', 'Active')->count();
-        $inactiveUsers = User::where('status', 'Inactive')->count();
-
-        // Group by Role
-        $usersByRole = User::selectRaw('role, count(*) as count')
-            ->groupBy('role')
-            ->pluck('count', 'role')
-            ->toArray();
-
-        return Inertia::render('users/index', [
-            'users' => $users,
-            'filters' => $request->only(['search', 'role', 'status']),
-            'stats' => [
-                'total' => $totalUsers,
-                'active' => $activeUsers,
-                'inactive' => $inactiveUsers,
-                'byRole' => $usersByRole,
-            ],
-        ]);
     }
 
     /**

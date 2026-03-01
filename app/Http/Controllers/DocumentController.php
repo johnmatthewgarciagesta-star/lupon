@@ -16,86 +16,98 @@ class DocumentController extends Controller
 {
     public function index()
     {
-        // Load all documents as a plain array — frontend does instant client-side filtering
-        $documents = \App\Models\Document::with(['case', 'creator'])
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($doc) {
-                return [
-                    'id' => $doc->id,
-                    'type' => $doc->type,
-                    'status' => $doc->status,
-                    'date' => ($doc->issued_at ?? $doc->created_at)?->toISOString(),
-                    'case_id' => $doc->case_id,
-                    'case_number' => $doc->case?->case_number,
-                    'creator' => $doc->creator ? ['name' => $doc->creator->name] : null,
-                ];
-            })
-            ->values()
-            ->toArray();
+        try {
+            // Load all documents as a plain array — frontend does instant client-side filtering
+            $documents = \App\Models\Document::with(['case', 'creator'])
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($doc) {
+                    return [
+                        'id' => $doc->id,
+                        'type' => $doc->type,
+                        'status' => $doc->status,
+                        'date' => ($doc->issued_at ?? $doc->created_at)?->toISOString(),
+                        'case_id' => $doc->case_id,
+                        'case_number' => $doc->case?->case_number,
+                        'creator' => $doc->creator ? ['name' => $doc->creator->name] : null,
+                    ];
+                })
+                ->values()
+                ->toArray();
 
-        // Stats — count per type across the whole table
-        $allDocs = \App\Models\Document::selectRaw('type, COUNT(*) as total')
-            ->groupBy('type')
-            ->pluck('total', 'type')
-            ->toArray();
+            // Stats — count per type across the whole table
+            $allDocs = \App\Models\Document::selectRaw('type, COUNT(*) as total')
+                ->groupBy('type')
+                ->pluck('total', 'type')
+                ->toArray();
 
-        $stats = [
-            'total' => array_sum($allDocs),
-            'complaints' => ($allDocs['complaint'] ?? 0),
-            'summons' => ($allDocs['summons'] ?? 0),
-            'settlements' => ($allDocs['amicable_settlement'] ?? 0)
-                            + ($allDocs['arbitration_award'] ?? 0)
-                            + ($allDocs['katunayan_pagkakasundo'] ?? 0),
-            'certificates' => ($allDocs['cert_file_action'] ?? 0)
-                            + ($allDocs['cert_file_action_court'] ?? 0)
-                            + ($allDocs['cert_bar_action'] ?? 0)
-                            + ($allDocs['cert_bar_counterclaim'] ?? 0),
-            'notices' => ($allDocs['notice_of_hearing'] ?? 0)
-                            + ($allDocs['notice_to_appear'] ?? 0)
-                            + ($allDocs['hearing_conciliation'] ?? 0)
-                            + ($allDocs['hearing_mediation'] ?? 0)
-                            + ($allDocs['hearing_failure_appear'] ?? 0)
-                            + ($allDocs['hearing_failure_appear_counterclaim'] ?? 0)
-                            + ($allDocs['notice_execution'] ?? 0)
-                            + ($allDocs['notice_constitution'] ?? 0)
-                            + ($allDocs['notice_chosen_member'] ?? 0),
-            'others' => ($allDocs['minutes_of_hearing'] ?? 0)
-                            + ($allDocs['letter_of_demand'] ?? 0)
-                            + ($allDocs['subpoena'] ?? 0)
-                            + ($allDocs['repudiation'] ?? 0)
-                            + ($allDocs['affidavit_desistance'] ?? 0)
-                            + ($allDocs['affidavit_withdrawal'] ?? 0)
-                            + ($allDocs['motion_execution'] ?? 0)
-                            + ($allDocs['officers_return'] ?? 0)
-                            + ($allDocs['custom_form'] ?? 0),
-        ];
+            $stats = [
+                'total' => array_sum($allDocs),
+                'complaints' => ($allDocs['complaint'] ?? 0),
+                'summons' => ($allDocs['summons'] ?? 0),
+                'settlements' => ($allDocs['amicable_settlement'] ?? 0)
+                    + ($allDocs['arbitration_award'] ?? 0)
+                    + ($allDocs['katunayan_pagkakasundo'] ?? 0),
+                'certificates' => ($allDocs['cert_file_action'] ?? 0)
+                    + ($allDocs['cert_file_action_court'] ?? 0)
+                    + ($allDocs['cert_bar_action'] ?? 0)
+                    + ($allDocs['cert_bar_counterclaim'] ?? 0),
+                'notices' => ($allDocs['notice_of_hearing'] ?? 0)
+                    + ($allDocs['notice_to_appear'] ?? 0)
+                    + ($allDocs['hearing_conciliation'] ?? 0)
+                    + ($allDocs['hearing_mediation'] ?? 0)
+                    + ($allDocs['hearing_failure_appear'] ?? 0)
+                    + ($allDocs['hearing_failure_appear_counterclaim'] ?? 0)
+                    + ($allDocs['notice_execution'] ?? 0)
+                    + ($allDocs['notice_constitution'] ?? 0)
+                    + ($allDocs['notice_chosen_member'] ?? 0),
+                'others' => ($allDocs['minutes_of_hearing'] ?? 0)
+                    + ($allDocs['letter_of_demand'] ?? 0)
+                    + ($allDocs['subpoena'] ?? 0)
+                    + ($allDocs['repudiation'] ?? 0)
+                    + ($allDocs['affidavit_desistance'] ?? 0)
+                    + ($allDocs['affidavit_withdrawal'] ?? 0)
+                    + ($allDocs['motion_execution'] ?? 0)
+                    + ($allDocs['officers_return'] ?? 0)
+                    + ($allDocs['custom_form'] ?? 0),
+            ];
 
-        // Fetch custom-built forms to show in the "Templates" grid
-        $customTemplates = \App\Models\Document::where('type', 'custom_form')
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($doc) {
-                return [
-                    'id' => $doc->id,
-                    'title' => $doc->content['title'] ?? 'Custom Form',
-                    'description' => $doc->content['description'] ?? 'Custom uploaded document',
-                    'type' => 'custom_template',
-                    'icon_name' => 'FileSignature',
-                ];
-            });
+            // Fetch custom-built forms to show in the "Templates" grid
+            $customTemplates = \App\Models\Document::where('type', 'custom_form')
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($doc) {
+                    return [
+                        'id' => $doc->id,
+                        'title' => $doc->content['title'] ?? 'Custom Form',
+                        'description' => $doc->content['description'] ?? 'Custom uploaded document',
+                        'type' => 'custom_template',
+                        'icon_name' => 'FileSignature',
+                    ];
+                });
 
-        // Fetch hidden templates
-        $hiddenTemplates = \App\Models\FormLayout::where('is_hidden', true)
-            ->pluck('document_type')
-            ->toArray();
+            // Fetch hidden templates
+            $hiddenTemplates = \App\Models\FormLayout::where('is_hidden', true)
+                ->pluck('document_type')
+                ->toArray();
 
-        return \Inertia\Inertia::render('documents/index', [
-            'documents' => $documents,
-            'stats' => $stats,
-            'customTemplates' => $customTemplates,
-            'hiddenTemplates' => $hiddenTemplates,
-        ]);
+            return \Inertia\Inertia::render('documents/index', [
+                'documents' => $documents,
+                'stats' => $stats,
+                'customTemplates' => $customTemplates,
+                'hiddenTemplates' => $hiddenTemplates,
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Documents loading error: ' . $e->getMessage());
+
+            return \Inertia\Inertia::render('documents/index', [
+                'error' => 'A database error occurred while loading the documents. Please contact the administrator. Details: ' . $e->getMessage(),
+                'documents' => [],
+                'stats' => ['total' => 0, 'complaints' => 0, 'summons' => 0, 'settlements' => 0, 'certificates' => 0, 'notices' => 0, 'others' => 0],
+                'customTemplates' => [],
+                'hiddenTemplates' => [],
+            ]);
+        }
     }
 
     public function create($type)
@@ -143,7 +155,7 @@ class DocumentController extends Controller
     public function fillCustom($id)
     {
         $template = \App\Models\Document::findOrFail($id);
-        $type = 'custom_'.$id;
+        $type = 'custom_' . $id;
         $caseId = request('case_id');
         $case = $caseId ? \App\Models\LuponCase::find($caseId) : null;
 
@@ -153,26 +165,26 @@ class DocumentController extends Controller
         // Ensure fields have default positions and 'name' if not set
         foreach ($fields as &$field) {
             // Map builder 'id' to 'name' for the visual editor
-            if (! isset($field['name']) && isset($field['id'])) {
+            if (!isset($field['name']) && isset($field['id'])) {
                 $field['name'] = $field['id'];
             }
-            if (! isset($field['x'])) {
+            if (!isset($field['x'])) {
                 $field['x'] = '10%';
             }
-            if (! isset($field['y'])) {
+            if (!isset($field['y'])) {
                 $field['y'] = '10%';
             }
-            if (! isset($field['w'])) {
+            if (!isset($field['w'])) {
                 $field['w'] = '30%';
             }
-            if (! isset($field['h'])) {
+            if (!isset($field['h'])) {
                 $field['h'] = 'auto';
             }
         }
         unset($field);
 
         // Generate background from uploaded PDF
-        $imageBase64 = $this->generateBackgroundImage($type, storage_path('app/public/'.$template->file_path));
+        $imageBase64 = $this->generateBackgroundImage($type, storage_path('app/public/' . $template->file_path));
 
         return view('documents.form-fill', [
             'type' => $type,
@@ -270,7 +282,7 @@ class DocumentController extends Controller
         if (str_starts_with($type, 'custom_')) {
             $id = str_replace('custom_', '', $type);
             $template = \App\Models\Document::findOrFail($id);
-            $pdfPath = storage_path('app/public/'.$template->file_path);
+            $pdfPath = storage_path('app/public/' . $template->file_path);
             $fields = $template->content['fields'] ?? [];
         } else {
             // Get Standard Layout
@@ -316,13 +328,13 @@ class DocumentController extends Controller
         }
         $data['fields'] = $fields;
 
-        if (! file_exists($pdfPath)) {
+        if (!file_exists($pdfPath)) {
             $pdfPath = public_path('forms/complaint.pdf');
         }
 
         // Output path for the generated image
         // We use a temporary file or a specific path in storage
-        $outputImage = storage_path("app/public/temp_{$type}_".uniqid().'.png');
+        $outputImage = storage_path("app/public/temp_{$type}_" . uniqid() . '.png');
 
         // Ghostscript Command - Absolute Path
         // Version 10.06.0 detected
@@ -334,7 +346,7 @@ class DocumentController extends Controller
         // Execute command
         exec($cmd, $output, $returnCode);
 
-        if ($returnCode !== 0 || ! file_exists($outputImage)) {
+        if ($returnCode !== 0 || !file_exists($outputImage)) {
             // Fallback if Ghostscript fails (not installed?)
             // We can return an error or try the PDF.js method as backup.
             // For now, let's log/throw to let user know GS is missing.
@@ -380,10 +392,10 @@ class DocumentController extends Controller
                 ->setOption('args', ['--disable-web-security']) // Allow loading local resources if needed
                 ->pdf();
         } catch (\Exception $e) {
-            return response('PDF Generation Error: '.$e->getMessage(), 500);
+            return response('PDF Generation Error: ' . $e->getMessage(), 500);
         }
 
-        $filename = "{$type}_".date('Ymd_His').'.pdf';
+        $filename = "{$type}_" . date('Ymd_His') . '.pdf';
         $disposition = $request->input('action') === 'preview' ? 'inline' : 'attachment';
 
         // Always save a Document record so it appears in the Documents list
@@ -414,11 +426,11 @@ class DocumentController extends Controller
                 $case = \App\Models\LuponCase::find($caseId);
                 if ($case) {
                     $updated = false;
-                    if (! empty($data['complainant'])) {
+                    if (!empty($data['complainant'])) {
                         $case->complainant = $data['complainant'];
                         $updated = true;
                     }
-                    if (! empty($data['respondent'])) {
+                    if (!empty($data['respondent'])) {
                         $case->respondent = $data['respondent'];
                         $updated = true;
                     }
@@ -431,7 +443,7 @@ class DocumentController extends Controller
                 }
             }
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Failed to save document record: '.$e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Failed to save document record: ' . $e->getMessage());
             // Don't block the PDF download if DB save fails
         }
 
@@ -446,60 +458,65 @@ class DocumentController extends Controller
      */
     public function saveLayout(Request $request)
     {
-        $type = $request->input('document_type');
-        $positions = $request->input('positions'); // array: name → {x, y, w, h}
+        try {
+            $type = $request->input('document_type');
+            $positions = $request->input('positions'); // array: name → {x, y, w, h}
 
-        if (! $type || ! is_array($positions)) {
-            return response()->json(['error' => 'Invalid data'], 422);
-        }
+            if (!$type || !is_array($positions)) {
+                return response()->json(['error' => 'Invalid data'], 422);
+            }
 
-        if (str_starts_with($type, 'custom_')) {
-            $id = str_replace('custom_', '', $type);
-            $template = \App\Models\Document::findOrFail($id);
-            $content = $template->content;
-            $fields = $content['fields'] ?? [];
+            if (str_starts_with($type, 'custom_')) {
+                $id = str_replace('custom_', '', $type);
+                $template = \App\Models\Document::findOrFail($id);
+                $content = $template->content;
+                $fields = $content['fields'] ?? [];
 
-            foreach ($fields as &$field) {
-                if (isset($positions[$field['name']])) {
-                    $pos = $positions[$field['name']];
-                    $field['x'] = $pos['x'];
-                    $field['y'] = $pos['y'];
-                    $field['w'] = $pos['w'] ?? ($field['w'] ?? '30%');
-                    $field['h'] = $pos['h'] ?? ($field['h'] ?? 'auto');
+                foreach ($fields as &$field) {
+                    if (isset($positions[$field['name']])) {
+                        $pos = $positions[$field['name']];
+                        $field['x'] = $pos['x'];
+                        $field['y'] = $pos['y'];
+                        $field['w'] = $pos['w'] ?? ($field['w'] ?? '30%');
+                        $field['h'] = $pos['h'] ?? ($field['h'] ?? 'auto');
+                    }
+                }
+                unset($field);
+
+                $content['fields'] = $fields;
+                $template->update(['content' => $content]);
+
+                return response()->json(['success' => true, 'message' => 'Custom layout saved!']);
+            }
+
+            // Merge incoming positions onto the base config layout
+            $baseFields = FormLayouts::getLayout($type);
+            $fieldMap = [];
+            foreach ($baseFields as $i => $f) {
+                $fieldMap[$f['name']] = $i;
+            }
+
+            foreach ($positions as $name => $pos) {
+                if (isset($fieldMap[$name])) {
+                    $idx = $fieldMap[$name];
+                    $baseFields[$idx]['x'] = $pos['x'];
+                    $baseFields[$idx]['y'] = $pos['y'];
+                    $baseFields[$idx]['w'] = $pos['w'] ?? $baseFields[$idx]['w'];
+                    $baseFields[$idx]['h'] = $pos['h'] ?? $baseFields[$idx]['h'];
                 }
             }
-            unset($field);
 
-            $content['fields'] = $fields;
-            $template->update(['content' => $content]);
+            // Upsert into DB
+            FormLayout::updateOrCreate(
+                ['document_type' => $type],
+                ['layout_json' => $baseFields]
+            );
 
-            return response()->json(['success' => true, 'message' => 'Custom layout saved!']);
+            return response()->json(['success' => true, 'message' => 'Layout saved!']);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('saveLayout Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'A database error occurred saving the layout. Details: ' . $e->getMessage()], 500);
         }
-
-        // Merge incoming positions onto the base config layout
-        $baseFields = FormLayouts::getLayout($type);
-        $fieldMap = [];
-        foreach ($baseFields as $i => $f) {
-            $fieldMap[$f['name']] = $i;
-        }
-
-        foreach ($positions as $name => $pos) {
-            if (isset($fieldMap[$name])) {
-                $idx = $fieldMap[$name];
-                $baseFields[$idx]['x'] = $pos['x'];
-                $baseFields[$idx]['y'] = $pos['y'];
-                $baseFields[$idx]['w'] = $pos['w'] ?? $baseFields[$idx]['w'];
-                $baseFields[$idx]['h'] = $pos['h'] ?? $baseFields[$idx]['h'];
-            }
-        }
-
-        // Upsert into DB
-        FormLayout::updateOrCreate(
-            ['document_type' => $type],
-            ['layout_json' => $baseFields]
-        );
-
-        return response()->json(['success' => true, 'message' => 'Layout saved!']);
     }
 
     // -------------------------------------------------------------------------
@@ -513,14 +530,14 @@ class DocumentController extends Controller
     private function generateBackgroundImage(string $type, $customPath = null): string
     {
         $pdfPath = $customPath ?? public_path("forms/{$type}.pdf");
-        if (! file_exists($pdfPath)) {
+        if (!file_exists($pdfPath)) {
             $pdfPath = public_path('forms/complaint.pdf');
         }
 
-        $outputImage = storage_path('app/public/temp_editor_'.$type.'_'.uniqid().'.png');
+        $outputImage = storage_path('app/public/temp_editor_' . $type . '_' . uniqid() . '.png');
         $gsPath = '"C:\Program Files\gs\gs10.06.0\bin\gswin64c.exe"';
         $cmd = "{$gsPath} -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r300 -dFirstPage=1 -dLastPage=1"
-                     ." -sOutputFile=\"{$outputImage}\" \"{$pdfPath}\" 2>&1";
+            . " -sOutputFile=\"{$outputImage}\" \"{$pdfPath}\" 2>&1";
 
         exec($cmd, $output, $returnCode);
 
@@ -531,7 +548,7 @@ class DocumentController extends Controller
             return $base64;
         }
 
-        \Illuminate\Support\Facades\Log::error('Ghostscript failed for '.$type.': '.implode("\n", $output));
+        \Illuminate\Support\Facades\Log::error('Ghostscript failed for ' . $type . ': ' . implode("\n", $output));
 
         return '';
     }
@@ -553,13 +570,13 @@ class DocumentController extends Controller
         foreach ($fields as $field) {
             $name = $field['name'] ?? '';
             $label = $field['label'] ?? '';
-            if ($name && ! isset($labelMap[$name])) {
+            if ($name && !isset($labelMap[$name])) {
                 $labelMap[$name] = $label ?: ucwords(str_replace('_', ' ', $name));
             }
         }
 
         $formTitle = ucwords(str_replace('_', ' ', $type));
-        $filename = $formTitle.'.docx';
+        $filename = $formTitle . '.docx';
 
         // ── Create PhpWord document ──────────────────────────────────────────
         $phpWord = new PhpWord;
@@ -601,7 +618,7 @@ class DocumentController extends Controller
 
         foreach ($fields as $field) {
             $name = $field['name'] ?? '';
-            if (! $name) {
+            if (!$name) {
                 continue;
             }
             in_array($name, $footerNames) ? ($footerFields[] = $field) : ($mainFields[] = $field);
@@ -631,7 +648,7 @@ class DocumentController extends Controller
             $table->addRow();
             $labelCell = $table->addCell(9000, ['borderSize' => 0]);
             $labelCell->addText(
-                $label.':',
+                $label . ':',
                 ['bold' => true, 'size' => 10, 'name' => 'Times New Roman', 'color' => '333333'],
                 ['spaceAfter' => 0]
             );
@@ -648,7 +665,7 @@ class DocumentController extends Controller
             if ($isCheckbox) {
                 $checked = ($value === 'X' || $value == 1);
                 $valueCell->addText(
-                    ($checked ? '☑' : '☐').'  '.$label,
+                    ($checked ? '☑' : '☐') . '  ' . $label,
                     ['size' => 12, 'name' => 'Times New Roman', 'color' => '000000'],
                     ['spaceAfter' => 0]
                 );
@@ -669,7 +686,7 @@ class DocumentController extends Controller
         }
 
         // ── Certification / Execution details ─────────────────────────────────
-        if (! empty($footerFields)) {
+        if (!empty($footerFields)) {
             $section->addTextBreak(1);
             $section->addText(
                 'Done this ___ day of _______________, 20___',
@@ -685,7 +702,7 @@ class DocumentController extends Controller
                     continue;
                 }
                 $section->addText(
-                    $label.': '.$value,
+                    $label . ': ' . $value,
                     ['size' => 11, 'name' => 'Times New Roman'],
                     ['alignment' => 'center']
                 );
@@ -715,7 +732,7 @@ class DocumentController extends Controller
         );
 
         // ── Save to temp and stream ──────────────────────────────────────────
-        $tmpPath = storage_path('app/public/word_'.uniqid().'.docx');
+        $tmpPath = storage_path('app/public/word_' . uniqid() . '.docx');
         $writer = IOFactory::createWriter($phpWord, 'Word2007');
         $writer->save($tmpPath);
 
@@ -730,7 +747,7 @@ class DocumentController extends Controller
                 'created_by' => auth()->id(),
             ]);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Word doc DB save failed: '.$e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Word doc DB save failed: ' . $e->getMessage());
         }
 
         return response()->download($tmpPath, $filename, [
@@ -847,16 +864,16 @@ class DocumentController extends Controller
         // Fallback: If no fields were defined, automatically add the most common Lupon fields
         if (empty($fields)) {
             $fields = [
-                ['id' => 'case_no',        'type' => 'text', 'label' => 'Case Number',       'required' => true],
-                ['id' => 'complainant',    'type' => 'text', 'label' => 'Complainant Name',   'required' => true],
-                ['id' => 'respondent',     'type' => 'text', 'label' => 'Respondent Name',    'required' => true],
-                ['id' => 'For',            'type' => 'text', 'label' => 'Nature of Case',    'required' => true],
-                ['id' => 'hearing_info',   'type' => 'text', 'label' => 'Hearing Date/Time', 'required' => false],
-                ['id' => 'made_this_day',  'type' => 'text', 'label' => 'Day',        'required' => false],
-                ['id' => 'made_this_month', 'type' => 'text', 'label' => 'Month',      'required' => false],
-                ['id' => 'made_this_year',  'type' => 'text', 'label' => 'Year',       'required' => false],
-                ['id' => 'witness',        'type' => 'text', 'label' => 'Witness Name',      'required' => false],
-                ['id' => 'signature',      'type' => 'text', 'label' => 'Signature Line',    'required' => false],
+                ['id' => 'case_no', 'type' => 'text', 'label' => 'Case Number', 'required' => true],
+                ['id' => 'complainant', 'type' => 'text', 'label' => 'Complainant Name', 'required' => true],
+                ['id' => 'respondent', 'type' => 'text', 'label' => 'Respondent Name', 'required' => true],
+                ['id' => 'For', 'type' => 'text', 'label' => 'Nature of Case', 'required' => true],
+                ['id' => 'hearing_info', 'type' => 'text', 'label' => 'Hearing Date/Time', 'required' => false],
+                ['id' => 'made_this_day', 'type' => 'text', 'label' => 'Day', 'required' => false],
+                ['id' => 'made_this_month', 'type' => 'text', 'label' => 'Month', 'required' => false],
+                ['id' => 'made_this_year', 'type' => 'text', 'label' => 'Year', 'required' => false],
+                ['id' => 'witness', 'type' => 'text', 'label' => 'Witness Name', 'required' => false],
+                ['id' => 'signature', 'type' => 'text', 'label' => 'Signature Line', 'required' => false],
             ];
         }
 
