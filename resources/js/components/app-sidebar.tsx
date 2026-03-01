@@ -9,6 +9,8 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    SidebarRail,
+    useSidebar,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import type { NavItem } from '@/types';
@@ -20,9 +22,10 @@ import {
     BarChart3,
     ClipboardList,
     Users,
-    Settings,
     Trophy,
-    ShieldAlert
+    ShieldAlert,
+    ChevronsLeft,
+    ChevronsRight,
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
@@ -50,7 +53,7 @@ const mainNavItems: NavItem[] = [
 
     {
         title: 'Reports',
-        href: '/system-reports', // Placeholder path
+        href: '/system-reports',
         icon: ClipboardList,
     },
     {
@@ -60,21 +63,17 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Users',
-        href: '/users', // Placeholder path
+        href: '/users',
         icon: Users,
-    },
-
-
-    {
-        title: 'Settings',
-        href: '/settings', // Placeholder path
-        icon: Settings,
     },
 ];
 
 export function AppSidebar() {
+    const { state, toggleSidebar } = useSidebar();
+    const isCollapsed = state === 'collapsed';
+
     return (
-        <Sidebar collapsible="icon" variant="sidebar">
+        <Sidebar collapsible="offcanvas" variant="sidebar">
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
@@ -93,7 +92,32 @@ export function AppSidebar() {
 
             <SidebarFooter>
                 <NavUser />
+                {/* Collapse / Expand toggle button */}
+                <button
+                    onClick={toggleSidebar}
+                    className={`
+                        flex items-center gap-2 w-full rounded-lg border border-sidebar-border/50
+                        text-xs font-semibold transition-all duration-200
+                        hover:bg-sidebar-accent hover:text-sidebar-accent-foreground
+                        text-sidebar-foreground/70
+                        ${isCollapsed ? 'justify-center p-2' : 'px-3 py-2'}
+                    `}
+                    title={isCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
+                >
+                    {isCollapsed ? (
+                        <ChevronsRight className="h-4 w-4" />
+                    ) : (
+                        <>
+                            <ChevronsLeft className="h-4 w-4" />
+                            <span>Collapse</span>
+                            <kbd className="ml-auto text-[10px] font-mono opacity-40 border border-sidebar-border/30 rounded px-1 py-0.5">⌘B</kbd>
+                        </>
+                    )}
+                </button>
             </SidebarFooter>
+
+            {/* Hover rail on the sidebar edge for quick toggle */}
+            <SidebarRail />
         </Sidebar>
     );
 }

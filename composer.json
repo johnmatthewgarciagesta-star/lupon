@@ -12,9 +12,10 @@
         "php": "^8.2",
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/fortify": "^1.30",
-        "laravel/framework": "^12.0",
-        "laravel/tinker": "^2.10.1",
+        "laravel/framework": "^11.0",
+        "laravel/tinker": "^2.9",
         "laravel/wayfinder": "^0.1.9",
+        "phpoffice/phpword": "^1.1",
         "spatie/browsershot": "^5.2",
         "spatie/pdf-to-image": "^1.2"
     },
@@ -26,8 +27,8 @@
         "laravel/sail": "^1.41",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
-        "pestphp/pest": "^4.3",
-        "pestphp/pest-plugin-laravel": "^4.0"
+        "pestphp/pest": "^3.0",
+        "pestphp/pest-plugin-laravel": "^3.0"
     },
     "autoload": {
         "psr-4": {

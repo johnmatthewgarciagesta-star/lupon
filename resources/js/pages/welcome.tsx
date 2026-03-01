@@ -37,11 +37,11 @@ export default function Welcome() {
 
                         {/* Action Section */}
                         <div className="pt-4">
-                            <Link href={login()}>
-                                <Button size="lg" className="bg-black text-white hover:bg-zinc-800 border-2 border-transparent hover:border-black text-lg px-12 py-6 rounded-full shadow-xl transition-all duration-300 transform hover:scale-105 dark:bg-white dark:text-black dark:hover:bg-zinc-200">
+                            <Button asChild size="lg" className="bg-black text-white hover:bg-zinc-800 border-2 border-transparent hover:border-black text-lg px-12 py-6 rounded-full shadow-xl transition-all duration-300 transform hover:scale-105 dark:bg-white dark:text-black dark:hover:bg-zinc-200">
+                                <Link href={login()}>
                                     Access System
-                                </Button>
-                            </Link>
+                                </Link>
+                            </Button>
                         </div>
 
                     </CardContent>

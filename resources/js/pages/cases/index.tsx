@@ -72,6 +72,7 @@ interface Props {
         search: string;
         status: string;
         nature: string;
+        date?: string;
     };
 }
 
@@ -86,17 +87,18 @@ export default function CaseManagement({ cases, filters }: Props) {
     const [search, setSearch] = useState(filters.search || '');
     const [status, setStatus] = useState(filters.status || 'all');
     const [nature, setNature] = useState(filters.nature || 'all');
+    const [date, setDate] = useState(filters.date || '');
 
     // Debounced search
     const updateSearch = useCallback(
         debounce((value: string) => {
             router.get(
                 '/cases',
-                { search: value, status, nature },
+                { search: value, status, nature, date },
                 { preserveState: true, replace: true }
             );
         }, 300),
-        [status, nature]
+        [status, nature, date]
     );
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,6 +109,7 @@ export default function CaseManagement({ cases, filters }: Props) {
     const handleFilterChange = (key: string, value: string) => {
         if (key === 'status') setStatus(value);
         if (key === 'nature') setNature(value);
+        if (key === 'date') setDate(value);
 
         router.get(
             '/cases',
@@ -114,6 +117,7 @@ export default function CaseManagement({ cases, filters }: Props) {
                 search,
                 status: key === 'status' ? value : status,
                 nature: key === 'nature' ? value : nature,
+                date: key === 'date' ? value : date,
             },
             { preserveState: true, replace: true }
         );
@@ -123,6 +127,7 @@ export default function CaseManagement({ cases, filters }: Props) {
         setSearch('');
         setStatus('all');
         setNature('all');
+        setDate('');
         router.get('/cases', {}, { preserveState: true, replace: true });
     };
 
@@ -153,15 +158,8 @@ export default function CaseManagement({ cases, filters }: Props) {
         }
     };
 
-    const archiveCase = (caseItem: Case) => {
-        if (confirm('Are you sure you want to archive this case?')) {
-            router.delete(`/cases/${caseItem.id}`);
-        }
-    };
-
     const restoreCase = (caseItem: Case) => {
         if (confirm('Are you sure you want to restore this case?')) {
-            // We'll need a route for this eventually, for now just show alert or implement RestoreController
             alert("Restore functionality coming in Phase 2 (Audit Trail)");
         }
     };
@@ -187,7 +185,7 @@ export default function CaseManagement({ cases, filters }: Props) {
                 {/* Filters */}
                 <Card className="rounded-lg border bg-card text-card-foreground shadow-sm">
                     <CardContent className="p-6 space-y-4">
-                        <div className="grid gap-4 md:grid-cols-3">
+                        <div className="grid gap-4 md:grid-cols-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                     Search Cases
@@ -237,6 +235,17 @@ export default function CaseManagement({ cases, filters }: Props) {
                                     </SelectContent>
                                 </Select>
                             </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    Date Filed
+                                </label>
+                                <Input
+                                    type="date"
+                                    value={date}
+                                    onChange={(e) => handleFilterChange('date', e.target.value)}
+                                    className={date ? "w-full" : "w-full text-muted-foreground"}
+                                />
+                            </div>
                         </div>
                         <div className="flex items-center gap-2">
                             {/* <Button variant="outline" size="sm" className="h-8">
@@ -256,42 +265,23 @@ export default function CaseManagement({ cases, filters }: Props) {
 
                 {/* Table */}
                 <div className="rounded-md border bg-card shadow-sm">
-                    <div className="p-4 flex items-center justify-between border-b">
+                    <div className="p-4 flex items-center justify-end border-b">
                         <div className="flex items-center space-x-2">
-                            <Checkbox id="select-all" />
-                            <label
-                                htmlFor="select-all"
-                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                                Select All
-                            </label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" onClick={() => router.visit('/cases/archive')}>
                                 <Archive className="mr-2 h-4 w-4" />
-                                Archive
+                                View Archives
                             </Button>
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" onClick={() => window.print()}>
                                 <Printer className="mr-2 h-4 w-4" />
                                 Print
                             </Button>
                         </div>
                     </div>
 
-                    {/* Note: In a real app we'd use the shadcn/ui Table component. 
-                        For now, since I don't see table.tsx in the file list, I'll assume standard HTML table or if it exists I'd use it.
-                        The plan mentioned table.tsx might be missing. I'll use standard tailwind table structure if I can't find it,
-                        but I'll try to use the imported components if they work, otherwise standard HTML.
-                        Wait, I imported Table components, let me use them.
-                    */}
-
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
                             <thead className="text-xs text-muted-foreground uppercase border-b bg-slate-50/50 dark:bg-slate-900/50">
                                 <tr>
-                                    <th className="p-4 w-[50px]">
-                                        <Checkbox />
-                                    </th>
                                     <th className="py-3 px-4 font-medium">Case Number</th>
                                     <th className="py-3 px-4 font-medium">Case Type</th>
                                     <th className="py-3 px-4 font-medium">Complainant</th>
@@ -311,9 +301,6 @@ export default function CaseManagement({ cases, filters }: Props) {
                                 ) : (
                                     cases.data.map((item) => (
                                         <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
-                                            <td className="p-4">
-                                                <Checkbox />
-                                            </td>
                                             <td className="py-3 px-4 font-medium text-[#1c2434] dark:text-white">{item.case_number}</td>
                                             <td className="py-3 px-4 text-muted-foreground">{item.nature_of_case}</td>
                                             <td className="py-3 px-4 text-muted-foreground">{item.complainant}</td>
@@ -328,7 +315,7 @@ export default function CaseManagement({ cases, filters }: Props) {
                                             </td>
                                             <td>
                                                 <div className="flex items-center gap-2">
-                                                    <Button variant="ghost" size="icon" title="View Details" onClick={() => router.visit(`/cases/${item.id}`)}>
+                                                    <Button variant="ghost" size="icon" title="View Details" onClick={() => router.visit(`/documents/view-case/${item.id}`)}>
                                                         <Eye className="h-4 w-4" />
                                                     </Button>
                                                     {item.creator && (
@@ -337,15 +324,6 @@ export default function CaseManagement({ cases, filters }: Props) {
                                                                 {item.creator.name.charAt(0).toUpperCase()}
                                                             </span>
                                                         </div>
-                                                    )}
-                                                    {item.deleted_at ? (
-                                                        <Button variant="ghost" size="icon" title="Restore Case" onClick={() => restoreCase(item)} className="text-green-500 hover:text-green-700">
-                                                            <RefreshCcw className="h-4 w-4" />
-                                                        </Button>
-                                                    ) : (
-                                                        <Button variant="ghost" size="icon" title="Archive Case" onClick={() => archiveCase(item)} className="text-red-500 hover:text-red-700">
-                                                            <Archive className="h-4 w-4" />
-                                                        </Button>
                                                     )}
                                                 </div>
                                             </td>
@@ -369,7 +347,7 @@ export default function CaseManagement({ cases, filters }: Props) {
                                     size="sm"
                                     className={`h-8 min-w-[32px] px-2 ${link.active ? 'bg-[#1c2434] text-white' : ''}`}
                                     disabled={!link.url}
-                                    onClick={() => link.url && router.visit(link.url, { data: { search, status, nature }, preserveState: true })}
+                                    onClick={() => link.url && router.visit(link.url, { data: { search, status, nature, date }, preserveState: true })}
                                     dangerouslySetInnerHTML={{ __html: link.label }}
                                 />
                             ))}

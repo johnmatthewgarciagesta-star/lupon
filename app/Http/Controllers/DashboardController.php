@@ -65,17 +65,18 @@ class DashboardController extends Controller
             ->get();
 
         // 6. Monthly Case Trend (Bar Chart)
-        $monthlyStats = LuponCase::selectRaw('MONTH(date_filed) as month, count(*) as count')
-            ->whereYear('date_filed', Carbon::now()->year)
-            ->groupBy('month')
-            ->orderBy('month')
+        $monthlyStats = LuponCase::whereYear('date_filed', Carbon::now()->year)
             ->get()
-            ->map(function ($item) {
+            ->groupBy(function ($d) {
+                return Carbon::parse($d->date_filed)->month;
+            })
+            ->map(function ($items, $month) {
                 return [
-                    'name' => Carbon::create()->month($item->month)->format('M'),
-                    'total' => $item->count,
+                    'name' => Carbon::create()->month($month)->format('M'),
+                    'total' => $items->count(),
                 ];
-            });
+            })
+            ->values();
 
         // Ensure all months are represented (optional, but good for charts)
         $allMonths = [];

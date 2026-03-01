@@ -13,6 +13,9 @@ class CaseController extends Controller
 {
     public function index(Request $request)
     {
+        // Auto-archive cases older than 31 days
+        LuponCase::where('date_filed', '<=', now()->subDays(31))->delete();
+
         $query = LuponCase::query();
 
         // Search
@@ -29,6 +32,11 @@ class CaseController extends Controller
         // Filter by Status
         if ($request->filled('status') && $request->status !== 'all') {
             $query->where('status', $request->status);
+        }
+
+        // Filter by Date
+        if ($request->filled('date')) {
+            $query->whereDate('date_filed', $request->date);
         }
 
         // Filter by Nature
@@ -50,7 +58,37 @@ class CaseController extends Controller
 
         return \Inertia\Inertia::render('cases/index', [
             'cases' => $cases,
-            'filters' => $request->only(['search', 'status', 'nature']),
+            'filters' => $request->only(['search', 'status', 'nature', 'date']),
+        ]);
+    }
+
+    public function archives(Request $request)
+    {
+        // Only get soft-deleted cases
+        $query = LuponCase::onlyTrashed();
+
+        // Search
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('case_number', 'like', "%{$search}%")
+                    ->orWhere('title', 'like', "%{$search}%")
+                    ->orWhere('complainant', 'like', "%{$search}%")
+                    ->orWhere('respondent', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter by Date (the file date to show on archive dashboard)
+        if ($request->filled('date')) {
+            // Can be exact date or month/year depending on UI - let's do exactly date matching for now
+            $query->whereDate('date_filed', $request->date);
+        }
+
+        $cases = $query->orderBy('deleted_at', 'desc')->paginate(10)->withQueryString();
+
+        return \Inertia\Inertia::render('cases/archive', [
+            'cases' => $cases,
+            'filters' => $request->only(['search', 'date']),
         ]);
     }
 
@@ -165,6 +203,22 @@ class CaseController extends Controller
                 'success' => false,
                 'message' => 'Error archiving case: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        if (empty($ids)) {
+            return redirect()->back();
+        }
+
+        try {
+            LuponCase::whereIn('id', $ids)->delete();
+            AuditService::log('DELETE', 'Cases', "Bulk Archived " . count($ids) . " Cases", "Bulk");
+            return redirect()->back()->with('success', count($ids) . ' cases archived successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error archiving cases.');
         }
     }
 }

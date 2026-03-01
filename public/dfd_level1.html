@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>DFD Level 1 – Lupon CMS</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        body {
+            background: #fff;
+            font-family: 'Inter', Arial, sans-serif;
+            padding: 30px 20px 60px
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: #111
+        }
+
+        .sub {
+            text-align: center;
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 20px
+        }
+
+        .wrap {
+            overflow-x: auto
+        }
+
+        svg {
+            display: block;
+            margin: 0 auto
+        }
+    </style>
+</head>
+
+<body>
+    <h1>DFD Level 1 – System Diagram</h1>
+    <p class="sub">Lupon Tagapamayapa Case Management System &nbsp;|&nbsp; Updated: includes User Management &amp; Audit
+        Logging</p>
+
+    <div class="wrap">
+        <!-- =========================================================
+     SVG canvas: 1200 × 1020
+     ========================================================= -->
+        <svg width="1200" height="1020" viewBox="0 0 1200 1020" style="background:#fff;border:1px solid #ccc"
+            font-family="Inter,Arial,sans-serif">
+
+            <defs>
+                <!-- standard black arrowhead -->
+                <marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+                    <path d="M0,0 L0,8 L10,4z" fill="#111" />
+                </marker>
+            </defs>
+
+            <!-- ── MACROS (drawn manually as SVG groups) ──────────────── -->
+
+            <!-- ═══════════════════════════════════════════════════
+       ENTITIES  (plain rectangles)
+       ═══════════════════════════════════════════════════ -->
+
+            <!-- E1: User / Admin  (left) -->
+            <rect x="14" y="270" width="110" height="60" fill="#fff" stroke="#111" stroke-width="2" />
+            <text x="69" y="296" text-anchor="middle" font-size="12" font-weight="700" fill="#111">User /</text>
+            <text x="69" y="312" text-anchor="middle" font-size="12" font-weight="700" fill="#111">Admin</text>
+
+            <!-- E2: Ghostscript  (bottom-left) -->
+            <rect x="14" y="760" width="110" height="52" fill="#fff" stroke="#111" stroke-width="2" />
+            <text x="69" y="781" text-anchor="middle" font-size="11" font-weight="700" fill="#111">Ghostscript</text>
+            <text x="69" y="797" text-anchor="middle" font-size="9" fill="#444">PDF → PNG</text>
+            <text x="69" y="808" text-anchor="middle" font-size="8" fill="#888">E2</text>
+
+            <!-- E3: Browsershot  (bottom-left, below GS) -->
+            <rect x="14" y="848" width="110" height="52" fill="#fff" stroke="#111" stroke-width="2" />
+            <text x="69" y="869" text-anchor="middle" font-size="11" font-weight="700" fill="#111">Browsershot</text>
+            <text x="69" y="885" text-anchor="middle" font-size="9" fill="#444">HTML → PDF</text>
+            <text x="69" y="896" text-anchor="middle" font-size="8" fill="#888">E3</text>
+
+            <!-- E4: PDF Templates  (top-right) -->
+            <rect x="1062" y="44" width="124" height="52" fill="#fff" stroke="#111" stroke-width="2" />
+            <text x="1124" y="65" text-anchor="middle" font-size="11" font-weight="700" fill="#111">PDF</text>
+            <text x="1124" y="81" text-anchor="middle" font-size="11" font-weight="700" fill="#111">Templates</text>
+            <text x="1124" y="92" text-anchor="middle" font-size="8" fill="#888">E4</text>
+
+            <!-- ═══════════════════════════════════════════════════
+       DATA STORES  (open-ended: left cap + top + bottom)
+       ═══════════════════════════════════════════════════ -->
+
+            <!-- D1: cases -->
+            <line x1="200" y1="660" x2="200" y2="694" stroke="#111" stroke-width="2" />
+            <line x1="200" y1="660" x2="400" y2="660" stroke="#111" stroke-width="2" />
+            <line x1="200" y1="694" x2="400" y2="694" stroke="#111" stroke-width="2" />
+            <text x="214" y="674" font-size="10" font-weight="700" fill="#111">D1</text>
+            <text x="295" y="674" text-anchor="middle" font-size="11" font-weight="700" fill="#111">cases</text>
+            <text x="295" y="689" text-anchor="middle" font-size="8.5" fill="#555">LuponCase · MySQL</text>
+
+            <!-- D2: documents -->
+            <line x1="480" y1="660" x2="480" y2="694" stroke="#111" stroke-width="2" />
+            <line x1="480" y1="660" x2="700" y2="660" stroke="#111" stroke-width="2" />
+            <line x1="480" y1="694" x2="700" y2="694" stroke="#111" stroke-width="2" />
+            <text x="494" y="674" font-size="10" font-weight="700" fill="#111">D2</text>
+            <text x="585" y="674" text-anchor="middle" font-size="11" font-weight="700" fill="#111">documents</text>
+            <text x="585" y="689" text-anchor="middle" font-size="8.5" fill="#555">Document · MySQL</text>
+
+            <!-- D3: users -->
+            <line x1="162" y1="430" x2="162" y2="464" stroke="#111" stroke-width="2" />
+            <line x1="162" y1="430" x2="362" y2="430" stroke="#111" stroke-width="2" />
+            <line x1="162" y1="464" x2="362" y2="464" stroke="#111" stroke-width="2" />
+            <text x="176" y="444" font-size="10" font-weight="700" fill="#111">D3</text>
+            <text x="258" y="444" text-anchor="middle" font-size="11" font-weight="700" fill="#111">users</text>
+            <text x="258" y="459" text-anchor="middle" font-size="8.5" fill="#555">User · MySQL</text>
+
+            <!-- D4: form_layouts -->
+            <line x1="740" y1="660" x2="740" y2="694" stroke="#111" stroke-width="2" />
+            <line x1="740" y1="660" x2="970" y2="660" stroke="#111" stroke-width="2" />
+            <line x1="740" y1="694" x2="970" y2="694" stroke="#111" stroke-width="2" />
+            <text x="754" y="674" font-size="10" font-weight="700" fill="#111">D4</text>
+            <text x="852" y="674" text-anchor="middle" font-size="11" font-weight="700" fill="#111">form_layouts</text>
+            <text x="852" y="689" text-anchor="middle" font-size="8.5" fill="#555">FormLayout · MySQL</text>
+
+            <!-- D5: audit_logs  (new) -->
+            <line x1="740" y1="430" x2="740" y2="464" stroke="#111" stroke-width="2" />
+            <line x1="740" y1="430" x2="980" y2="430" stroke="#111" stroke-width="2" />
+            <line x1="740" y1="464" x2="980" y2="464" stroke="#111" stroke-width="2" />
+            <text x="754" y="444" font-size="10" font-weight="700" fill="#111">D5</text>
+            <text x="858" y="444" text-anchor="middle" font-size="11" font-weight="700" fill="#111">audit_logs</text>
+            <text x="858" y="459" text-anchor="middle" font-size="8.5" fill="#555">AuditLog · MySQL</text>
+
+            <!-- ═══════════════════════════════════════════════════
+       PROCESSES  (tab-rectangle: small tab on top-left + main box)
+       ═══════════════════════════════════════════════════ -->
+
+            <!-- ── P1: Authenticate  (top-left area) ── -->
+            <rect x="184" y="100" width="28" height="14" rx="4" fill="#fff" stroke="#111" stroke-width="1.5" />
+            <text x="198" y="111" text-anchor="middle" font-size="8" font-weight="700" fill="#111">1.0</text>
+            <rect x="172" y="112" width="160" height="72" rx="6" fill="#fff" stroke="#111" stroke-width="2" />
+            <text x="252" y="142" text-anchor="middle" font-size="12" font-weight="700" fill="#111">Authenticate</text>
+            <text x="252" y="160" text-anchor="middle" font-size="9" fill="#555">Fortify</text>
+            <text x="252" y="178" text-anchor="middle" font-size="8" fill="#888">Process 1.0</text>
+
+            <!-- ── P2: Dashboard  (top-center) ── -->
+            <rect x="484" y="100" width="28" height="14" rx="4" fill="#fff" stroke="#111" stroke-width="1.5" />
+            <text x="498" y="111" text-anchor="middle" font-size="8" font-weight="700" fill="#111">2.0</text>
+            <rect x="452" y="112" width="170" height="72" rx="6" fill="#fff" stroke="#111" stroke-width="2" />
+            <text x="537" y="145" text-anchor="middle" font-size="13" font-weight="700" fill="#111">Dashboard</text>
+            <text x="537" y="162" text-anchor="middle" font-size="9" fill="#555">DashboardController</text>
+            <text x="537" y="178" text-anchor="middle" font-size="8" fill="#888">Process 2.0</text>
+
+            <!-- ── P6: View Analytics  (top-right area) ── -->
+            <rect x="784" y="100" width="28" height="14" rx="4" fill="#fff" stroke="#111" stroke-width="1.5" />
+            <text x="798" y="111" text-anchor="middle" font-size="8" font-weight="700" fill="#111">6.0</text>
+            <rect x="760" y="112" width="150" height="72" rx="6" fill="#fff" stroke="#111" stroke-width="2" />
+            <text x="835" y="142" text-anchor="middle" font-size="12" font-weight="700" fill="#111">View</text>
+            <text x="835" y="158" text-anchor="middle" font-size="12" font-weight="700" fill="#111">Analytics</text>
+            <text x="835" y="176" text-anchor="middle" font-size="8" fill="#888">Process 6.0</text>
+
+            <!-- ── P3: Manage Cases  (left, middle row) ── -->
+            <rect x="176" y="288" width="28" height="14" rx="4" fill="#fff" stroke="#111" stroke-width="1.5" />
+            <text x="190" y="299" text-anchor="middle" font-size="8" font-weight="700" fill="#111">3.0</text>
+            <rect x="160" y="300" width="160" height="72" rx="6" fill="#fff" stroke="#111" stroke-width="2" />
+            <text x="240" y="330" text-anchor="middle" font-size="12" font-weight="700" fill="#111">Manage</text>
+            <text x="240" y="348" text-anchor="middle" font-size="12" font-weight="700" fill="#111">Cases</text>
+            <text x="240" y="366" text-anchor="middle" font-size="8" fill="#888">CaseController</text>
+
+            <!-- ── P4: Manage Documents  (center, middle row) ── -->
+            <rect x="484" y="288" width="28" height="14" rx="4" fill="#fff" stroke="#111" stroke-width="1.5" />
+            <text x="498" y="299" text-anchor="middle" font-size="8" font-weight="700" fill="#111">4.0</text>
+            <rect x="440" y="300" width="188" height="72" rx="6" fill="#fff" stroke="#111" stroke-width="2" />
+            <text x="534" y="330" text-anchor="middle" font-size="12" font-weight="700" fill="#111">Manage</text>
+            <text x="534" y="348" text-anchor="middle" font-size="12" font-weight="700" fill="#111">Documents</text>
+            <text x="534" y="366" text-anchor="middle" font-size="8" fill="#888">DocumentController</text>
+
+            <!-- ── P5: Generate Reports  (right, middle row) ── -->
+            <rect x="784" y="288" width="28" height="14" rx="4" fill="#fff" stroke="#111" stroke-width="1.5" />
+            <text x="798" y="299" text-anchor="middle" font-size="8" font-weight="700" fill="#111">5.0</text>
+            <rect x="760" y="300" width="170" height="72" rx="6" fill="#fff" stroke="#111" stroke-width="2" />
+            <text x="845" y="330" text-anchor="middle" font-size="12" font-weight="700" fill="#111">Generate</text>
+            <text x="845" y="348" text-anchor="middle" font-size="12" font-weight="700" fill="#111">Reports</text>
+            <text x="845" y="366" text-anchor="middle" font-size="8" fill="#888">ReportController</text>
+
+            <!-- ── P7: Visual Editor  (center-left, lower) ── -->
+            <rect x="312" y="756" width="28" height="14" rx="4" fill="#fff" stroke="#111" stroke-width="1.5" />
+            <text x="326" y="767" text-anchor="middle" font-size="8" font-weight="700" fill="#111">7.0</text>
+            <rect x="296" y="768" width="152" height="68" rx="6" fill="#fff" stroke="#111" stroke-width="2" />
+            <text x="372" y="797" text-anchor="middle" font-size="12" font-weight="700" fill="#111">Visual</text>
+            <text x="372" y="813" text-anchor="middle" font-size="12" font-weight="700" fill="#111">Editor</text>
+            <text x="372" y="829" text-anchor="middle" font-size="8" fill="#888">Blade View</text>
+
+            <!-- ── P8: Generate PDF  (center, lower) ── -->
+            <rect x="516" y="756" width="28" height="14" rx="4" fill="#fff" stroke="#111" stroke-width="1.5" />
+            <text x="530" y="767" text-anchor="middle" font-size="8" font-weight="700" fill="#111">8.0</text>
+            <rect x="494" y="768" width="170" height="68" rx="6" fill="#fff" stroke="#111" stroke-width="2" />
+            <text x="579" y="797" text-anchor="middle" font-size="12" font-weight="700" fill="#111">Generate</text>
+            <text x="579" y="813" text-anchor="middle" font-size="12" font-weight="700" fill="#111">PDF</text>
+            <text x="579" y="829" text-anchor="middle" font-size="8" fill="#888">Browsershot::html()</text>
+
+            <!-- ── P9: Manage Users  (NEW – right middle area, below P5) ── -->
+            <rect x="784" y="488" width="28" height="14" rx="4" fill="#fff" stroke="#111" stroke-width="1.5" />
+            <text x="798" y="499" text-anchor="middle" font-size="8" font-weight="700" fill="#111">9.0</text>
+            <rect x="760" y="500" width="170" height="72" rx="6" fill="#fff" stroke="#111" stroke-width="2" />
+            <text x="845" y="530" text-anchor="middle" font-size="12" font-weight="700" fill="#111">Manage</text>
+            <text x="845" y="548" text-anchor="middle" font-size="12" font-weight="700" fill="#111">Users</text>
+            <text x="845" y="566" text-anchor="middle" font-size="8" fill="#888">UserController</text>
+
+            <!-- ── P10: Audit Logs  (NEW – far right) ── -->
+            <rect x="1004" y="288" width="28" height="14" rx="4" fill="#fff" stroke="#111" stroke-width="1.5" />
+            <text x="1018" y="299" text-anchor="middle" font-size="8" font-weight="700" fill="#111">10.0</text>
+            <rect x="984" y="300" width="170" height="72" rx="6" fill="#fff" stroke="#111" stroke-width="2" />
+            <text x="1069" y="330" text-anchor="middle" font-size="12" font-weight="700" fill="#111">Audit</text>
+            <text x="1069" y="348" text-anchor="middle" font-size="12" font-weight="700" fill="#111">Logs</text>
+            <text x="1069" y="366" text-anchor="middle" font-size="8" fill="#888">AuditController</text>
+
+            <!-- ═══════════════════════════════════════════════════
+       DATA FLOWS  (arrows + verb labels)
+       ═══════════════════════════════════════════════════ -->
+
+            <!-- ── User/Admin → P1: Sends Credentials ── -->
+            <line x1="124" y1="286" x2="172" y2="165" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="115" y="222" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Sends</text>
+            <text x="115" y="234" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Credentials</text>
+
+            <!-- ── P1 → D3: Verifies User ── -->
+            <line x1="252" y1="184" x2="258" y2="430" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="270" y="308" font-size="9" font-weight="600" fill="#111">Verifies</text>
+            <text x="270" y="320" font-size="9" font-weight="600" fill="#111">User</text>
+
+            <!-- ── P1 → P2: Grants Session ── -->
+            <line x1="332" y1="148" x2="452" y2="148" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="392" y="140" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Grants Session</text>
+
+            <!-- ── User/Admin → P2 (Requests Dashboard) ── -->
+            <line x1="124" y1="296" x2="452" y2="170" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="270" y="244" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Requests
+                Dashboard</text>
+
+            <!-- ── User/Admin → P3 (Submits Case) ── -->
+            <line x1="124" y1="315" x2="160" y2="335" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="60" y="326" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Submits</text>
+            <text x="60" y="338" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Case</text>
+
+            <!-- ── User/Admin → P4 (Requests Document) ── -->
+            <line x1="124" y1="325" x2="440" y2="340" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="260" y="368" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Requests
+                Document</text>
+
+            <!-- ── User/Admin → P6 (Views Analytics) ── top long arrow -->
+            <line x1="124" y1="275" x2="760" y2="148" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="440" y="180" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Views
+                Analytics</text>
+
+            <!-- ── User/Admin → P9 (Manages Users) ── -->
+            <line x1="124" y1="316" x2="760" y2="536" stroke="#111" stroke-width="1.5" stroke-dasharray="5 3"
+                marker-end="url(#ah)" />
+            <text x="430" y="460" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Manages Users</text>
+
+            <!-- ── P2 → D1: Reads Cases ── -->
+            <line x1="510" y1="184" x2="330" y2="660" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="390" y="430" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Reads</text>
+            <text x="390" y="443" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Cases</text>
+
+            <!-- ── P2 → D2: Reads Documents ── -->
+            <line x1="560" y1="184" x2="585" y2="660" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="598" y="430" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Reads</text>
+            <text x="598" y="443" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Documents</text>
+
+            <!-- ── P2 → P5: reads PDF stats ── -->
+            <line x1="622" y1="148" x2="760" y2="148" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="691" y="140" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Reads PDF</text>
+
+            <!-- ── P5 → D1: Queries Cases ── -->
+            <line x1="845" y1="372" x2="400" y2="660" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="670" y="530" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Queries Cases</text>
+
+            <!-- ── P5 → E4: Reads PDF ── -->
+            <line x1="930" y1="330" x2="1062" y2="90" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="1020" y="216" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Reads</text>
+            <text x="1020" y="228" text-anchor="middle" font-size="9" font-weight="600" fill="#111">PDF</text>
+
+            <!-- ── P3 → D1: Reads/Writes Cases ── -->
+            <line x1="240" y1="372" x2="260" y2="660" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="214" y="520" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Reads/Writes</text>
+            <text x="214" y="533" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Cases</text>
+
+            <!-- ── P4 → D1: Reads Case Data ── -->
+            <line x1="480" y1="372" x2="340" y2="660" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="376" y="520" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Reads</text>
+            <text x="376" y="533" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Case Data</text>
+
+            <!-- ── P4 → D2: Saves Document ── -->
+            <line x1="570" y1="372" x2="585" y2="660" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="602" y="520" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Saves</text>
+            <text x="602" y="533" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Document</text>
+
+            <!-- ── P4 → D4: Reads Layout ── -->
+            <line x1="628" y1="372" x2="820" y2="660" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="758" y="520" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Reads Layout</text>
+
+            <!-- ── P4 → P7: Renders Editor ── -->
+            <line x1="476" y1="372" x2="420" y2="768" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="418" y="576" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Renders</text>
+            <text x="418" y="589" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Editor</text>
+
+            <!-- ── P4 → P8: Triggers Generation ── -->
+            <line x1="534" y1="372" x2="560" y2="768" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="572" y="580" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Triggers</text>
+            <text x="572" y="593" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Generation</text>
+
+            <!-- ── P7 → E2: Executes GS ── -->
+            <line x1="296" y1="806" x2="124" y2="790" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="200" y="793" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Executes GS</text>
+
+            <!-- ── E2 → P7: Returns PNG ── -->
+            <line x1="124" y1="800" x2="296" y2="820" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="200" y="820" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Returns PNG</text>
+
+            <!-- ── P8 → E3: Sends HTML ── -->
+            <line x1="494" y1="810" x2="124" y2="870" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="296" y="855" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Sends HTML</text>
+
+            <!-- ── E3 → P8: Returns PDF ── -->
+            <line x1="124" y1="880" x2="494" y2="840" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="300" y="878" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Returns PDF</text>
+
+            <!-- ── P9 → D3: Reads/Writes Users ── (new) -->
+            <line x1="760" y1="530" x2="362" y2="448" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="556" y="476" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Reads/Writes</text>
+
+            <!-- ── P9 → D5: Logs Activity ── (new) -->
+            <line x1="845" y1="572" x2="858" y2="430" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="875" y="500" font-size="9" font-weight="600" fill="#111">Logs</text>
+            <text x="875" y="513" font-size="9" font-weight="600" fill="#111">Activity</text>
+
+            <!-- ── P10: Audit → D5: Reads Logs ── (new) -->
+            <line x1="1069" y1="372" x2="940" y2="430" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="1010" y="398" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Reads Logs</text>
+
+            <!-- ── User/Admin → P10 (Views Audit) ── -->
+            <line x1="124" y1="275" x2="984" y2="336" stroke="#111" stroke-width="1.5" stroke-dasharray="5 3"
+                marker-end="url(#ah)" />
+            <text x="560" y="254" text-anchor="middle" font-size="9" font-weight="600" fill="#111">Views Audit
+                Log</text>
+
+            <!-- ── AuditService: P3/P4/P9 all log via service → D5 ── -->
+            <!-- P3 → D5 -->
+            <line x1="320" y1="372" x2="780" y2="430" stroke="#111" stroke-width="1.2" stroke-dasharray="4 3"
+                marker-end="url(#ah)" />
+            <!-- P4 → D5 -->
+            <line x1="628" y1="350" x2="780" y2="440" stroke="#111" stroke-width="1.2" stroke-dasharray="4 3"
+                marker-end="url(#ah)" />
+            <!-- shared label for audit service -->
+            <text x="690" y="388" text-anchor="middle" font-size="8.5" fill="#555"
+                font-style="italic">AuditService::log()</text>
+
+            <!-- ═══════════════════════════════════════════════════
+       NOTATION KEY  (bottom-right corner)
+       ═══════════════════════════════════════════════════ -->
+            <rect x="960" y="740" width="224" height="180" rx="6" fill="#f9f9f9" stroke="#bbb" stroke-width="1" />
+            <text x="1072" y="760" text-anchor="middle" font-size="11" font-weight="700" fill="#111">NOTATION KEY</text>
+
+            <!-- Entity -->
+            <rect x="974" y="772" width="50" height="26" fill="#fff" stroke="#111" stroke-width="1.5" />
+            <text x="1036" y="789" font-size="10" fill="#111">= Entity</text>
+
+            <!-- Process tab-rect -->
+            <rect x="974" y="812" width="18" height="10" rx="3" fill="#fff" stroke="#111" stroke-width="1" />
+            <rect x="970" y="820" width="54" height="22" rx="4" fill="#fff" stroke="#111" stroke-width="1.5" />
+            <text x="1036" y="835" font-size="10" fill="#111">= Process</text>
+
+            <!-- Data store open rect -->
+            <line x1="970" y1="858" x2="970" y2="876" stroke="#111" stroke-width="1.5" />
+            <line x1="970" y1="858" x2="1022" y2="858" stroke="#111" stroke-width="1.5" />
+            <line x1="970" y1="876" x2="1022" y2="876" stroke="#111" stroke-width="1.5" />
+            <text x="1036" y="871" font-size="10" fill="#111">= Data Store</text>
+
+            <!-- Arrow -->
+            <line x1="974" y1="896" x2="1016" y2="896" stroke="#111" stroke-width="1.5" marker-end="url(#ah)" />
+            <text x="1036" y="900" font-size="10" fill="#111">= Data Flow</text>
+
+            <!-- Dashed arrow -->
+            <line x1="974" y1="914" x2="1016" y2="914" stroke="#111" stroke-width="1.2" stroke-dasharray="4 3"
+                marker-end="url(#ah)" />
+            <text x="1036" y="918" font-size="10" fill="#111">= Service Call</text>
+
+        </svg>
+    </div>
+</body>
+
+</html>
