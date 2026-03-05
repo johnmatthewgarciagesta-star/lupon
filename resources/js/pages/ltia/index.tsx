@@ -57,7 +57,7 @@ export default function LTIAPage() {
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <div className="p-2 bg-[#dd8b11] rounded-lg">
-                                <Trophy className="h-4 w-4 text-white dark:text-white stroke-[2.5]" />
+                                <Trophy className="h-4 w-4 text-white dark:text-black stroke-[2.5]" />
                             </div>
                             <Badge variant="secondary" className="bg-slate-100 text-slate-700 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300">
                                 2024
@@ -71,7 +71,7 @@ export default function LTIAPage() {
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <div className="p-2 bg-[#dd8b11] rounded-lg">
-                                <Users className="h-4 w-4 text-white dark:text-white stroke-[2.5]" />
+                                <Users className="h-4 w-4 text-white dark:text-black stroke-[2.5]" />
                             </div>
                             <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400">
                                 Active
@@ -85,7 +85,7 @@ export default function LTIAPage() {
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <div className="p-2 bg-[#dd8b11] rounded-lg">
-                                <Calendar className="h-4 w-4 text-white dark:text-white stroke-[2.5]" />
+                                <Calendar className="h-4 w-4 text-white dark:text-black stroke-[2.5]" />
                             </div>
                             <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400">
                                 Deadline
@@ -99,7 +99,7 @@ export default function LTIAPage() {
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <div className="p-2 bg-[#dd8b11] rounded-lg">
-                                <Star className="h-4 w-4 text-white dark:text-white stroke-[2.5]" />
+                                <Star className="h-4 w-4 text-white dark:text-black stroke-[2.5]" />
                             </div>
                             <Badge variant="secondary" className="bg-slate-100 text-slate-700 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300">
                                 Status
@@ -120,7 +120,7 @@ export default function LTIAPage() {
                         <Card>
                             <CardHeader className="pb-3">
                                 <div className="mb-2 p-2 w-fit bg-[#dd8b11] rounded-lg">
-                                    <Medal className="h-5 w-5 text-white dark:text-white stroke-[2.5]" />
+                                    <Medal className="h-5 w-5 text-white dark:text-black stroke-[2.5]" />
                                 </div>
                                 <CardTitle className="text-base">Best Lupon</CardTitle>
                                 <CardDescription>
@@ -147,7 +147,7 @@ export default function LTIAPage() {
                         <Card>
                             <CardHeader className="pb-3">
                                 <div className="mb-2 p-2 w-fit bg-[#dd8b11] rounded-lg">
-                                    <Users className="h-5 w-5 text-white dark:text-white stroke-[2.5]" />
+                                    <Users className="h-5 w-5 text-white dark:text-black stroke-[2.5]" />
                                 </div>
                                 <CardTitle className="text-base">Outstanding Chairman</CardTitle>
                                 <CardDescription>
@@ -174,7 +174,7 @@ export default function LTIAPage() {
                         <Card>
                             <CardHeader className="pb-3">
                                 <div className="mb-2 p-2 w-fit bg-[#dd8b11] rounded-lg">
-                                    <Users className="h-5 w-5 text-white dark:text-white stroke-[2.5]" />
+                                    <Users className="h-5 w-5 text-white dark:text-black stroke-[2.5]" />
                                 </div>
                                 <CardTitle className="text-base">Best Mediator</CardTitle>
                                 <CardDescription>
@@ -201,7 +201,7 @@ export default function LTIAPage() {
                         <Card>
                             <CardHeader className="pb-3">
                                 <div className="mb-2 p-2 w-fit bg-[#dd8b11] rounded-lg">
-                                    <FileText className="h-5 w-5 text-white dark:text-white stroke-[2.5]" />
+                                    <FileText className="h-5 w-5 text-white dark:text-black stroke-[2.5]" />
                                 </div>
                                 <CardTitle className="text-base">Most Efficient</CardTitle>
                                 <CardDescription>
@@ -228,7 +228,7 @@ export default function LTIAPage() {
                         <Card>
                             <CardHeader className="pb-3">
                                 <div className="mb-2 p-2 w-fit bg-[#dd8b11] rounded-lg">
-                                    <Heart className="h-5 w-5 text-white dark:text-white stroke-[2.5]" />
+                                    <Heart className="h-5 w-5 text-white dark:text-black stroke-[2.5]" />
                                 </div>
                                 <CardTitle className="text-base">Community Service</CardTitle>
                                 <CardDescription>
@@ -255,7 +255,7 @@ export default function LTIAPage() {
                         <Card>
                             <CardHeader className="pb-3">
                                 <div className="mb-2 p-2 w-fit bg-[#dd8b11] rounded-lg">
-                                    <GraduationCap className="h-5 w-5 text-white dark:text-white stroke-[2.5]" />
+                                    <GraduationCap className="h-5 w-5 text-white dark:text-black stroke-[2.5]" />
                                 </div>
                                 <CardTitle className="text-base">Innovation Award</CardTitle>
                                 <CardDescription>

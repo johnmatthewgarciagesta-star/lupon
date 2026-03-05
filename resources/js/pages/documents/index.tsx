@@ -203,7 +203,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                         className="flex items-start space-x-4 p-4 rounded-lg border bg-card hover:border-[#dd8b11]/30 hover:bg-[#dd8b11]/5 dark:hover:bg-[#dd8b11]/10 transition-all group"
                                     >
                                         <div className="p-2 bg-[#dd8b11] rounded-lg mt-1 flex-shrink-0 group-hover:bg-[#cb7d0f] transition-colors">
-                                            <template.icon className="h-4 w-4 text-white dark:text-white stroke-[2]" />
+                                            <template.icon className="h-4 w-4 text-white dark:text-black stroke-[2]" />
                                         </div>
                                         <div className="flex-1 space-y-1">
                                             <p className="text-sm font-semibold leading-none">{template.title}</p>
@@ -335,7 +335,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                                 <td className="px-4 py-3 font-medium">
                                                     <div className="flex items-center gap-3">
                                                         <div className="p-2 bg-[#dd8b11] rounded-lg flex-shrink-0">
-                                                            <FileText className="h-4 w-4 text-white dark:text-white stroke-[2]" />
+                                                            <FileText className="h-4 w-4 text-white dark:text-black stroke-[2]" />
                                                         </div>
                                                         {doc.type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                                                     </div>
@@ -347,7 +347,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                                     {doc.creator ? (
                                                         <div className="flex items-center gap-2">
                                                             <div className="flex items-center justify-center w-6 h-6 rounded-full bg-[#dd8b11] flex-shrink-0">
-                                                                <span className="text-[10px] font-medium text-white dark:text-white">
+                                                                <span className="text-[10px] font-medium text-white dark:text-black">
                                                                     {doc.creator.name.charAt(0).toUpperCase()}
                                                                 </span>
                                                             </div>

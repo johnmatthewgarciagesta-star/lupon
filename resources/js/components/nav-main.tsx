@@ -26,7 +26,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                             <Link href={item.href}>
                                 {item.icon && (
                                     <div className="flex bg-[#dd8b11] rounded-md p-1 items-center justify-center shrink-0">
-                                        <item.icon className="h-4 w-4 text-white dark:text-white" />
+                                        <item.icon className="h-4 w-4 text-white dark:text-black" />
                                     </div>
                                 )}
                                 <span>{item.title}</span>
