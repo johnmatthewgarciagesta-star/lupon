@@ -140,7 +140,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                         </div>
                         {/* Add Document → dedicated page */}
                         <Link href="/documents/new">
-                            <Button id="add-document-btn" className="h-9 bg-[#1c2434] hover:bg-[#2c3a4f] text-white">
+                            <Button id="add-document-btn" className="h-9 bg-[#dd8b11] hover:bg-[#c47c0f] text-white">
                                 <Plus className="mr-2 h-4 w-4" />
                                 Add Document
                             </Button>
@@ -186,7 +186,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                     <CardContent>
                         {filteredTemplates.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
-                                <FileText className="h-10 w-10 mb-3 text-slate-300" />
+                                <FileText className="h-10 w-10 mb-3 text-[#dd8b11]" />
                                 <p className="font-medium text-sm">No templates match "{search}"</p>
                                 <button
                                     onClick={() => setSearch('')}
@@ -200,10 +200,10 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                 {filteredTemplates.map((template, idx) => (
                                     <div
                                         key={template.isCustom ? `custom-${template.id}` : template.type}
-                                        className="flex items-start space-x-4 p-4 rounded-lg border bg-card hover:border-[#1c2434]/30 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all group"
+                                        className="flex items-start space-x-4 p-4 rounded-lg border bg-card hover:border-[#dd8b11]/30 hover:bg-[#dd8b11]/5 dark:hover:bg-[#dd8b11]/10 transition-all group"
                                     >
-                                        <div className="p-2 bg-slate-100 rounded-lg dark:bg-slate-800 mt-1 flex-shrink-0 group-hover:bg-[#1c2434]/10 transition-colors">
-                                            <template.icon className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                                        <div className="p-2 bg-[#dd8b11] rounded-lg mt-1 flex-shrink-0 group-hover:bg-[#cb7d0f] transition-colors">
+                                            <template.icon className="h-4 w-4 text-white dark:text-white stroke-[2]" />
                                         </div>
                                         <div className="flex-1 space-y-1">
                                             <p className="text-sm font-semibold leading-none">{template.title}</p>
@@ -240,7 +240,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                                             router.post(url, data);
                                                         }
                                                     }}
-                                                    className="inline-flex items-center justify-center rounded-full h-7 w-7 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors ml-auto"
+                                                    className="inline-flex items-center justify-center rounded-full h-7 w-7 text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors ml-auto"
                                                     title="Delete Template"
                                                 >
                                                     <Trash2 className="h-3.5 w-3.5" />
@@ -290,7 +290,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                 </Button>
                             )}
                             <Link href="/documents/new">
-                                <Button className="h-9 bg-[#1c2434] hover:bg-[#2c3a4f] text-white">
+                                <Button className="h-9 bg-[#dd8b11] hover:bg-[#c47c0f] text-white">
                                     <Plus className="mr-2 h-4 w-4" />
                                     Add Document
                                 </Button>
@@ -314,7 +314,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                     {filteredDocs.length === 0 ? (
                                         <tr>
                                             <td colSpan={6} className="px-4 py-16 text-center text-muted-foreground">
-                                                <History className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+                                                <History className="h-8 w-8 mx-auto mb-2 text-[#dd8b11]" />
                                                 {docFilter !== 'all'
                                                     ? `No documents of type "${docFilter}".`
                                                     : (
@@ -334,8 +334,8 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                             <tr key={doc.id} className="border-b last:border-0 hover:bg-muted/40 transition-colors">
                                                 <td className="px-4 py-3 font-medium">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="p-2 bg-slate-100 rounded-lg dark:bg-slate-800 flex-shrink-0">
-                                                            <FileText className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                                                        <div className="p-2 bg-[#dd8b11] rounded-lg flex-shrink-0">
+                                                            <FileText className="h-4 w-4 text-white dark:text-white stroke-[2]" />
                                                         </div>
                                                         {doc.type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                                                     </div>
@@ -346,8 +346,8 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                                 <td className="px-4 py-3">
                                                     {doc.creator ? (
                                                         <div className="flex items-center gap-2">
-                                                            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex-shrink-0">
-                                                                <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400">
+                                                            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-[#dd8b11] flex-shrink-0">
+                                                                <span className="text-[10px] font-medium text-white dark:text-white">
                                                                     {doc.creator.name.charAt(0).toUpperCase()}
                                                                 </span>
                                                             </div>
@@ -369,7 +369,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                                             href={`/documents/view/${doc.id}`}
                                                             target="_blank"
                                                             title="View Document"
-                                                            className="inline-flex items-center justify-center rounded-md h-9 w-9 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-muted-foreground hover:text-foreground"
+                                                            className="inline-flex items-center justify-center rounded-md h-9 w-9 hover:bg-[#dd8b11] transition-colors text-muted-foreground hover:text-white"
                                                         >
                                                             <Eye className="h-4 w-4" />
                                                         </a>

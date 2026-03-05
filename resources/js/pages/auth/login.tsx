@@ -81,14 +81,16 @@ export default function Login({
                                 <Checkbox
                                     id="remember"
                                     name="remember"
+                                    value="true"
                                     tabIndex={3}
+                                    className="cursor-pointer"
                                 />
-                                <Label htmlFor="remember">Remember me</Label>
+                                <Label htmlFor="remember" className="cursor-pointer">Remember me</Label>
                             </div>
 
                             <Button
                                 type="submit"
-                                className="mt-4 w-full bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                                className="mt-4 w-full bg-[#dd8b11] text-white hover:bg-[#c47c0f]"
                                 tabIndex={4}
                                 disabled={processing}
                                 data-test="login-button"

@@ -14,88 +14,119 @@ use Spatie\Browsershot\Browsershot;
 
 class DocumentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // Load all documents as a plain array — frontend does instant client-side filtering
-        $documents = \App\Models\Document::with(['case', 'creator'])
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($doc) {
+        try {
+            // ... Logic for filtering (already has a query)
+            $query = \App\Models\Document::with(['case', 'creator']);
+
+            if ($request->filled('search')) {
+                $search = $request->input('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where('type', 'like', "%{$search}%")
+                      ->orWhereHas('case', function ($case) use ($search) {
+                          $case->where('case_number', 'like', "%{$search}%")
+                               ->orWhere('title', 'like', "%{$search}%");
+                      });
+                });
+            }
+
+            if ($request->filled('type') && $request->type !== 'all') {
+                $query->where('type', $request->type);
+            }
+
+            $documents = $query->latest()->get()->map(function ($doc) {
                 return [
                     'id' => $doc->id,
                     'type' => $doc->type,
                     'status' => $doc->status,
-                    'date' => ($doc->issued_at ?? $doc->created_at)?->toISOString(),
+                    'date' => $doc->created_at ? $doc->created_at->toIso8601String() : null,
                     'case_id' => $doc->case_id,
-                    'case_number' => $doc->case?->case_number,
+                    'case_number' => $doc->case ? $doc->case->case_number : null,
                     'creator' => $doc->creator ? ['name' => $doc->creator->name] : null,
-                ];
-            })
-            ->values()
-            ->toArray();
-
-        // Stats — count per type across the whole table
-        $allDocs = \App\Models\Document::selectRaw('type, COUNT(*) as total')
-            ->groupBy('type')
-            ->pluck('total', 'type')
-            ->toArray();
-
-        $stats = [
-            'total' => array_sum($allDocs),
-            'complaints' => ($allDocs['complaint'] ?? 0),
-            'summons' => ($allDocs['summons'] ?? 0),
-            'settlements' => ($allDocs['amicable_settlement'] ?? 0)
-                            + ($allDocs['arbitration_award'] ?? 0)
-                            + ($allDocs['katunayan_pagkakasundo'] ?? 0),
-            'certificates' => ($allDocs['cert_file_action'] ?? 0)
-                            + ($allDocs['cert_file_action_court'] ?? 0)
-                            + ($allDocs['cert_bar_action'] ?? 0)
-                            + ($allDocs['cert_bar_counterclaim'] ?? 0),
-            'notices' => ($allDocs['notice_of_hearing'] ?? 0)
-                            + ($allDocs['notice_to_appear'] ?? 0)
-                            + ($allDocs['hearing_conciliation'] ?? 0)
-                            + ($allDocs['hearing_mediation'] ?? 0)
-                            + ($allDocs['hearing_failure_appear'] ?? 0)
-                            + ($allDocs['hearing_failure_appear_counterclaim'] ?? 0)
-                            + ($allDocs['notice_execution'] ?? 0)
-                            + ($allDocs['notice_constitution'] ?? 0)
-                            + ($allDocs['notice_chosen_member'] ?? 0),
-            'others' => ($allDocs['minutes_of_hearing'] ?? 0)
-                            + ($allDocs['letter_of_demand'] ?? 0)
-                            + ($allDocs['subpoena'] ?? 0)
-                            + ($allDocs['repudiation'] ?? 0)
-                            + ($allDocs['affidavit_desistance'] ?? 0)
-                            + ($allDocs['affidavit_withdrawal'] ?? 0)
-                            + ($allDocs['motion_execution'] ?? 0)
-                            + ($allDocs['officers_return'] ?? 0)
-                            + ($allDocs['custom_form'] ?? 0),
-        ];
-
-        // Fetch custom-built forms to show in the "Templates" grid
-        $customTemplates = \App\Models\Document::where('type', 'custom_form')
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($doc) {
-                return [
-                    'id' => $doc->id,
-                    'title' => $doc->content['title'] ?? 'Custom Form',
-                    'description' => $doc->content['description'] ?? 'Custom uploaded document',
-                    'type' => 'custom_template',
-                    'icon_name' => 'FileSignature',
                 ];
             });
 
-        // Fetch hidden templates
-        $hiddenTemplates = \App\Models\FormLayout::where('is_hidden', true)
-            ->pluck('document_type')
-            ->toArray();
+            // Document Statistics...
+            $allDocs = \App\Models\Document::selectRaw('type, count(*) as count')
+                ->groupBy('type')
+                ->pluck('count', 'type')
+                ->toArray();
 
-        return \Inertia\Inertia::render('documents/index', [
-            'documents' => $documents,
-            'stats' => $stats,
-            'customTemplates' => $customTemplates,
-            'hiddenTemplates' => $hiddenTemplates,
-        ]);
+            $stats = [
+                'total' => array_sum($allDocs),
+                'summons' => ($allDocs['summons'] ?? 0)
+                                + ($allDocs['summons_respondent'] ?? 0)
+                                + ($allDocs['summons_witness'] ?? 0),
+                'amicable_settlement' => ($allDocs['amicable_settlement'] ?? 0)
+                                + ($allDocs['arbitration_agreement'] ?? 0)
+                                + ($allDocs['arbitration_award'] ?? 0),
+                'certificates' => ($allDocs['cert_file_action'] ?? 0)
+                                + ($allDocs['cert_file_action_court'] ?? 0)
+                                + ($allDocs['cert_bar_action'] ?? 0)
+                                + ($allDocs['cert_bar_counterclaim'] ?? 0),
+                'notices' => ($allDocs['notice_of_hearing'] ?? 0)
+                                + ($allDocs['notice_to_appear'] ?? 0)
+                                + ($allDocs['hearing_conciliation'] ?? 0)
+                                + ($allDocs['hearing_mediation'] ?? 0)
+                                + ($allDocs['hearing_failure_appear'] ?? 0)
+                                + ($allDocs['hearing_failure_appear_counterclaim'] ?? 0)
+                                + ($allDocs['notice_execution'] ?? 0)
+                                + ($allDocs['notice_constitution'] ?? 0)
+                                + ($allDocs['notice_chosen_member'] ?? 0),
+                'others' => ($allDocs['minutes_of_hearing'] ?? 0)
+                                + ($allDocs['letter_of_demand'] ?? 0)
+                                + ($allDocs['subpoena'] ?? 0)
+                                + ($allDocs['repudiation'] ?? 0)
+                                + ($allDocs['affidavit_desistance'] ?? 0)
+                                + ($allDocs['affidavit_withdrawal'] ?? 0)
+                                + ($allDocs['motion_execution'] ?? 0)
+                                + ($allDocs['officers_return'] ?? 0)
+                                + ($allDocs['custom_form'] ?? 0),
+            ];
+
+            // Fetch custom-built forms to show in the "Templates" grid
+            $customTemplates = \App\Models\Document::where('type', 'custom_form')
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($doc) {
+                    return [
+                        'id' => $doc->id,
+                        'title' => $doc->content['title'] ?? 'Custom Form',
+                        'description' => $doc->content['description'] ?? 'Custom uploaded document',
+                        'type' => 'custom_template',
+                        'icon_name' => 'FileSignature',
+                    ];
+                });
+
+            // Fetch hidden templates
+            $hiddenTemplates = \App\Models\FormLayout::where('is_hidden', true)
+                ->pluck('document_type')
+                ->toArray();
+
+            return \Inertia\Inertia::render('documents/index', [
+                'documents' => $documents,
+                'stats' => $stats,
+                'customTemplates' => $customTemplates,
+                'hiddenTemplates' => $hiddenTemplates,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Documents listing failed: ' . $e->getMessage());
+            
+            return \Inertia\Inertia::render('documents/index', [
+                'documents' => [],
+                'stats' => [
+                    'total' => 0,
+                    'summons' => 0,
+                    'amicable_settlement' => 0,
+                    'certificates' => 0,
+                    'notices' => 0,
+                    'others' => 0,
+                ],
+                'customTemplates' => [],
+                'hiddenTemplates' => [],
+            ]);
+        }
     }
 
     public function create($type)
@@ -448,9 +479,25 @@ class DocumentController extends Controller
     {
         $type = $request->input('document_type');
         $positions = $request->input('positions'); // array: name → {x, y, w, h}
+        $content = $request->input('content');
+        $caseId = $request->input('case_id') ?: null;
 
         if (! $type || ! is_array($positions)) {
             return response()->json(['error' => 'Invalid data'], 422);
+        }
+
+        // Save a record of the entered text as well so it appears as a Document
+        if (is_array($content)) {
+            \App\Models\Document::create([
+                'case_id' => $caseId,
+                'type' => $type,
+                'content' => $content,
+                'status' => 'Draft',
+                'issued_at' => now(),
+                'created_by' => auth()->id(),
+            ]);
+            
+            \App\Services\AuditService::log('CREATE', 'Documents', "Saved draft & layout for {$type}", $caseId);
         }
 
         if (str_starts_with($type, 'custom_')) {
@@ -561,163 +608,63 @@ class DocumentController extends Controller
         $formTitle = ucwords(str_replace('_', ' ', $type));
         $filename = $formTitle.'.docx';
 
-        // ── Create PhpWord document ──────────────────────────────────────────
-        $phpWord = new PhpWord;
-        $phpWord->setDefaultFontName('Calibri');
-        $phpWord->setDefaultFontSize(12);
+        // Check if we have a template for this type
+        $templatePath = public_path("forms/{$type}.docx");
+        $tmpPath = storage_path('app/public/word_'.uniqid().'.docx');
 
-        // A4 page, narrow margins (TWIPs: 1440 = 1 inch)
-        $section = $phpWord->addSection([
-            'paperSize' => 'A4',
-            'marginTop' => 1080,
-            'marginBottom' => 1080,
-            'marginLeft' => 1080,
-            'marginRight' => 1080,
-        ]);
-
-        // ── Document heading ─────────────────────────────────────────────────
-        $section->addText(
-            'Republic of the Philippines',
-            ['size' => 10, 'name' => 'Cambria'],
-            ['alignment' => 'center']
-        );
-        $section->addText(
-            'Lupong Tagapamayapa',
-            ['bold' => true, 'size' => 11, 'name' => 'Cambria'],
-            ['alignment' => 'center']
-        );
-        $section->addTextBreak(1);
-        $section->addText(
-            strtoupper($formTitle),
-            ['bold' => true, 'size' => 14, 'name' => 'Cambria', 'color' => '000000'],
-            ['alignment' => 'center', 'spaceAfter' => 200]
-        );
-        $section->addTextBreak(1);
-
-        // ── Field rows ───────────────────────────────────────────────────────
-        $footerNames = ['made_this_1', 'made_this_2', 'made_this_3', 'made_this_day', 'made_this_month', 'year', 'notary'];
-        $mainFields = [];
-        $footerFields = [];
-
-        foreach ($fields as $field) {
-            $name = $field['name'] ?? '';
-            if (! $name) {
-                continue;
+        if (file_exists($templatePath)) {
+            // Use the uploaded Word document template from WORD NG LUPON
+            $templateProcessor = new \PhpOffice\PhpWord\TemplateProcessor($templatePath);
+            
+            // Try to replace values formatted as placeholders (e.g. ${complainant})
+            foreach ($fieldValues as $name => $value) {
+                if (is_scalar($value)) {
+                    $templateProcessor->setValue($name, htmlspecialchars((string) $value));
+                }
             }
-            in_array($name, $footerNames) ? ($footerFields[] = $field) : ($mainFields[] = $field);
-        }
-
-        $tableStyle = [
-            'borderSize' => 0,
-            'cellMargin' => 100,
-            'width' => 5000,
-            'unit' => TblWidth::PERCENT,
-        ];
-
-        $table = $section->addTable($tableStyle);
-
-        foreach ($mainFields as $field) {
-            $name = $field['name'] ?? '';
-            $isTextarea = isset($field['type']) && $field['type'] === 'textarea';
-            $isCheckbox = isset($field['type']) && $field['type'] === 'checkbox';
-            $value = $fieldValues[$name] ?? '';
-            $label = $labelMap[$name] ?? ucwords(str_replace('_', ' ', $name));
-
-            if (trim((string) $value) === '') {
-                continue;
-            }
-
-            // Label row
-            $table->addRow();
-            $labelCell = $table->addCell(9000, ['borderSize' => 0]);
-            $labelCell->addText(
-                $label.':',
-                ['bold' => true, 'size' => 10, 'name' => 'Times New Roman', 'color' => '333333'],
-                ['spaceAfter' => 0]
-            );
-
-            // Value row with bottom border
-            $table->addRow();
-            $valueCell = $table->addCell(9000, [
-                'borderSize' => 0,
-                'borderBottomSize' => 8,
-                'borderBottomColor' => '000000',
-                'borderBottomSpace' => 0,
-            ]);
-
-            if ($isCheckbox) {
-                $checked = ($value === 'X' || $value == 1);
-                $valueCell->addText(
-                    ($checked ? '☑' : '☐').'  '.$label,
-                    ['size' => 12, 'name' => 'Times New Roman', 'color' => '000000'],
-                    ['spaceAfter' => 0]
-                );
-            } else {
-                $lines = explode("\n", str_replace("\r\n", "\n", (string) $value));
-                foreach ($lines as $i => $line) {
-                    $valueCell->addText(
-                        htmlspecialchars(trim($line)),
-                        ['size' => 12, 'name' => 'Calibri', 'color' => '000000'],
-                        ['spaceAfter' => 0]
-                    );
+            
+            // Also try replacing mapped names like Case Number if formatted that way
+            foreach ($labelMap as $name => $label) {
+                if (isset($fieldValues[$name]) && is_scalar($fieldValues[$name])) {
+                    $templateProcessor->setValue($label, htmlspecialchars((string) $fieldValues[$name]));
                 }
             }
 
-            // Spacer row
-            $table->addRow();
-            $table->addCell(9000, ['borderSize' => 0])->addText('');
-        }
+            $templateProcessor->saveAs($tmpPath);
+        } else {
+            // Fallback: If no `.docx` template exists, generate a simple layout
+            $phpWord = new PhpWord;
+            $phpWord->setDefaultFontName('Calibri');
+            $phpWord->setDefaultFontSize(12);
 
-        // ── Certification / Execution details ─────────────────────────────────
-        if (! empty($footerFields)) {
-            $section->addTextBreak(1);
-            $section->addText(
-                'Done this ___ day of _______________, 20___',
-                ['size' => 11, 'name' => 'Times New Roman', 'italic' => true],
-                ['alignment' => 'center']
-            );
+            $section = $phpWord->addSection([
+                'paperSize' => 'A4', 'marginTop' => 1080, 'marginBottom' => 1080,
+                'marginLeft' => 1080, 'marginRight' => 1080,
+            ]);
 
-            foreach ($footerFields as $field) {
+            $section->addText(strtoupper($formTitle), ['bold' => true, 'size' => 14], ['alignment' => 'center', 'spaceAfter' => 200]);
+            
+            $table = $section->addTable(['borderSize' => 0, 'cellMargin' => 100, 'width' => 5000, 'unit' => TblWidth::PERCENT]);
+
+            foreach ($fields as $field) {
                 $name = $field['name'] ?? '';
                 $value = $fieldValues[$name] ?? '';
                 $label = $labelMap[$name] ?? ucwords(str_replace('_', ' ', $name));
-                if (trim((string) $value) === '') {
-                    continue;
-                }
-                $section->addText(
-                    $label.': '.$value,
-                    ['size' => 11, 'name' => 'Times New Roman'],
-                    ['alignment' => 'center']
-                );
+
+                if (trim((string) $value) === '') continue;
+
+                $table->addRow();
+                $table->addCell(9000, ['borderSize' => 0])->addText($label.':', ['bold' => true, 'size' => 10]);
+                $table->addRow();
+                $valueCell = $table->addCell(9000, ['borderBottomSize' => 8]);
+                $valueCell->addText(htmlspecialchars((string) $value), ['size' => 12]);
+                $table->addRow();
+                $table->addCell(9000, ['borderSize' => 0])->addText('');
             }
+
+            $writer = IOFactory::createWriter($phpWord, 'Word2007');
+            $writer->save($tmpPath);
         }
-
-        // ── Signature block ──────────────────────────────────────────────────
-        $section->addTextBreak(2);
-        $sigTable = $section->addTable(['borderSize' => 0, 'cellMargin' => 80]);
-        $sigTable->addRow();
-
-        $sigLeft = $sigTable->addCell(4320, ['borderSize' => 0]);
-        $sigLeft->addText('____________________________', ['size' => 11], ['alignment' => 'center']);
-        $sigLeft->addText('Complainant Signature', ['size' => 9, 'italic' => true], ['alignment' => 'center']);
-
-        $sigTable->addCell(720, ['borderSize' => 0])->addText('');
-
-        $sigRight = $sigTable->addCell(4320, ['borderSize' => 0]);
-        $sigRight->addText('____________________________', ['size' => 11], ['alignment' => 'center']);
-        $sigRight->addText('Respondent Signature', ['size' => 9, 'italic' => true], ['alignment' => 'center']);
-
-        $section->addTextBreak(1);
-        $section->addText(
-            'ATTEST: Punong Barangay / Lupon Chairman',
-            ['size' => 10, 'name' => 'Times New Roman', 'italic' => true, 'color' => '555555'],
-            ['alignment' => 'center']
-        );
-
-        // ── Save to temp and stream ──────────────────────────────────────────
-        $tmpPath = storage_path('app/public/word_'.uniqid().'.docx');
-        $writer = IOFactory::createWriter($phpWord, 'Word2007');
-        $writer->save($tmpPath);
 
         // Record the document in the DB
         try {

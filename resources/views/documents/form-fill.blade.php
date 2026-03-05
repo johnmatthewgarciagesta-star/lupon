@@ -143,13 +143,13 @@
             transform: translateY(-1px);
         }
 
-        /* ===== CALIBRATION OVERLAY ===== */
+        /* ===== CALIBRATION OVERLAY (GOOGLE DOCS STYLE) ===== */
         .calibration-overlay {
             display: none;
             position: fixed;
             inset: 0;
             z-index: 5000;
-            background: #1a1a2e;
+            background: #F9FBFD;
             flex-direction: column;
         }
 
@@ -158,25 +158,26 @@
         }
 
         .calibration-toolbar {
-            background: #16213e;
-            border-bottom: 2px solid #fbbc04;
+            background: #F9FBFD;
             padding: 12px 24px;
             display: flex;
             align-items: center;
-            gap: 14px;
             flex-shrink: 0;
         }
-
+        
         .calibration-toolbar-title {
-            font-size: 15px;
-            font-weight: 700;
-            color: #fbbc04;
-            flex: 1;
+            font-size: 18px;
+            font-weight: 400;
+            color: #1f1f1f;
+            margin-bottom: 2px;
         }
 
         .calibration-toolbar-hint {
-            font-size: 12px;
-            color: rgba(255,255,255,0.55);
+            font-size: 13px;
+            color: #444746;
+            display: flex;
+            gap: 12px;
+            cursor: pointer;
         }
 
         .calibration-body {
@@ -209,47 +210,96 @@
 
         .calib-field {
             position: absolute;
-            font-family: Calibri, 'Cambria', 'Segoe UI', Arial, sans-serif;
-            font-size: 9pt;
+            font-family: Arial, sans-serif;
+            font-size: 11pt;
             font-weight: normal;
             color: #000;
-            cursor: grab;
-            background: rgba(26,115,232,0.08);
-            border: 1.5px dashed #1a73e8;
+            background: transparent;
+            border: 1.5px dashed transparent;
             border-radius: 3px;
-            padding: 1px 3px;
+            padding: 2px 4px;
             white-space: pre-wrap;
-            user-select: none;
             box-sizing: border-box;
-            min-width: 24px;
-            min-height: 14px;
+            min-width: 40px;
+            min-height: 20px;
             line-height: 1.2;
+            transition: border-color 0.2s;
+            outline: none;
+            /* remove native resize */
         }
 
-        .calib-field:hover {
-            background: rgba(26,115,232,0.15);
-            border-color: #1557b0;
+        .calib-field:hover, .calib-field:focus {
+            background: rgba(26,115,232,0.04);
+            border-color: #1a73e8;
         }
 
         .calib-field.dragging {
-            cursor: grabbing;
-            background: rgba(251,188,4,0.18);
-            border-color: #fbbc04;
+            border-color: #0B57D0;
+            background: rgba(11,87,208,0.1);
             z-index: 100;
+        }
+
+        /* Top-right Drag Handle */
+        .calib-drag-handle {
+            position: absolute;
+            top: -12px;
+            right: -12px;
+            width: 24px;
+            height: 24px;
+            background: #0B57D0;
+            color: white;
+            border-radius: 50%;
+            cursor: grab;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            pointer-events: auto;
+            user-select: none;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        
+        .calib-field:hover .calib-drag-handle, .calib-field:focus .calib-drag-handle {
+            display: flex;
+        }
+
+        /* Bottom-right Resize Handle */
+        .calib-resize-handle {
+            position: absolute;
+            bottom: -5px;
+            right: -5px;
+            width: 12px;
+            height: 12px;
+            background: #fff;
+            border: 2px solid #0B57D0;
+            cursor: nwse-resize;
+            display: none;
+            pointer-events: auto;
+            user-select: none;
+            z-index: 10;
+        }
+
+        .calib-field:hover .calib-resize-handle, .calib-field:focus .calib-resize-handle {
+            display: block;
         }
 
         .calib-label-tag {
             position: absolute;
             top: -18px;
             left: 0;
-            font-size: 9px;
+            font-size: 10px;
             font-family: 'Inter', sans-serif;
-            background: #1a73e8;
+            background: #0B57D0;
             color: #fff;
-            padding: 1px 5px;
+            padding: 2px 6px;
             border-radius: 3px 3px 0 0;
             white-space: nowrap;
             pointer-events: none;
+            display: none;
+        }
+
+        .calib-field:hover .calib-label-tag, .calib-field:focus .calib-label-tag {
+            display: block;
         }
 
         .calib-pos-readout {
@@ -293,35 +343,35 @@
         }
 
         .btn-calib-save {
-            background: #fbbc04;
-            color: #1a1a1a;
+            background: #C2E7FF;
+            color: #001D35;
             border: none;
-            padding: 9px 22px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 700;
+            padding: 9px 24px;
+            border-radius: 24px;
+            font-size: 14px;
+            font-weight: 600;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
             transition: all 0.2s;
         }
 
-        .btn-calib-save:hover { background: #f9ab00; }
+        .btn-calib-save:hover { background: #A2D9FF; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 
         .btn-calib-cancel {
-            background: rgba(255,255,255,0.1);
-            color: #fff;
-            border: 1.5px solid rgba(255,255,255,0.3);
-            padding: 8px 20px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 600;
+            background: transparent;
+            color: #444746;
+            border: none;
+            padding: 9px 24px;
+            border-radius: 24px;
+            font-size: 14px;
+            font-weight: 500;
             cursor: pointer;
             transition: all 0.2s;
         }
 
-        .btn-calib-cancel:hover { background: rgba(255,255,255,0.18); }
+        .btn-calib-cancel:hover { background: #E1E5EA; }
 
         /* ===== PROGRESS BAR ===== */
         .progress-bar-wrap {
@@ -677,7 +727,7 @@
 
         .preview-field-text {
             position: absolute;
-            font-family: Calibri, 'Cambria', 'Segoe UI', Arial, sans-serif;
+            font-family: Arial, sans-serif;
             font-size: 9pt; /* Slightly larger for screen preview */
             font-weight: 500;
             font-style: normal;
@@ -933,10 +983,10 @@
                 position: relative !important;
             }
 
-            /* Text overlay printed black, Calibri, no decoration */
+            /* Text overlay printed black, Arial, no decoration */
             .preview-field-text {
                 color: #000000 !important;
-                font-family: Calibri, 'Cambria', 'Segoe UI', Arial, sans-serif !important;
+                font-family: Arial, sans-serif !important;
                 font-weight: normal !important;
                 font-style: normal !important;
                 text-decoration: none !important;
@@ -980,12 +1030,12 @@
             <div class="header-title">{{ ucwords(str_replace('_', ' ', $type)) }}</div>
         </div>
         <div class="header-actions">
-            <button class="btn-header btn-header-amber" onclick="openCalibration()" title="Drag field text to correct positions, then save">
+            <button class="btn-header btn-header-amber" onclick="openCalibration()" title="Open Word Editor">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                    <path d="M11 8v6M8 11h6"/>
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                 </svg>
-                Calibrate Positions
+                Word Editor
             </button>
             <button class="btn-header btn-header-outline" onclick="window.close()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -1475,19 +1525,47 @@
 
     {{-- Toolbar --}}
     <div class="calibration-toolbar">
-        <div>
-            <div class="calibration-toolbar-title">
-                🎯 Calibrate Field Positions — {{ ucwords(str_replace('_', ' ', $type)) }}
+        <div style="display:flex; align-items:center; gap:16px;">
+            <div style="width: 44px; height: 44px; background: #0B57D0; border-radius: 4px; display:flex; align-items:center; justify-content:center;">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="#fff"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-2 16H8v-2h4v2zm4-4H8v-2h8v2zm0-4H8V8h8v2z"/></svg>
             </div>
-            <div class="calibration-toolbar-hint">Drag each blue box to exactly where it should appear on the form. Then click Save.</div>
+            <div>
+                <div class="calibration-toolbar-title">
+                    {{ ucwords(str_replace('_', ' ', $type)) }} - Word Editor
+                </div>
+            </div>
         </div>
-        <button class="btn-calib-save" onclick="saveCalibration()" id="calibSaveBtn">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
-            Save Positions
-        </button>
+        <div style="flex:1;"></div>
         <button class="btn-calib-cancel" onclick="closeCalibration()">
-            Cancel
+            Discard Changes
         </button>
+        <button class="btn-calib-save" onclick="saveCalibration()" id="calibSaveBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
+            Save Layout & Text
+        </button>
+    </div>
+    
+    {{-- Formatting toolbar --}}
+    <div style="height: 40px; background: #EDF2FA; border-bottom: 1px solid #c7c7c7; border-radius: 0 0 24px 24px; display:flex; align-items:center; padding: 0 24px; gap:16px; margin: 0 16px 16px 16px;">
+         <button onclick="undoCalibration()" title="Undo action & position" style="background:transparent; border:none; cursor:pointer; color:#444746; display:flex; align-items:center; justify-content:center; padding:4px; border-radius:4px;" onmouseover="this.style.background='#E1E5EA'" onmouseout="this.style.background='transparent'">
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+         </button>
+         <span style="width:1px; height:20px; background:#c7c7c7;"></span>
+         <span style="font-size:13px; color:#444746; font-weight:bold; display:flex; align-items:center; gap:4px;">100% <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></span>
+         <span style="width:1px; height:20px; background:#c7c7c7;"></span>
+         <button onmousedown="event.preventDefault();" onclick="document.execCommand('formatBlock', false, 'p')" title="Normal text" style="background:transparent;border:none;cursor:pointer;font-size:13px;color:#444746;display:flex;align-items:center;gap:4px;">Normal text</button>
+         <span style="width:1px; height:20px; background:#c7c7c7;"></span>
+         <span style="font-size:13px; color:#444746; display:flex; align-items:center; gap:4px; cursor:default;">Arial</span>
+         <span style="width:1px; height:20px; background:#c7c7c7;"></span>
+         <span style="font-size:13px; color:#444746; display:flex; align-items:center; gap:10px;">
+             <button onmousedown="event.preventDefault();" onclick="changeFontSize(-1)" style="background:transparent;border:none;cursor:pointer;font-size:16px;line-height:1;">-</button>
+             <span id="toolbarFontSize" style="border:1px solid #c7c7c7; padding:2px 6px; border-radius:4px;">11</span>
+             <button onmousedown="event.preventDefault();" onclick="changeFontSize(1)" style="background:transparent;border:none;cursor:pointer;font-size:16px;line-height:1;">+</button>
+         </span>
+         <span style="width:1px; height:20px; background:#c7c7c7;"></span>
+         <button onmousedown="event.preventDefault();" onclick="document.execCommand('bold', false, null)" style="background:transparent;border:none;cursor:pointer;color:#1f1f1f;font-weight:bold;font-size:14px;" title="Bold">B</button>
+         <button onmousedown="event.preventDefault();" onclick="document.execCommand('italic', false, null)" style="background:transparent;border:none;cursor:pointer;color:#1f1f1f;font-style:italic;font-family:serif;font-size:15px;" title="Italic">I</button>
+         <button onmousedown="event.preventDefault();" onclick="document.execCommand('underline', false, null)" style="background:transparent;border:none;cursor:pointer;color:#1f1f1f;text-decoration:underline;font-size:14px;" title="Underline">U</button>
     </div>
 
     {{-- Draggable A4 paper --}}
@@ -1518,6 +1596,112 @@
 
 // Current calibrated positions (name → {x%, y%})
 let calibPositions = {};
+let calibHistory = []; // Tracks undo state
+let currentFontSize = 11; // Editor Base default font size
+
+function changeFontSize(delta) {
+    currentFontSize += delta;
+    if (currentFontSize < 8) currentFontSize = 8;
+    if (currentFontSize > 72) currentFontSize = 72;
+    document.getElementById('toolbarFontSize').innerText = currentFontSize;
+    
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0 && !selection.isCollapsed) {
+        document.execCommand("fontSize", false, "7");
+        const fontElements = document.getElementsByTagName("font");
+        for (let i = 0; i < fontElements.length; i++) {
+            if (fontElements[i].size == "7") {
+                fontElements[i].removeAttribute("size");
+                fontElements[i].style.fontSize = currentFontSize + "pt";
+            }
+        }
+    } else {
+        const active = document.activeElement;
+        if (active && active.classList.contains('calib-field-text')) {
+            active.style.fontSize = currentFontSize + "pt";
+        }
+    }
+}
+
+// Undo logic
+function pushCalibState() {
+    let state = [];
+    const paperW = document.getElementById('calibPaper').offsetWidth;
+    const paperH = document.getElementById('calibPaper').offsetHeight;
+
+    document.querySelectorAll('.calib-field').forEach(el => {
+        let name = el.dataset.name;
+        // Keep precise size state 
+        if (paperW && paperH) {
+             calibPositions[name].w = ((el.offsetWidth / paperW) * 100).toFixed(2) + '%';
+             calibPositions[name].h = ((el.offsetHeight / paperH) * 100).toFixed(2) + '%';
+        }
+
+        const textEl = el.querySelector('.calib-field-text');
+        state.push({
+            name: name,
+            x: calibPositions[name].x,
+            y: calibPositions[name].y,
+            w: calibPositions[name].w,
+            h: calibPositions[name].h,
+            left: el.style.left,
+            top: el.style.top,
+            width: el.style.width,
+            height: el.style.height,
+            html: textEl ? textEl.innerHTML : '',
+            value: document.getElementById('field-' + name)?.value || ''
+        });
+    });
+    
+    let stateString = JSON.stringify(state);
+    if (calibHistory.length === 0 || JSON.stringify(calibHistory[calibHistory.length - 1]) !== stateString) {
+        calibHistory.push(state);
+    }
+}
+
+function undoCalibration() {
+    if (calibHistory.length <= 1) return;
+    calibHistory.pop(); // discard current state
+    const prevState = calibHistory[calibHistory.length - 1]; // get previous
+    
+    prevState.forEach(s => {
+        calibPositions[s.name].x = s.x;
+        calibPositions[s.name].y = s.y;
+        calibPositions[s.name].w = s.w;
+        calibPositions[s.name].h = s.h;
+        
+        let el = document.querySelector('.calib-field[data-name="' + s.name + '"]');
+        if (el) {
+            el.style.left = s.x + '%';
+            el.style.top = s.y + '%';
+            el.style.width = s.w;
+            if (s.h && s.h !== 'auto') {
+                el.style.height = s.h;
+            } else {
+                el.style.height = 'auto';
+            }
+            
+            const textEl = el.querySelector('.calib-field-text');
+            if (textEl) {
+                textEl.innerHTML = s.html;
+            }
+        }
+        
+        // Sync to underlying form
+        let input = document.getElementById('field-' + s.name);
+        if (input) {
+            input.value = s.value;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        
+        // Live preview sync
+        const previewEl = document.getElementById('preview-' + s.name);
+        if (previewEl) {
+            previewEl.style.left = s.x + '%';
+            previewEl.style.top  = s.y + '%';
+        }
+    });
+}
 
 // Build initial positions from PHP layout
 const baseLayouts = @json($fields);
@@ -1534,6 +1718,7 @@ function openCalibration() {
 
     // Clear old boxes
     paper.querySelectorAll('.calib-field').forEach(el => el.remove());
+    calibHistory = []; // Reset undo stack
 
     // First show the overlay so the paper has a real rendered size
     overlay.classList.add('active');
@@ -1563,17 +1748,59 @@ function openCalibration() {
             box.style.left   = xPx + 'px';
             box.style.top    = yPx + 'px';
             box.style.width  = wPx + 'px';
-            box.textContent  = displayText;
+            
+            
+            // Inner text container to protect resizers/drag-handles from getting overridden!
+            const textEl = document.createElement('div');
+            textEl.className = 'calib-field-text';
+            textEl.contentEditable = 'true';
+            textEl.style.width = '100%';
+            textEl.style.height = '100%';
+            textEl.style.outline = 'none';
+            textEl.innerHTML = displayText;
+
+            // Live sync back to inputs
+            textEl.addEventListener('input', function() {
+                const targetInput = document.getElementById('field-' + name);
+                if (targetInput) {
+                    targetInput.value = this.textContent;
+                    // Trigger input event to update forms preview as well
+                    targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            });
+            
+            textEl.addEventListener('blur', pushCalibState);
+            
+            box.appendChild(textEl);
 
             // Label tag above box showing field name
             const tag = document.createElement('span');
             tag.className   = 'calib-label-tag';
             tag.textContent = f.label || name;
+            tag.contentEditable = 'false';
             box.appendChild(tag);
+            
+            // Drag handle to move the box
+            const handle = document.createElement('div');
+            handle.className = 'calib-drag-handle';
+            handle.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M19 9l3 3-3 3M9 19l3 3 3-3M2 12h20M12 2v20"/></svg>';
+            handle.contentEditable = 'false';
+            box.appendChild(handle);
 
-            makeDraggable(box);
+            // Setup Custom Resizer
+            const resizer = document.createElement('div');
+            resizer.className = 'calib-resize-handle';
+            resizer.contentEditable = 'false';
+            box.appendChild(resizer);
+
+            makeDraggable(box, handle);
+            makeResizable(box, resizer);
+            
             paper.appendChild(box);
         });
+        
+        // Initial state capture
+        pushCalibState();
     });
 }
 
@@ -1584,11 +1811,11 @@ function closeCalibration() {
     document.body.style.overflow = '';
 }
 
-function makeDraggable(el) {
+function makeDraggable(el, handle) {
     const paper   = document.getElementById('calibPaper');
     const readout = document.getElementById('calibReadout');
 
-    el.addEventListener('mousedown', function(e) {
+    handle.addEventListener('mousedown', function(e) {
         // Only respond to left-button clicks
         if (e.button !== 0) return;
         e.preventDefault();
@@ -1618,12 +1845,12 @@ function makeDraggable(el) {
             newL = Math.max(0, Math.min(paperW  - el.offsetWidth,  newL));
             newT = Math.max(0, Math.min(paperH  - el.offsetHeight, newT));
 
-            el.style.left = newL + 'px';
-            el.style.top  = newT + 'px';
-
             // Convert px → % using the ACTUAL rendered paper size
             const xPct = ((newL / paperW) * 100).toFixed(2);
             const yPct = ((newT / paperH) * 100).toFixed(2);
+
+            el.style.left = xPct + '%';
+            el.style.top  = yPct + '%';
 
             // Update readout
             readout.textContent = '📍 ' + el.dataset.name
@@ -1647,10 +1874,60 @@ function makeDraggable(el) {
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('mouseup',   onUp);
             setTimeout(function() { readout.style.display = 'none'; }, 2000);
+            pushCalibState(); // Save state after drag
         }
 
         document.addEventListener('mousemove', onMove);
         document.addEventListener('mouseup',   onUp);
+    });
+}
+
+function makeResizable(el, resizer) {
+    const paper = document.getElementById('calibPaper');
+
+    resizer.addEventListener('mousedown', function(e) {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const startWidth = parseInt(document.defaultView.getComputedStyle(el).width, 10);
+        const startHeight = parseInt(document.defaultView.getComputedStyle(el).height, 10);
+
+        function onResizeMove(e) {
+            const paperRect = paper.getBoundingClientRect();
+            // Constraint inside paper bounds
+            let newWidth = startWidth + (e.clientX - startX);
+            let newHeight = startHeight + (e.clientY - startY);
+            
+            // Min sizes
+            if (newWidth < 40) newWidth = 40;
+            if (newHeight < 20) newHeight = 20;
+
+            // Maximum allowed
+            const maxW = paperRect.width - el.offsetLeft;
+            const maxH = paperRect.height - el.offsetTop;
+            
+            if (newWidth > maxW) newWidth = maxW;
+            if (newHeight > maxH) newHeight = maxH;
+
+            // Convert to % for responsiveness
+            const wPct = ((newWidth / paperRect.width) * 100).toFixed(2);
+            const hPct = ((newHeight / paperRect.height) * 100).toFixed(2);
+
+            el.style.width = wPct + '%';
+            el.style.height = hPct + '%';
+        }
+
+        function onResizeUp() {
+            document.removeEventListener('mousemove', onResizeMove);
+            document.removeEventListener('mouseup', onResizeUp);
+            pushCalibState();
+        }
+
+        document.addEventListener('mousemove', onResizeMove);
+        document.addEventListener('mouseup', onResizeUp);
     });
 }
 
@@ -1659,6 +1936,17 @@ function saveCalibration() {
     const btn = document.getElementById('calibSaveBtn');
     btn.textContent = 'Saving...';
     btn.disabled    = true;
+    
+    // Ensure all sizes are properly captured in % before saving
+    const paperW = document.getElementById('calibPaper').offsetWidth;
+    const paperH = document.getElementById('calibPaper').offsetHeight;
+    document.querySelectorAll('.calib-field').forEach(el => {
+        const name = el.dataset.name;
+        if (paperW && paperH) {
+             calibPositions[name].w = ((el.offsetWidth / paperW) * 100).toFixed(2) + '%';
+             calibPositions[name].h = ((el.offsetHeight / paperH) * 100).toFixed(2) + '%';
+        }
+    });
 
     // Build positions payload: name → { x: "12.5%", y: "22.1%", w, h }
     const positions = {};
@@ -1673,6 +1961,13 @@ function saveCalibration() {
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
+    // Build content payload to save document data to database
+    const contentToSave = {};
+    document.querySelectorAll('[id^="field-"]').forEach(el => {
+        const n = el.id.replace('field-', '');
+        contentToSave[n] = el.value || el.textContent || '';
+    });
+
     fetch('{{ route("documents.save-layout") }}', {
         method: 'POST',
         headers: {
@@ -1682,7 +1977,9 @@ function saveCalibration() {
         },
         body: JSON.stringify({
             document_type: '{{ $type }}',
+            case_id: '{{ $case->id ?? "" }}',
             positions: positions,
+            content: contentToSave,
         }),
     })
     .then(r => r.json())

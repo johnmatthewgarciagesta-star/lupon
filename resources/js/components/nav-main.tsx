@@ -24,7 +24,11 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                             tooltip={{ children: item.title }}
                         >
                             <Link href={item.href}>
-                                {item.icon && <item.icon />}
+                                {item.icon && (
+                                    <div className="flex bg-[#dd8b11] rounded-md p-1 items-center justify-center shrink-0">
+                                        <item.icon className="h-4 w-4 text-white dark:text-white" />
+                                    </div>
+                                )}
                                 <span>{item.title}</span>
                             </Link>
                         </SidebarMenuButton>

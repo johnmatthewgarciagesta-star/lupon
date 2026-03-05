@@ -503,7 +503,7 @@ export default function PersonnelPage({ users, filters, stats }: Props) {
                                                 <div className="absolute left-[15px] top-8 bottom-[-32px] w-[1px] bg-slate-200 dark:bg-slate-800"></div>
                                             )}
                                             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800">
-                                                <activity.icon className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                                                <activity.icon className="h-4 w-4 text-white dark:text-white stroke-[2.5]" />
                                             </div>
                                         </div>
                                         <div className="flex-1 space-y-1">

@@ -98,13 +98,13 @@ export default function Dashboard({ stats, recentCases, statusDistribution, stat
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
 
-            <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 text-slate-900 dark:text-slate-100">
+            <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 text-secondary/80 dark:text-secondary">
 
                 {/* Header */}
-                <div className="flex items-center justify-between space-y-2">
+                <div className="flex items-center justify-between space-y-2 text-foreground">
                     <div>
                         <h2 className="text-3xl font-bold tracking-tight">Dashboard Overview</h2>
-                        <p className="text-muted-foreground">
+                        <p className="text-muted-foreground mt-1">
                             Lupon Tagapamayapa Case Management System
                         </p>
                     </div>
@@ -112,64 +112,64 @@ export default function Dashboard({ stats, recentCases, statusDistribution, stat
 
                 {/* Stats Cards */}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <Card className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
+                    <Card className="cursor-pointer hover:bg-secondary/50 dark:hover:bg-secondary/80 transition-colors"
                         onClick={() => router.visit('/cases')}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <div className="p-2 bg-slate-100 rounded-lg dark:bg-slate-800">
-                                <Folder className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                            <div className="p-2 bg-transparent rounded-lg">
+                                <Folder className="h-4 w-4 text-black dark:text-white stroke-[2.5]" />
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-sm font-medium text-muted-foreground">Total Cases</div>
-                            <div className="text-2xl font-bold text-[#1c2434] dark:text-white">{stats.total}</div>
-                            <p className="text-xs text-muted-foreground">All time records</p>
+                            <div className="text-sm font-medium opacity-70">Total Cases</div>
+                            <div className="text-2xl font-bold text-[#dd8b11] dark:text-white">{stats.total}</div>
+                            <p className="text-xs opacity-50">All time records</p>
                         </CardContent>
                     </Card>
 
-                    <Card className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
+                    <Card className="cursor-pointer hover:bg-secondary/50 dark:hover:bg-secondary/80 transition-colors"
                         onClick={() => router.visit('/cases?status=Pending')}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <div className="p-2 bg-slate-100 rounded-lg dark:bg-slate-800">
-                                <Clock className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                            <div className="p-2 bg-transparent rounded-lg">
+                                <Clock className="h-4 w-4 text-black dark:text-white stroke-[2.5]" />
                             </div>
-                            <Badge variant="secondary" className="bg-slate-100 text-slate-700 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300">
+                            <Badge variant="secondary" className="bg-[#dd8b11]/10 text-[#dd8b11] hover:bg-[#dd8b11]/20 dark:bg-[#dd8b11] dark:bg-opacity-20">
                                 Active
                             </Badge>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-sm font-medium text-muted-foreground">Pending Cases</div>
-                            <div className="text-2xl font-bold text-[#1c2434] dark:text-white">{stats.pending}</div>
-                            <p className="text-xs text-muted-foreground">Awaiting resolution</p>
+                            <div className="text-sm font-medium opacity-70">Pending Cases</div>
+                            <div className="text-2xl font-bold text-[#dd8b11] dark:text-white">{stats.pending}</div>
+                            <p className="text-xs opacity-50">Awaiting resolution</p>
                         </CardContent>
                     </Card>
 
-                    <Card className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
+                    <Card className="cursor-pointer hover:bg-secondary/50 dark:hover:bg-secondary/80 transition-colors"
                         onClick={() => router.visit('/cases?status=Resolved')}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <div className="p-2 bg-slate-100 rounded-lg dark:bg-slate-800">
-                                <CheckCircle className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                            <div className="p-2 bg-transparent rounded-lg">
+                                <CheckCircle className="h-4 w-4 text-black dark:text-white stroke-[2.5]" />
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-sm font-medium text-muted-foreground">Resolved Cases</div>
-                            <div className="text-2xl font-bold text-[#1c2434] dark:text-white">{stats.resolved}</div>
-                            <p className="text-xs text-muted-foreground">Successfully settled</p>
+                            <div className="text-sm font-medium opacity-70">Resolved Cases</div>
+                            <div className="text-2xl font-bold text-[#dd8b11] dark:text-white">{stats.resolved}</div>
+                            <p className="text-xs opacity-50">Successfully settled</p>
                         </CardContent>
                     </Card>
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <div className="p-2 bg-slate-100 rounded-lg dark:bg-slate-800">
-                                <TrendingUp className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                            <div className="p-2 bg-transparent rounded-lg">
+                                <TrendingUp className="h-4 w-4 text-black dark:text-white stroke-[2.5]" />
                             </div>
-                            <Badge variant="secondary" className="bg-slate-100 text-slate-700 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300">
+                            <Badge variant="secondary" className="bg-[#dd8b11]/10 text-[#dd8b11] hover:bg-[#dd8b11]/20 dark:bg-[#dd8b11] dark:bg-opacity-20">
                                 This Month
                             </Badge>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-sm font-medium text-muted-foreground">New Cases</div>
-                            <div className="text-2xl font-bold text-[#1c2434] dark:text-white">{stats.new_this_month}</div>
-                            <p className="text-xs text-muted-foreground">Filed in {new Date().toLocaleString('default', { month: 'long' })}</p>
+                            <div className="text-sm font-medium opacity-70">New Cases</div>
+                            <div className="text-2xl font-bold text-[#dd8b11] dark:text-white">{stats.new_this_month}</div>
+                            <p className="text-xs opacity-50">Filed in {new Date().toLocaleString('default', { month: 'long' })}</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -204,7 +204,7 @@ export default function Dashboard({ stats, recentCases, statusDistribution, stat
                                             </tr>
                                         ) : (
                                             recentCases.map((item) => (
-                                                <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50 cursor-pointer"
+                                                <tr key={item.id} className="hover:bg-secondary/50/50 dark:hover:bg-secondary/80/50 cursor-pointer"
                                                     onClick={() => router.visit(`/documents/view/${item.id}`)}>
                                                     <td className="py-3 px-2 font-medium">{item.case_number}</td>
                                                     <td className="py-3 px-2 text-muted-foreground">{item.type}</td>
@@ -231,27 +231,27 @@ export default function Dashboard({ stats, recentCases, statusDistribution, stat
                         </CardHeader>
                         <CardContent>
                             <div className="flex flex-col items-center justify-center min-h-[200px]">
-                                <div className="rounded-full border-8 border-slate-100 h-32 w-32 flex items-center justify-center mb-6 dark:border-slate-800 relative">
-                                    <PieChartIcon className="h-8 w-8 text-slate-300 dark:text-slate-600" />
+                                <div className="rounded-full border-8 border-[rgba(221,139,17,0.1)] h-32 w-32 flex items-center justify-center mb-6 dark:border-[rgba(221,139,17,0.2)] relative">
+                                    <PieChartIcon className="h-8 w-8 text-[#dd8b11]" />
                                 </div>
                                 <div className="w-full space-y-3">
                                     <div className="flex items-center justify-between text-sm">
                                         <div className="flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-[#1c2434]"></span>
+                                            <span className="w-2 h-2 rounded-full bg-[#dd8b11]"></span>
                                             <span className="text-muted-foreground">Settled ({statusDistribution.settled})</span>
                                         </div>
                                         <span className="font-medium">{statusPercentages.settled}%</span>
                                     </div>
                                     <div className="flex items-center justify-between text-sm">
                                         <div className="flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-slate-500"></span>
+                                            <span className="w-2 h-2 rounded-full bg-secondary/500"></span>
                                             <span className="text-muted-foreground">Pending ({statusDistribution.pending})</span>
                                         </div>
                                         <span className="font-medium">{statusPercentages.pending}%</span>
                                     </div>
                                     <div className="flex items-center justify-between text-sm">
                                         <div className="flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-slate-200"></span>
+                                            <span className="w-2 h-2 rounded-full bg-muted-foreground"></span>
                                             <span className="text-muted-foreground">Unresolved ({statusDistribution.dismissed + statusDistribution.other})</span>
                                         </div>
                                         <span className="font-medium">{statusPercentages.unresolved}%</span>
@@ -276,11 +276,11 @@ export default function Dashboard({ stats, recentCases, statusDistribution, stat
                                     <div key={index} className="space-y-2">
                                         <div className="flex items-center justify-between text-sm">
                                             <span className="font-medium">{stat.nature_of_case}</span>
-                                            <span className="text-muted-foreground text-xs"><strong className="text-[#1c2434] dark:text-white">{stat.count} cases</strong></span>
+                                            <span className="text-muted-foreground text-xs"><strong className="text-[#dd8b11] dark:text-white">{stat.count} cases</strong></span>
                                         </div>
-                                        <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                        <div className="h-2 w-full bg-secondary dark:bg-secondary rounded-full overflow-hidden">
                                             <div
-                                                className="h-full bg-[#1c2434] rounded-full"
+                                                className="h-full bg-[#dd8b11] rounded-full"
                                                 style={{ width: `${Math.min((stat.count / stats.total) * 100, 100)}%` }}
                                             ></div>
                                         </div>
@@ -321,7 +321,7 @@ export default function Dashboard({ stats, recentCases, statusDistribution, stat
                                             itemStyle={{ color: 'hsl(var(--foreground))' }}
                                             cursor={{ fill: 'transparent' }}
                                         />
-                                        <Bar dataKey="total" fill="#1c2434" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="total" fill="#ffffff" radius={[4, 4, 0, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
@@ -434,35 +434,35 @@ export default function Dashboard({ stats, recentCases, statusDistribution, stat
                         <CardTitle>Quick Actions</CardTitle>
                     </CardHeader>
                     <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <Button variant="outline" asChild className="h-auto py-4 justify-start space-x-4 hover:border-[#1c2434] hover:bg-slate-50 dark:hover:bg-slate-900 group">
+                        <Button variant="outline" asChild className="h-auto py-4 justify-start space-x-4 hover:border-[#dd8b11] hover:bg-secondary/50 dark:hover:bg-secondary/80 group">
                             <Link href="/cases">
-                                <div className="p-2 bg-slate-100 rounded-lg group-hover:bg-white border group-hover:border-[#1c2434]/20 transition-colors">
-                                    <Plus className="h-5 w-5 text-[#1c2434]" />
+                                <div className="p-2 bg-transparent rounded-lg transition-colors border border-transparent">
+                                    <Plus className="h-5 w-5 text-black dark:text-white stroke-[2]" />
                                 </div>
                                 <div className="text-left">
-                                    <div className="font-semibold text-[#1c2434] dark:text-white">New Case</div>
+                                    <div className="font-semibold text-[#dd8b11] dark:text-white">New Case</div>
                                     <div className="text-xs text-muted-foreground font-normal">File a new case</div>
                                 </div>
                             </Link>
                         </Button>
-                        <Button variant="outline" asChild className="h-auto py-4 justify-start space-x-4 hover:border-[#1c2434] hover:bg-slate-50 dark:hover:bg-slate-900 group">
+                        <Button variant="outline" asChild className="h-auto py-4 justify-start space-x-4 hover:border-[#dd8b11] hover:bg-secondary/50 dark:hover:bg-secondary/80 group">
                             <Link href="/system-reports">
-                                <div className="p-2 bg-slate-100 rounded-lg group-hover:bg-white border group-hover:border-[#1c2434]/20 transition-colors">
-                                    <FileText className="h-5 w-5 text-[#1c2434]" />
+                                <div className="p-2 bg-transparent rounded-lg transition-colors border border-transparent">
+                                    <FileText className="h-5 w-5 text-black dark:text-white stroke-[2]" />
                                 </div>
                                 <div className="text-left">
-                                    <div className="font-semibold text-[#1c2434] dark:text-white">Generate Report</div>
+                                    <div className="font-semibold text-[#dd8b11] dark:text-white">Generate Report</div>
                                     <div className="text-xs text-muted-foreground font-normal">Create summary</div>
                                 </div>
                             </Link>
                         </Button>
-                        <Button variant="outline" asChild className="h-auto py-4 justify-start space-x-4 hover:border-[#1c2434] hover:bg-slate-50 dark:hover:bg-slate-900 group">
+                        <Button variant="outline" asChild className="h-auto py-4 justify-start space-x-4 hover:border-[#dd8b11] hover:bg-secondary/50 dark:hover:bg-secondary/80 group">
                             <Link href="/documents">
-                                <div className="p-2 bg-slate-100 rounded-lg group-hover:bg-white border group-hover:border-[#1c2434]/20 transition-colors">
-                                    <Printer className="h-5 w-5 text-[#1c2434]" />
+                                <div className="p-2 bg-transparent rounded-lg transition-colors border border-transparent">
+                                    <Printer className="h-5 w-5 text-black dark:text-white stroke-[2]" />
                                 </div>
                                 <div className="text-left">
-                                    <div className="font-semibold text-[#1c2434] dark:text-white">Print Documents</div>
+                                    <div className="font-semibold text-[#dd8b11] dark:text-white">Print Documents</div>
                                     <div className="text-xs text-muted-foreground font-normal">Official forms</div>
                                 </div>
                             </Link>

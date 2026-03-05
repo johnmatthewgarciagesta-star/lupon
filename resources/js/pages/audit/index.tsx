@@ -120,8 +120,8 @@ export default function AuditTrailPage({ logs, stats, filters, users }: PageProp
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <div className="p-2 bg-slate-100 rounded-lg dark:bg-slate-800">
-                                <Activity className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                            <div className="p-2 bg-[#dd8b11] rounded-lg">
+                                <Activity className="h-4 w-4 text-white dark:text-white stroke-[2.5]" />
                             </div>
                             <Badge variant="secondary" className="bg-slate-100 text-slate-700 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300">
                                 Today
@@ -134,8 +134,8 @@ export default function AuditTrailPage({ logs, stats, filters, users }: PageProp
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <div className="p-2 bg-slate-100 rounded-lg dark:bg-slate-800">
-                                <Users className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                            <div className="p-2 bg-[#dd8b11] rounded-lg">
+                                <Users className="h-4 w-4 text-white dark:text-white stroke-[2.5]" />
                             </div>
                             <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400">
                                 Active Users
@@ -148,8 +148,8 @@ export default function AuditTrailPage({ logs, stats, filters, users }: PageProp
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <div className="p-2 bg-slate-100 rounded-lg dark:bg-slate-800">
-                                <FileText className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                            <div className="p-2 bg-[#dd8b11] rounded-lg">
+                                <FileText className="h-4 w-4 text-white dark:text-white stroke-[2.5]" />
                             </div>
                             <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400">
                                 Documents
@@ -162,8 +162,8 @@ export default function AuditTrailPage({ logs, stats, filters, users }: PageProp
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <div className="p-2 bg-slate-100 rounded-lg dark:bg-slate-800">
-                                <Database className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                            <div className="p-2 bg-[#dd8b11] rounded-lg">
+                                <Database className="h-4 w-4 text-white dark:text-white stroke-[2.5]" />
                             </div>
                             <Badge variant="secondary" className="bg-slate-100 text-slate-700 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300">
                                 Total

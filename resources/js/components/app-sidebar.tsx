@@ -77,11 +77,9 @@ export function AppSidebar() {
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
-                            <Link href="/dashboard">
-                                <AppLogo />
-                            </Link>
-                        </SidebarMenuButton>
+                        <div className="flex items-center gap-2 p-2">
+                            <AppLogo />
+                        </div>
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarHeader>
