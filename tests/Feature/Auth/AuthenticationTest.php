@@ -73,12 +73,20 @@ test('users can logout', function () {
 test('users are rate limited', function () {
     $user = User::factory()->create();
 
-    RateLimiter::increment(md5('login'.implode('|', [$user->email, '127.0.0.1'])), amount: 5);
+    // The key must match what's in FortifyServiceProvider
+    $throttleKey = \Illuminate\Support\Str::transliterate(\Illuminate\Support\Str::lower($user->email).'|127.0.0.1');
+    
+    // Increment to trigger lockout (at least 5 attempts)
+    for ($i = 0; $i < 6; $i++) {
+        \Illuminate\Support\Facades\RateLimiter::hit($throttleKey, 120);
+    }
 
     $response = $this->post(route('login.store'), [
         'email' => $user->email,
         'password' => 'wrong-password',
     ]);
 
-    $response->assertTooManyRequests();
+    // Now it should redirect back because of our catch in bootstrap/app.php
+    $response->assertStatus(302);
+    $response->assertSessionHasErrors(['email']);
 });

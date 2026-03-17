@@ -7,7 +7,11 @@ test('guests are redirected to the login page', function () {
 });
 
 test('authenticated users can visit the dashboard', function () {
-    $this->actingAs($user = User::factory()->create());
+    \Spatie\Permission\Models\Role::create(['name' => 'Admin']);
+    $user = User::factory()->create(['role' => 'Admin']);
+    $user->assignRole('Admin');
+
+    $this->actingAs($user);
 
     $this->get(route('dashboard'))->assertOk();
 });
