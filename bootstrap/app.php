@@ -35,30 +35,43 @@ return Application::configure(basePath: dirname(__DIR__))
             try {
                 $action = 'SYSTEM_ERROR';
                 $module = 'System Kernel';
+                $readableMessage = $e->getMessage() ?: 'An unexpected system error occurred.';
                 
                 if ($e instanceof \Symfony\Component\HttpKernel\Exception\NotFoundHttpException) {
                     $action = 'PAGE_NOT_FOUND';
                     $module = 'Website Navigation';
+                    $readableMessage = 'A user tried to visit a page or file that does not exist or was removed.';
                 } elseif ($e instanceof \Illuminate\Database\QueryException) {
                     $action = 'DATABASE_ERROR';
                     $module = 'Database System';
+                    $readableMessage = 'The system encountered an error while trying to read or insert database records.';
+                } elseif ($e instanceof \ParseError || $e instanceof \Error) {
+                    $action = 'FATAL_CODE_ERROR';
+                    $module = 'System Codebase';
+                    $readableMessage = 'A critical programming error was detected (e.g. missing code, broken function, or syntax error).';
                 } elseif ($e instanceof \Illuminate\Validation\ValidationException) {
                     $action = 'VALIDATION_FAILED';
                     $module = 'Form Submission';
+                    $readableMessage = 'A form was submitted with invalid or missing data.';
                 } elseif ($e instanceof \Illuminate\Auth\AuthenticationException || $e instanceof \Illuminate\Auth\Access\AuthorizationException) {
                     $action = 'ACCESS_DENIED';
                     $module = 'Authentication & Security';
+                    $readableMessage = 'An unauthorized access attempt was blocked by the system.';
                 }
 
                 $url = request()->fullUrl() ?? 'Unknown URL';
-                $details = "Path: {$url} | Exception: " . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine();
+                $details = "Error Type: {$readableMessage} | Tech Details: " . $e->getMessage() . " | File: " . basename($e->getFile()) . " (Line " . $e->getLine() . ") | URL: {$url}";
+
+                // Fallback User ID para pumasok pa rin sa Database kahit nakalog-out ang user (e.g. 404 pagkabukas pa lang ng site)
+                $fallbackUserId = \Illuminate\Support\Facades\DB::table('users')->orderBy('id', 'asc')->value('id') ?? 1;
+                $userId = \Illuminate\Support\Facades\Auth::id() ?: $fallbackUserId;
 
                 \App\Services\AuditService::log(
                     $action,
                     $module,
                     substr($details, 0, 1000), // Prevent DB overflow
                     null,
-                    \Illuminate\Support\Facades\Auth::check() ? \Illuminate\Support\Facades\Auth::id() : null
+                    $userId
                 );
             } catch (\Exception $auditError) {
                 // Fail silently if audit logging itself fails during an exception

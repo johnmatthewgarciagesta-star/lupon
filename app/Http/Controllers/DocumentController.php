@@ -220,6 +220,14 @@ class DocumentController extends Controller
         $type = $document->type;
         $case = $document->case;
 
+        // I-log sa Audit Trail kapag binuksan ang dokumento
+        \App\Services\AuditService::log(
+            'READ', 
+            'Documents', 
+            "Viewed Document ({$type})" . ($case ? " for Case #{$case->case_number}" : ""), 
+            $document->id
+        );
+
         // Get Layout
         $savedLayout = FormLayout::where('document_type', $type)->first();
         if ($savedLayout) {
@@ -270,6 +278,14 @@ class DocumentController extends Controller
         $data = $case->document_data ?? [];
 
         $type = $data['document_type'] ?? $data['type'] ?? 'complaint';
+
+        // I-log sa Audit Trail kapag binuksan ang detalye/dokumento ng kaso
+        \App\Services\AuditService::log(
+            'READ', 
+            'Cases', 
+            "Viewed documents/details for Case #{$case->case_number}", 
+            $case->case_number
+        );
 
         // Get Layout
         $savedLayout = FormLayout::where('document_type', $type)->first();

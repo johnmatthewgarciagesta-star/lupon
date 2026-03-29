@@ -10,8 +10,14 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
+// OWASP TOP 10 PROTECTION EXPLANATION:
+// 1. Broken Access Control (OWASP #1) - Pinipigilan nito ang mga user na makapasok sa mga pahina na hindi para sa kanila.
+// Ang middleware na 'auth' at 'verified' ay sinisiguro na tanging ang nakapag-login lamang ang makakapasok.
 Route::middleware(['auth', 'verified'])->group(function () {
     // Shared Routes
+    // 2. Role-Based Access Control (Isa pang proteksyon para sa OWASP #1)
+    // Ang middleware na 'role' ay sinisiguro na ang 'Administrator' o 'Data Encoder' lang ang makakabukas ng mga route na ito.
+    // Kapag sinubukan itong buksan ng ordinaryong user o hacker, sila ay ma-blo-block (403 Forbidden).
     Route::middleware('role:Administrator|Data Encoder')->group(function () {
         Route::get('dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 

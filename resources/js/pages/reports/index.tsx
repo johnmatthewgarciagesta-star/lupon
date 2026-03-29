@@ -353,7 +353,7 @@ export default function Reports({ stats }: { stats: any }) {
                                                 </td>
                                                 <td className="py-4 text-muted-foreground">{item.date_filed}</td>
                                                 <td className="py-4 text-right">
-                                                    <a href={`/documents/view/${item.id}`} target="_blank" className="inline-flex items-center justify-center p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="View Document">
+                                                    <a href={`/documents/view-case/${item.id}`} target="_blank" className="inline-flex items-center justify-center p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="View Document">
                                                         <Eye className="w-4 h-4" />
                                                     </a>
                                                 </td>

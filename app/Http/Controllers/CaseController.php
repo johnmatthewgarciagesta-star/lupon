@@ -19,11 +19,25 @@ class CaseController extends Controller
         // Search
         if ($request->filled('search')) {
             $search = $request->input('search');
-            $query->where(function ($q) use ($search) {
+            
+            // Try parsing string as date for formats like MM/DD/YYYY to match SQL "Y-m-d"
+            $dateParsed = null;
+            if (strtotime($search) !== false) {
+                try {
+                    $dateParsed = \Carbon\Carbon::parse($search)->format('Y-m-d');
+                } catch (\Exception $e) {}
+            }
+
+            $query->where(function ($q) use ($search, $dateParsed) {
                 $q->where('case_number', 'like', "%{$search}%")
                     ->orWhere('title', 'like', "%{$search}%")
                     ->orWhere('complainant', 'like', "%{$search}%")
-                    ->orWhere('respondent', 'like', "%{$search}%");
+                    ->orWhere('respondent', 'like', "%{$search}%")
+                    ->orWhere('date_filed', 'like', "%{$search}%");
+
+                if ($dateParsed) {
+                    $q->orWhereDate('date_filed', $dateParsed);
+                }
             });
         }
 
@@ -39,18 +53,7 @@ class CaseController extends Controller
 
         // Filter by Nature
         if ($request->filled('nature') && $request->nature !== 'all') {
-            // Mapping frontend values to backend nature_of_case if needed
-            // For now assuming exact match or 'like' if dropdowns are loose
-            $nature = $request->nature;
-            if ($nature === 'property') {
-                $query->where('nature_of_case', 'like', '%Property%');
-            } elseif ($nature === 'noise') {
-                $query->where('nature_of_case', 'like', '%Noise%');
-            } elseif ($nature === 'money') {
-                $query->where('nature_of_case', 'like', '%Debt%');
-            } else {
-                $query->where('nature_of_case', $nature);
-            }
+            $query->where('nature_of_case', 'like', "%{$request->nature}%");
         }
 
         // Sort
@@ -61,6 +64,9 @@ class CaseController extends Controller
         $allowedFields = ['case_number', 'title', 'nature_of_case', 'complainant', 'respondent', 'status', 'date_filed', 'created_at'];
         if (!in_array($sortField, $allowedFields)) {
             $sortField = 'created_at';
+        }
+        if (!in_array($sortOrder, ['asc', 'desc'])) {
+            $sortOrder = 'desc';
         }
 
         $cases = $query->orderBy($sortField, $sortOrder)->paginate(10)->withQueryString();
@@ -103,6 +109,11 @@ class CaseController extends Controller
 
     public function store(Request $request)
     {
+        // OWASP TOP 10 PROTECTION EXPLANATION:
+        // 5. Identification and Authentication Failures / CSRF (OWASP #7)
+        // Bago pa man makarating ang data sa 'store' function na ito, dumaan na ito sa verified CSRF protection ng Laravel.
+        // Ibig sabihin, nakasiguro ang system na galing mismo sa authorized device ng barangay ang form submission
+        // at hindi pwersahang pinasa ng hacker mula sa ibang website (Cross-Site Request Forgery).
         Log::info('Submitting Case:', $request->all());
 
         // Validate basic fields

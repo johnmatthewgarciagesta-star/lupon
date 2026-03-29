@@ -96,8 +96,8 @@ export default function CaseManagement({ cases, filters }: Props) {
     const [status, setStatus] = useState(filters.status || 'all');
     const [nature, setNature] = useState(filters.nature || 'all');
     const [date, setDate] = useState(filters.date || '');
-    const [sortField, setSortField] = useState(filters.sort_by || 'case_number');
-    const [sortOrder, setSortOrder] = useState(filters.sort_order || 'asc');
+    const [sortField, setSortField] = useState(filters.sort_by || 'created_at');
+    const [sortOrder, setSortOrder] = useState(filters.sort_order || 'desc');
 
     // Debounced search
     const updateSearch = useCallback(
@@ -263,28 +263,20 @@ export default function CaseManagement({ cases, filters }: Props) {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Types</SelectItem>
-                                        <SelectItem value="KP Form No. 7 – Formal complaint filing">Complaint Form (KP Form 7)</SelectItem>
-                                        <SelectItem value="KP Form No. 9 – Official notice to appear">Summons (KP Form 9)</SelectItem>
-                                        <SelectItem value="KP Form No. 16 – Agreement between parties">Amicable Settlement (KP Form 16)</SelectItem>
-                                        <SelectItem value="KP Form No. 15 – Decision by Pangkat/Chairman">Arbitration Award (KP Form 15)</SelectItem>
-                                        <SelectItem value="KP Form No. 17 – Rejection of settlement">Repudiation (KP Form 17)</SelectItem>
-                                        <SelectItem value="Statement to desist from complaint">Affidavit of Desistance</SelectItem>
-                                        <SelectItem value="Statement to withdraw complaint">Affidavit of Withdrawal</SelectItem>
-                                        <SelectItem value="Notice for Conciliation Proceedings">Notice of Hearing (Conciliation)</SelectItem>
-                                        <SelectItem value="Notice for Mediation Proceedings">Notice of Hearing (Mediation)</SelectItem>
-                                        <SelectItem value="Failure to appear at hearing">Notice of Hearing (Fail. to Appear)</SelectItem>
-                                        <SelectItem value="Failure to appear – Counterclaim">Notice of Hearing (Counterclaim)</SelectItem>
-                                        <SelectItem value="Authorization to file action">Certificate to File Action</SelectItem>
-                                        <SelectItem value="Authorization for court filing">Certificate to File Action (Court)</SelectItem>
-                                        <SelectItem value="Barring future action">Certificate to Bar Action</SelectItem>
-                                        <SelectItem value="Barring future counterclaim">Certificate to Bar Counterclaim</SelectItem>
-                                        <SelectItem value="Request for enforcement of settlement/award">Motion for Execution</SelectItem>
-                                        <SelectItem value="Notice regarding execution of award">Notice of Hearing (Execution)</SelectItem>
-                                        <SelectItem value="Official notice on Pangkat formation">Notice for Constitution of Pangkat</SelectItem>
-                                        <SelectItem value="Notice to individual Pangkat members">Notice to Chosen Pangkat Member</SelectItem>
-                                        <SelectItem value="Record of summons or notice service">Officers Return</SelectItem>
-                                        <SelectItem value="Formal demand for action or payment">Letter of Demand</SelectItem>
-                                        <SelectItem value="Official tagalog agreement certificate">Katunayan ng Pagkakasundo</SelectItem>
+                                        <SelectItem value="Complaint">Complaint Form (KP Form 7)</SelectItem>
+                                        <SelectItem value="Summons">Summons (KP Form 9)</SelectItem>
+                                        <SelectItem value="Amicable Settlement">Amicable Settlement (KP Form 16)</SelectItem>
+                                        <SelectItem value="Withdrawal">Affidavit of Withdrawal</SelectItem>
+                                        <SelectItem value="Conciliation">Notice of Hearing (Conciliation)</SelectItem>
+                                        <SelectItem value="Mediation">Notice of Hearing (Mediation)</SelectItem>
+                                        <SelectItem value="Failure">Notice of Hearing (Failure to Appear)</SelectItem>
+                                        <SelectItem value="Counterclaim">Notice of Hearing (Counterclaim)</SelectItem>
+                                        <SelectItem value="Court">Certificate to File Action (Court)</SelectItem>
+                                        <SelectItem value="Bar Action">Certificate to Bar Action</SelectItem>
+                                        <SelectItem value="Bar Counterclaim">Certificate to Bar Counterclaim</SelectItem>
+                                        <SelectItem value="Execution">Motion for Execution</SelectItem>
+                                        <SelectItem value="Return">Officers Return</SelectItem>
+                                        <SelectItem value="Demand">Letter of Demand</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -371,6 +363,10 @@ export default function CaseManagement({ cases, filters }: Props) {
                                                     {item.case_number}
                                                 </div>
                                             </td>
+                                            {/* OWASP TOP 10 PROTECTION EXPLANATION: */}
+                                            {/* 4. Cross-Site Scripting / XSS (OWASP #3) - Pinipigilan nito ang pag-inject ng malisyosong JavaScript code galing sa mga hacker. */}
+                                            {/* Sa paggamit natin ng React (JSX), ang mga variables sa loob ng curly braces tulad ng {item.nature_of_case} at {item.complainant} */}
+                                            {/* ay awtomatikong naco-convert bilang ordinaryong text kaya hindi ito tatakbo bilang mapanganib na code sa ating browser. */}
                                             <td className="py-3 px-4 text-muted-foreground truncate max-w-[200px]" title={item.nature_of_case}>
                                                 {item.nature_of_case}
                                             </td>

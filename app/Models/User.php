@@ -49,6 +49,10 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            // OWASP TOP 10 PROTECTION EXPLANATION:
+            // 2. Cryptographic Failures (OWASP #2) - Pinoprotektahan nito ang sensitive data tulad ng passwords.
+            // Ang 'hashed' attribute dito ay sumisiguro na gagamit ang Laravel ng Bcrypt encryption algorithm.
+            // Kaya kahit ma-hack ang database, 'scrambled code' lang ang makikita nila at hindi ang totoong password ng user.
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
         ];
