@@ -245,6 +245,21 @@
 
 <body>
 
+    <!-- Document Header Info -->
+    <div class="fixed top-6 left-6 z-50 flex items-center gap-3 print:hidden transition-all duration-300 hover:-translate-y-1">
+        <div class="bg-blue-600 text-white p-2.5 rounded-xl flex items-center justify-center shadow-lg">
+            <span class="material-icons-outlined">description</span>
+        </div>
+        <div class="bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-xl shadow-lg border border-gray-100 cursor-default flex flex-col justify-center">
+            <h1 class="text-sm font-bold text-gray-800 leading-tight">{{ ucwords(str_replace('_', ' ', $type)) }}</h1>
+            @if(isset($case) && $case)
+                <p class="text-xs text-blue-600 font-semibold mt-0.5 opacity-90" title="{{ $case->title }}">Case No: {{ $case->case_number }}</p>
+            @else
+                <p class="text-xs text-gray-500 font-medium mt-0.5">Standalone Document</p>
+            @endif
+        </div>
+    </div>
+
     <!-- Floating Controls Group -->
     <!-- Floating Controls Group -->
     <div id="floating-container" class="fixed bottom-6 right-6 flex flex-col items-end gap-2 z-50">
@@ -252,8 +267,7 @@
         <!-- Action Buttons -->
         <div id="floating-actions" class="flex flex-col gap-3 transition-all duration-300 origin-bottom items-end">
             @if($readonly ?? false)
-                @if(auth()->user()->role !== 'Administrator')
-                {{-- Process / Status Updater Inline (Encoder only) --}}
+                {{-- Process / Status Updater Inline (Encoder and Admin) --}}
                 <div class="bg-white p-4 rounded-xl shadow-lg border border-gray-200 w-64 mb-1 text-left">
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Process / Status</label>
                     <div class="flex flex-col gap-2">
@@ -271,7 +285,6 @@
                         </button>
                     </div>
                 </div>
-                @endif
                 <button type="button" onclick="submitForm()"
                     class="px-6 py-3 bg-[#1c2434] hover:bg-[#2c3a4f] text-white rounded-full shadow-lg font-medium flex items-center justify-center w-full gap-2 transition-transform hover:scale-105">
                     <span class="material-icons-outlined">print</span>

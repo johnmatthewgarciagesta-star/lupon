@@ -42,8 +42,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/api/cases/lookup', [App\Http\Controllers\CaseController::class, 'lookup'])->name('api.cases.lookup');
     });
 
-    // Encoder Only Routes (Editing cases, documents, etc.)
-    Route::middleware('role:Data Encoder')->group(function () {
+    // Encoder and Admin Routes (Editing cases, documents, etc.)
+    Route::middleware('role:Administrator|Data Encoder')->group(function () {
         Route::post('cases', [App\Http\Controllers\CaseController::class, 'store'])->name('cases.store');
         Route::put('/cases/{id}', [App\Http\Controllers\CaseController::class, 'update'])->name('cases.update');
         Route::delete('/cases/{id}', [App\Http\Controllers\CaseController::class, 'destroy'])->name('cases.destroy');

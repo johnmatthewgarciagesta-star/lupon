@@ -347,7 +347,7 @@ export default function Dashboard({ stats, recentCases, statusDistribution, outc
                             <CardTitle>Status Distribution</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="h-[300px] w-full flex items-center justify-center">
+                            <div className="h-[250px] w-full flex items-center justify-center">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie
@@ -370,12 +370,33 @@ export default function Dashboard({ stats, recentCases, statusDistribution, outc
                                             ))}
                                         </Pie>
                                         <Tooltip
+                                            formatter={(value, name) => [`${value} cases`, name]}
                                             contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))' }}
                                             itemStyle={{ color: 'hsl(var(--foreground))' }}
                                         />
-                                        <Legend verticalAlign="bottom" height={36} />
                                     </PieChart>
                                 </ResponsiveContainer>
+                            </div>
+                            <div className="mt-4 space-y-2">
+                                {[
+                                    { name: 'Resolved', value: statusDistribution.resolved },
+                                    { name: 'Pending', value: statusDistribution.pending },
+                                    { name: 'Mediation', value: statusDistribution.mediation },
+                                    { name: 'Dismissed', value: statusDistribution.dismissed },
+                                    { name: 'Certified', value: statusDistribution.certified },
+                                ].map((stat, index) => {
+                                    const total = statusDistribution.resolved + statusDistribution.pending + statusDistribution.mediation + statusDistribution.dismissed + statusDistribution.certified;
+                                    const percentage = total > 0 ? Math.round((stat.value / total) * 100) : 0;
+                                    return (
+                                        <div key={index} className="flex items-center justify-between text-sm">
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></span>
+                                                <span className="text-muted-foreground font-medium">{stat.name} ({stat.value})</span>
+                                            </div>
+                                            <span className="font-bold" style={{ color: COLORS[index % COLORS.length] }}>{stat.value > 0 ? `${percentage}%` : '0%'}</span>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </CardContent>
                     </Card>
