@@ -481,9 +481,8 @@ class DocumentController extends Controller
         // We use a temporary file or a specific path in storage
         $outputImage = storage_path("app/public/temp_{$type}_".uniqid().'.png');
 
-        // Ghostscript Command - Absolute Path
-        // Version 10.06.0 detected
-        $gsPath = '"C:\Program Files\gs\gs10.06.0\bin\gswin64c.exe"';
+        // Ghostscript Command resolved dynamically
+        $gsPath = $this->getGhostscriptPath();
         // On Windows cmd.exe, if the first token is quoted, we might need extra care.
         // We add "2>&1" to capture stderr in output for debugging.
         $cmd = "{$gsPath} -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r300 -dFirstPage=1 -dLastPage=1 -sOutputFile=\"{$outputImage}\" \"{$pdfPath}\" 2>&1";
@@ -520,7 +519,12 @@ class DocumentController extends Controller
 
         // Generate PDF using Browsershot
         try {
-            $pdf = Browsershot::html($html)
+            $browsershot = Browsershot::html($html);
+            if (env('CHROME_PATH')) {
+                $browsershot->setChromePath(env('CHROME_PATH'));
+            }
+
+            $pdf = $browsershot
                 ->format('A4')
                 ->margins(0, 0, 0, 0)
                 // Lock viewport to exactly one A4 page (210mm × 297mm at 96 DPI ≈ 794×1123 px).
@@ -721,6 +725,38 @@ class DocumentController extends Controller
     // -------------------------------------------------------------------------
 
     /**
+     * Resolve the Ghostscript executable path dynamically.
+     */
+    private function getGhostscriptPath(): string
+    {
+        $gsPath = env('GHOSTSCRIPT_PATH');
+        if ($gsPath) {
+            return $gsPath;
+        }
+
+        // Try to auto-detect in standard C:\Program Files\gs directory
+        $gsDir = 'C:\\Program Files\\gs';
+        if (is_dir($gsDir)) {
+            $folders = scandir($gsDir);
+            if (is_array($folders)) {
+                // Sort descending so newer versions are checked first
+                rsort($folders);
+                foreach ($folders as $folder) {
+                    if (str_starts_with($folder, 'gs')) {
+                        $candidate = "{$gsDir}\\{$folder}\\bin\\gswin64c.exe";
+                        if (file_exists($candidate)) {
+                            return '"' . $candidate . '"';
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fallback to default path or command name if not found/accessible
+        return 'gswin64c';
+    }
+
+    /**
      * Use Ghostscript to render page 1 of the form PDF as a base64 PNG.
      * Returns empty string if GS fails (view shows placeholder instead).
      */
@@ -732,7 +768,7 @@ class DocumentController extends Controller
         }
 
         $outputImage = storage_path('app/public/temp_editor_'.$type.'_'.uniqid().'.png');
-        $gsPath = '"C:\Program Files\gs\gs10.06.0\bin\gswin64c.exe"';
+        $gsPath = $this->getGhostscriptPath();
         $cmd = "{$gsPath} -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r300 -dFirstPage=1 -dLastPage=1"
                      ." -sOutputFile=\"{$outputImage}\" \"{$pdfPath}\" 2>&1";
 
@@ -893,38 +929,220 @@ class DocumentController extends Controller
         ])->deleteFileAfterSend(true);
     }
 
-    // ── Upload an existing file and save as a Document record ─────────────────
+    // ── Upload scanned document for AI parsing (Temporary stage) ───────────────
     public function upload(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|max:20480|mimes:pdf,doc,docx,png,jpg,jpeg',
+            'file' => 'required|image|max:15360|mimes:png,jpg,jpeg',
         ]);
 
         $file = $request->file('file');
-        $origName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-        $ext = $file->getClientOriginalExtension();
-        $path = $file->store('documents/uploads', 'public');
+        $fileName = $file->getClientOriginalName();
 
-        $document = \App\Models\Document::create([
-            'type' => 'upload',
-            'status' => 'Draft',
-            'file_path' => $path,
-            'content' => ['original_name' => $file->getClientOriginalName(), 'extension' => $ext],
-            'issued_at' => now(),
-            'created_by' => auth()->id(),
-        ]);
-
-        try {
-            app(\App\Services\AuditService::class)->log(
-                'document_uploaded',
-                "Uploaded document: {$file->getClientOriginalName()}",
-                $document
-            );
-        } catch (\Exception $e) {
+        $apiKey = env('GEMINI_API_KEY');
+        if (empty($apiKey)) {
+            \App\Services\AuditService::log('UPLOAD_FAILED', 'Documents', "Failed scanned document upload: {$fileName}. Reason: Gemini API Key missing.", null);
+            return response()->json([
+                'success' => false,
+                'message' => 'Gemini API Key is not configured in the system (.env). Please add GEMINI_API_KEY to proceed.'
+            ], 400);
         }
 
-        return redirect()->route('documents.index')
-            ->with('success', 'Document uploaded successfully.');
+        try {
+            // Store temporarily in scans/temp
+            $tempPath = $file->store('scans/temp', 'public');
+
+            // Get base64 representation of the image
+            $imageBinary = Storage::disk('public')->get($tempPath);
+            $base64Image = base64_encode($imageBinary);
+            $mimeType = $file->getMimeType();
+
+            // Construct the prompt for Gemini 1.5 Flash
+            $promptInstruction = "Analyze this scanned legal document from the Barangay Lupon Tagapamayapa. " .
+                                 "Identify and extract the following details precisely. Return your output " .
+                                 "strictly as a flat JSON object matching this schema: " .
+                                 "{" .
+                                 "  \"complainant\": \"Name of the complainant(s) or null\"," .
+                                 "  \"respondent\": \"Name of the respondent(s) or null\"," .
+                                 "  \"case_no\": \"The formal case number or null\"," .
+                                 "  \"nature_of_case\": \"The issue/reason (e.g. Slander, Boundary dispute, Debt)\"," .
+                                 "  \"summary\": \"A short, objective summary of the narrative/statement written on the page.\"," .
+                                 "  \"document_type\": \"One of: complaint, summons, amicable_settlement, affidavit_withdrawal, or other\"" .
+                                 "}";
+
+            // Send POST request to Google AI Studio
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'Content-Type' => 'application/json'
+            ])->timeout(45)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={$apiKey}", [
+                'contents' => [
+                    [
+                        'parts' => [
+                            ['text' => $promptInstruction],
+                            [
+                                'inlineData' => [
+                                    'mimeType' => $mimeType,
+                                    'data' => $base64Image
+                                ]
+                            ]
+                        ]
+                    ]
+                ],
+                'generationConfig' => [
+                    'responseMimeType' => 'application/json'
+                ]
+            ]);
+
+            if ($response->failed()) {
+                // Cleanup temp file
+                Storage::disk('public')->delete($tempPath);
+                throw new \Exception("Gemini API request failed: " . $response->body());
+            }
+
+            $rawTextResponse = $response->json('candidates.0.content.parts.0.text');
+            $extractedData = json_decode($rawTextResponse, true);
+
+            // Log successful upload & parse in Audit Trail
+            \App\Services\AuditService::log('UPLOAD', 'Documents', "Successfully scanned and parsed image: {$fileName} via Gemini AI.", null);
+
+            return response()->json([
+                'success' => true,
+                'temp_file' => $tempPath,
+                'data' => $extractedData
+            ]);
+
+        } catch (\Exception $e) {
+            if (isset($tempPath)) {
+                Storage::disk('public')->delete($tempPath);
+            }
+            \Log::error('AI Scan Ingestion Error: ' . $e->getMessage());
+
+            // Log failed upload & parse in Audit Trail
+            \App\Services\AuditService::log('UPLOAD_FAILED', 'Documents', "Failed scanned document upload: {$fileName}. Reason: " . $e->getMessage(), null);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error parsing document: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // ── Save confirmed scanned document and link to Case ──────────────────────
+    public function storeScanned(Request $request)
+    {
+        $request->validate([
+            'temp_file' => 'required|string',
+            'type' => 'required|string', // e.g. complaint, summons, amicable_settlement, etc.
+            'complainant' => 'required|string',
+            'respondent' => 'required|string',
+            'case_no' => 'nullable|string',
+            'nature_of_case' => 'nullable|string',
+            'summary' => 'nullable|string',
+            'case_id' => 'nullable|integer',
+        ]);
+
+        $tempPath = $request->input('temp_file');
+
+        if (!Storage::disk('public')->exists($tempPath)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Scanned file not found. Please upload again.'
+            ], 400);
+        }
+
+        try {
+            // Move file to permanent scans folder
+            $fileName = basename($tempPath);
+            $permanentPath = "scans/{$fileName}";
+            Storage::disk('public')->move($tempPath, $permanentPath);
+
+            $caseId = $request->input('case_id');
+            $caseNo = $request->input('case_no');
+            $complainant = $request->input('complainant');
+            $respondent = $request->input('respondent');
+            $natureOfCase = $request->input('nature_of_case') ?? 'Unspecified';
+            $summary = $request->input('summary');
+            $type = $request->input('type');
+
+            // Dynamically associate or create Case
+            if (!$caseId) {
+                if (empty($caseNo)) {
+                    $caseNo = 'CAS-' . date('YmdHis');
+                }
+
+                // Check if case already exists by case_number
+                $existingCase = \App\Models\LuponCase::withTrashed()->where('case_number', $caseNo)->first();
+                if ($existingCase) {
+                    $caseId = $existingCase->id;
+                    if ($existingCase->trashed()) {
+                        $existingCase->restore();
+                    }
+                } else {
+                    // Create new Case dynamically
+                    $case = \App\Models\LuponCase::create([
+                        'case_number' => $caseNo,
+                        'title' => "{$complainant} vs {$respondent}",
+                        'complainant' => $complainant,
+                        'respondent' => $respondent,
+                        'nature_of_case' => $natureOfCase,
+                        'status' => 'Pending',
+                        'date_filed' => now(),
+                        'complaint_narrative' => $summary,
+                        'admin_notes' => 'Created via Scanned AI Ingestion',
+                        'created_by' => auth()->id(),
+                    ]);
+                    $caseId = $case->id;
+                    
+                    \App\Services\AuditService::log('CREATE', 'Cases', "Auto-created Case #{$caseNo} from AI scan", $caseNo);
+                }
+            } else {
+                // Update existing Case
+                $case = \App\Models\LuponCase::withTrashed()->find($caseId);
+                if ($case) {
+                    if ($case->trashed()) {
+                        $case->restore();
+                    }
+                    $case->update([
+                        'complainant' => $complainant,
+                        'respondent' => $respondent,
+                        'nature_of_case' => $natureOfCase,
+                        'title' => "{$complainant} vs {$respondent}"
+                    ]);
+                    \App\Services\AuditService::log('UPDATE', 'Cases', "Updated Case #{$case->case_number} details from AI scan", $case->case_number);
+                }
+            }
+
+            // Create Document record
+            $document = \App\Models\Document::create([
+                'case_id' => $caseId,
+                'type' => $type,
+                'status' => 'Issued',
+                'file_path' => $permanentPath,
+                'content' => [
+                    'complainant' => $complainant,
+                    'respondent' => $respondent,
+                    'case_no' => $caseNo,
+                    'body_text' => $summary,
+                    'is_scanned' => true
+                ],
+                'issued_at' => now(),
+                'created_by' => auth()->id(),
+            ]);
+
+            \App\Services\AuditService::log('CREATE', 'Documents', "Saved scanned {$type} document for Case #{$caseId}", $caseId);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Scanned document saved successfully!',
+                'document' => $document
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('AI Scan Save Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error saving scanned document: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     // ── Save a GForms-style custom answer sheet ───────────────────────────────

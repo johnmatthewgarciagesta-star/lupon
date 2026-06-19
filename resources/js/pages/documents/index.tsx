@@ -4,7 +4,7 @@ import {
     FileText, Bell, FileCheck, FileMinus, Search, Download, Eye, Plus,
     Scale, AlertTriangle, Gavel, Handshake, Calendar, BadgeCheck, X,
     FileSignature, ClipboardCheck, UserPlus, Send, History, Trash2,
-    ClipboardList, Briefcase, ShieldAlert, BadgeInfo, Edit
+    ClipboardList, Briefcase, ShieldAlert, BadgeInfo, Edit, Upload, Loader2
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, any> = {
@@ -31,6 +31,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import AppLayout from '@/layouts/app-layout';
 
 // ─── Template definitions (Updated categorization) ──────────────────────────────
@@ -103,6 +113,146 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
     const [search, setSearch] = useState('');
     // Filter for recent docs table only
     const [docFilter, setDocFilter] = useState('all');
+
+    // ─── Scanned Ingestion States ─────────────────────────────────────────────
+    const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [isScanning, setIsScanning] = useState(false);
+    const [scanError, setScanError] = useState<string | null>(null);
+    const [tempFilePath, setTempFilePath] = useState<string | null>(null);
+    
+    // Editable review fields
+    const [caseId, setCaseId] = useState<number | null>(null);
+    const [caseSearch, setCaseSearch] = useState('');
+    const [caseSuggestions, setCaseSuggestions] = useState<any[]>([]);
+    
+    const [docType, setDocType] = useState('complaint');
+    const [complainant, setComplainant] = useState('');
+    const [respondent, setRespondent] = useState('');
+    const [caseNo, setCaseNo] = useState('');
+    const [natureOfCase, setNatureOfCase] = useState('');
+    const [summary, setSummary] = useState('');
+    
+    // For submitting the final form
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Lookup cases for linking
+    const handleCaseSearch = async (val: string) => {
+        setCaseSearch(val);
+        if (!val.trim()) {
+            setCaseSuggestions([]);
+            return;
+        }
+        try {
+            const res = await fetch(`/api/cases/lookup?search=${encodeURIComponent(val)}`);
+            if (res.ok) {
+                const data = await res.json();
+                setCaseSuggestions(data);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    // Selecting a case from suggestions
+    const selectCase = (c: any) => {
+        setCaseId(c.id);
+        setCaseNo(c.case_number);
+        setNatureOfCase(c.nature_of_case);
+        setCaseSearch(`${c.case_number} - ${c.title}`);
+        setCaseSuggestions([]);
+    };
+
+    // Handle initial scanned file upload to Gemini API
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsScanning(true);
+        setScanError(null);
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '';
+            const res = await fetch('/documents/upload', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: formData
+            });
+
+            const result = await res.json();
+            if (res.ok && result.success) {
+                setTempFilePath(result.temp_file);
+                const data = result.data || {};
+                
+                // Pre-fill editable inputs with AI-extracted values
+                setComplainant(data.complainant || '');
+                setRespondent(data.respondent || '');
+                setCaseNo(data.case_no || '');
+                setNatureOfCase(data.nature_of_case || '');
+                setSummary(data.summary || '');
+                
+                // Map document_type to nearest enum
+                if (data.document_type) {
+                    setDocType(data.document_type);
+                }
+            } else {
+                setScanError(result.message || 'Failed to scan the document. Please try again.');
+            }
+        } catch (err: any) {
+            setScanError('An error occurred during scanning: ' + err.message);
+        } finally {
+            setIsScanning(false);
+        }
+    };
+
+    // Confirm and save final data to DB
+    const handleSaveScanned = () => {
+        if (!tempFilePath) return;
+
+        setIsSaving(true);
+
+        router.post('/documents/store-scanned', {
+            temp_file: tempFilePath,
+            type: docType,
+            complainant,
+            respondent,
+            case_no: caseNo,
+            nature_of_case: natureOfCase,
+            summary,
+            case_id: caseId
+        }, {
+            onSuccess: () => {
+                setIsSaving(false);
+                setIsUploadModalOpen(false);
+                resetModal();
+            },
+            onError: (errors) => {
+                setIsSaving(false);
+                alert(Object.values(errors).join('\n') || 'Failed to save scanned document.');
+            }
+        });
+    };
+
+    // Reset all states
+    const resetModal = () => {
+        setTempFilePath(null);
+        setScanError(null);
+        setCaseId(null);
+        setCaseSearch('');
+        setCaseSuggestions([]);
+        setDocType('complaint');
+        setComplainant('');
+        setRespondent('');
+        setCaseNo('');
+        setNatureOfCase('');
+        setSummary('');
+        setIsScanning(false);
+        setIsSaving(false);
+    };
 
     const breadcrumbs = [{ title: 'Documents', href: '/documents' }];
 
@@ -177,14 +327,23 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                 </button>
                             )}
                         </div>
-                        {/* Add Document → dedicated page */}
+                        {/* Upload Scan (AI) & Add Document buttons */}
                         {canEdit && (
-                            <Link href="/documents/new">
-                                <Button id="add-document-btn" className="h-9 bg-[#dd8b11] hover:bg-[#c47c0f] text-white">
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Add Document
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    onClick={() => setIsUploadModalOpen(true)}
+                                    className="h-9 bg-slate-800 hover:bg-slate-700 text-white"
+                                >
+                                    <Upload className="mr-2 h-4 w-4" />
+                                    Upload Scan (AI)
                                 </Button>
-                            </Link>
+                                <Link href="/documents/new">
+                                    <Button id="add-document-btn" className="h-9 bg-[#dd8b11] hover:bg-[#c47c0f] text-white">
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Add Document
+                                    </Button>
+                                </Link>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -496,6 +655,198 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                         </p>
                     </CardContent>
                 </Card>
+
+            {/* ─── Upload Scan (AI) Modal ─── */}
+            <Dialog open={isUploadModalOpen} onOpenChange={(open) => {
+                if (!open) {
+                    resetModal();
+                }
+                setIsUploadModalOpen(open);
+            }}>
+                <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                            <Upload className="h-5 w-5 text-[#dd8b11]" />
+                            Upload Scanned Document (AI Scanner)
+                        </DialogTitle>
+                        <DialogDescription>
+                            Upload a physical form image. Google Gemini will parse the handwriting to populate fields.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {/* Step 1: Upload File or Show Spinner */}
+                    {!tempFilePath && !isScanning && (
+                        <div className="flex flex-col items-center justify-center border-2 border-dashed border-muted-foreground/20 rounded-lg p-8 hover:bg-muted/30 transition-colors cursor-pointer relative min-h-[200px]">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleFileUpload}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                            <Upload className="h-10 w-10 text-muted-foreground/60 mb-4" />
+                            <p className="text-sm font-semibold mb-1">Click to upload scanned image</p>
+                            <p className="text-xs text-muted-foreground">PNG, JPG, or JPEG up to 15MB</p>
+                            {scanError && (
+                                <p className="text-xs text-red-500 mt-4 text-center bg-red-50 dark:bg-red-950/20 px-3 py-2 rounded-md border border-red-200 dark:border-red-900/30">
+                                    {scanError}
+                                </p>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Loading State during AI parsing */}
+                    {isScanning && (
+                        <div className="flex flex-col items-center justify-center py-12 text-center min-h-[200px]">
+                            <Loader2 className="h-10 w-10 text-[#dd8b11] animate-spin mb-4" />
+                            <p className="text-sm font-semibold mb-1">AI Ingestion in Progress...</p>
+                            <p className="text-xs text-muted-foreground max-w-[280px]">
+                                Google Gemini is transcribing handwriting and extracting details from the document.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Step 2: Review and Edit AI Extracted Fields */}
+                    {tempFilePath && !isScanning && (
+                        <div className="space-y-4 py-2">
+                            <div className="bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300 text-xs px-3 py-2 rounded-md border border-green-200 dark:border-green-900/20 mb-2">
+                                ✓ AI Ingestion completed! Please verify and correct the details below.
+                            </div>
+
+                            {/* Link to Existing Case (Optional) */}
+                            <div className="space-y-1.5 relative">
+                                <Label htmlFor="case-link" className="text-xs font-semibold">Link to Existing Case (Optional)</Label>
+                                <Input
+                                    id="case-link"
+                                    placeholder="Search case no. or title..."
+                                    value={caseSearch}
+                                    onChange={(e) => handleCaseSearch(e.target.value)}
+                                    className="h-9 text-xs"
+                                />
+                                {caseId && (
+                                    <button 
+                                        onClick={() => { setCaseId(null); setCaseSearch(''); }}
+                                        className="absolute right-2 top-8 text-xs text-red-500 hover:underline"
+                                    >
+                                        Unlink
+                                    </button>
+                                )}
+                                {caseSuggestions.length > 0 && (
+                                    <div className="absolute left-0 right-0 z-50 mt-1 max-h-40 overflow-y-auto bg-popover border rounded-md shadow-lg text-xs">
+                                        {caseSuggestions.map((c) => (
+                                            <div
+                                                key={c.id}
+                                                onClick={() => selectCase(c)}
+                                                className="px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground border-b last:border-0"
+                                            >
+                                                <span className="font-semibold">{c.case_number}</span> - {c.title} ({c.nature_of_case})
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                {/* Document Type Selector */}
+                                <div className="space-y-1.5 col-span-2">
+                                    <Label htmlFor="doc-type" className="text-xs font-semibold">Document Nature / Type</Label>
+                                    <select
+                                        id="doc-type"
+                                        value={docType}
+                                        onChange={(e) => setDocType(e.target.value)}
+                                        className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                    >
+                                        <option value="complaint">Complaint Form (KP Form 7)</option>
+                                        <option value="summons">Summons (KP Form 9)</option>
+                                        <option value="amicable_settlement">Amicable Settlement (KP Form 16)</option>
+                                        <option value="affidavit_withdrawal">Affidavit of Withdrawal</option>
+                                        <option value="other">Other Scanned Document</option>
+                                    </select>
+                                </div>
+
+                                {/* Case Number */}
+                                <div className="space-y-1.5 col-span-2">
+                                    <Label htmlFor="case-number" className="text-xs font-semibold">Case Number</Label>
+                                    <Input
+                                        id="case-number"
+                                        value={caseNo}
+                                        onChange={(e) => setCaseNo(e.target.value)}
+                                        className="h-9 text-xs"
+                                        required
+                                    />
+                                </div>
+
+                                {/* Complainant */}
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="complainant" className="text-xs font-semibold">Complainant Name</Label>
+                                    <Input
+                                        id="complainant"
+                                        value={complainant}
+                                        onChange={(e) => setComplainant(e.target.value)}
+                                        className="h-9 text-xs"
+                                        required
+                                    />
+                                </div>
+
+                                {/* Respondent */}
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="respondent" className="text-xs font-semibold">Respondent Name</Label>
+                                    <Input
+                                        id="respondent"
+                                        value={respondent}
+                                        onChange={(e) => setRespondent(e.target.value)}
+                                        className="h-9 text-xs"
+                                        required
+                                    />
+                                </div>
+
+                                {/* Nature of Case */}
+                                <div className="space-y-1.5 col-span-2">
+                                    <Label htmlFor="nature-of-case" className="text-xs font-semibold">Nature of Case</Label>
+                                    <Input
+                                        id="nature-of-case"
+                                        value={natureOfCase}
+                                        onChange={(e) => setNatureOfCase(e.target.value)}
+                                        className="h-9 text-xs"
+                                        required
+                                    />
+                                </div>
+
+                                {/* Summary */}
+                                <div className="space-y-1.5 col-span-2">
+                                    <Label htmlFor="summary" className="text-xs font-semibold">Document Summary / Narrative</Label>
+                                    <Textarea
+                                        id="summary"
+                                        value={summary}
+                                        onChange={(e) => setSummary(e.target.value)}
+                                        rows={3}
+                                        className="text-xs resize-none"
+                                        placeholder="Brief statement extracted from the document..."
+                                    />
+                                </div>
+                            </div>
+
+                            <DialogFooter className="mt-4 flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={resetModal}
+                                    disabled={isSaving}
+                                    className="h-9 text-xs"
+                                >
+                                    Clear & Start Over
+                                </Button>
+                                <Button
+                                    onClick={handleSaveScanned}
+                                    disabled={isSaving || !complainant || !respondent}
+                                    className="h-9 text-xs bg-[#dd8b11] hover:bg-[#c47c0f] text-white flex items-center"
+                                >
+                                    {isSaving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                                    Confirm & Save to Database
+                                </Button>
+                            </DialogFooter>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
 
             </div>
         </AppLayout>
