@@ -64,7 +64,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('documents/generate-word', [App\Http\Controllers\DocumentController::class, 'generateWord'])->name('documents.generate-word');
         Route::post('documents/upload', [App\Http\Controllers\DocumentController::class, 'upload'])->name('documents.upload');
         Route::post('documents/store-scanned', [App\Http\Controllers\DocumentController::class, 'storeScanned'])->name('documents.store-scanned');
-        Route::post('documents/create-form', [App\Http\Controllers\DocumentController::class, 'storeForm'])->name('documents.create-form');
+        Route::post('documents/create-form', [App\Http\Controllers\DocumentController::class, 'storeForm'])->name('documents.store-form');
     });
 
     // Admin Only Routes (Users and Audit Trail)

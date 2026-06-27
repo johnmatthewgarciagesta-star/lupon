@@ -174,16 +174,35 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
         formData.append('file', file);
 
         try {
-            const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '';
+            // Read the encrypted XSRF-TOKEN cookie set by Laravel.
+            // This is updated on every request and is always fresh, avoiding stale token issues from Inertia navigation.
+            const getXsrfToken = (): string => {
+                const name = 'XSRF-TOKEN';
+                const value = `; ${document.cookie}`;
+                const parts = value.split(`; ${name}=`);
+                if (parts.length === 2) {
+                    return decodeURIComponent(parts.pop()?.split(';').shift() || '');
+                }
+                return '';
+            };
+
+            const xsrfToken = getXsrfToken();
             const res = await fetch('/documents/upload', {
                 method: 'POST',
                 headers: {
-                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                    'X-XSRF-TOKEN': xsrfToken,
                 },
                 body: formData
             });
 
-            const result = await res.json();
+            let result;
+            try {
+                result = await res.json();
+            } catch (jsonErr) {
+                throw new Error(`Server returned an invalid response (Status ${res.status}). Please verify that your uploaded file size does not exceed the server's upload limit.`);
+            }
+
             if (res.ok && result.success) {
                 setTempFilePath(result.temp_file);
                 const data = result.data || {};
@@ -756,10 +775,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                         className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                                     >
                                         <option value="complaint">Complaint Form (KP Form 7)</option>
-                                        <option value="summons">Summons (KP Form 9)</option>
-                                        <option value="amicable_settlement">Amicable Settlement (KP Form 16)</option>
                                         <option value="affidavit_withdrawal">Affidavit of Withdrawal</option>
-                                        <option value="other">Other Scanned Document</option>
                                     </select>
                                 </div>
 

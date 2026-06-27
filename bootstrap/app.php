@@ -29,7 +29,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->stopIgnoring([\Symfony\Component\HttpKernel\Exception\NotFoundHttpException::class]);
+        $exceptions->stopIgnoring([
+            \Symfony\Component\HttpKernel\Exception\NotFoundHttpException::class,
+            \Illuminate\Session\TokenMismatchException::class
+        ]);
 
         $exceptions->reportable(function (\Throwable $e) {
             try {
@@ -57,10 +60,26 @@ return Application::configure(basePath: dirname(__DIR__))
                     $action = 'ACCESS_DENIED';
                     $module = 'Authentication & Security';
                     $readableMessage = 'An unauthorized access attempt was blocked by the system.';
+                } elseif ($e instanceof \Illuminate\Session\TokenMismatchException) {
+                    $action = 'CSRF_MISMATCH';
+                    $module = 'Authentication & Security';
+                    $readableMessage = 'CSRF token mismatch. The form submission expired or was sent from an untrusted source.';
                 }
 
                 $url = request()->fullUrl() ?? 'Unknown URL';
-                $details = "Error Type: {$readableMessage} | Tech Details: " . $e->getMessage() . " | File: " . basename($e->getFile()) . " (Line " . $e->getLine() . ") | URL: {$url}";
+                
+                $fileDetails = '';
+                if ($e instanceof \Illuminate\Session\TokenMismatchException && request()->hasFile('file')) {
+                    $file = request()->file('file');
+                    if ($file instanceof \Illuminate\Http\UploadedFile) {
+                        $fileName = $file->getClientOriginalName();
+                        $fileSize = round($file->getSize() / 1024, 2);
+                        $mimeType = $file->getMimeType();
+                        $fileDetails = " | Submitted File: {$fileName} ({$fileSize} KB, {$mimeType})";
+                    }
+                }
+
+                $details = "Error Type: {$readableMessage} | Tech Details: " . $e->getMessage() . " | File: " . basename($e->getFile() ?: 'Unknown') . " (Line " . $e->getLine() . ") | URL: {$url}" . $fileDetails;
 
                 // Fallback User ID para pumasok pa rin sa Database kahit nakalog-out ang user (e.g. 404 pagkabukas pa lang ng site)
                 $fallbackUserId = \Illuminate\Support\Facades\DB::table('users')->orderBy('id', 'asc')->value('id') ?? 1;

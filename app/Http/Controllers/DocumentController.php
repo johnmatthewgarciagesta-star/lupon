@@ -932,16 +932,36 @@ class DocumentController extends Controller
     // ── Upload scanned document for AI parsing (Temporary stage) ───────────────
     public function upload(Request $request)
     {
-        $request->validate([
+        $file = $request->file('file');
+        $fileName = $file ? $file->getClientOriginalName() : ($request->has('file') ? 'Invalid File' : 'No File');
+
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'file' => 'required|image|max:15360|mimes:png,jpg,jpeg',
         ]);
 
-        $file = $request->file('file');
-        $fileName = $file->getClientOriginalName();
+        if ($validator->fails()) {
+            $errors = implode(', ', $validator->errors()->all());
+            $fileSize = $file ? round($file->getSize() / 1024, 2) : 0;
+            $mimeType = $file ? $file->getMimeType() : 'unknown';
+
+            \App\Services\AuditService::log(
+                'UPLOAD_FAILED',
+                'Documents',
+                "Failed scanned document upload: {$fileName} (Size: {$fileSize} KB, Type: {$mimeType}). Validation errors: {$errors}",
+                null
+            );
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation errors: ' . $errors
+            ], 422);
+        }
 
         $apiKey = env('GEMINI_API_KEY');
         if (empty($apiKey)) {
-            \App\Services\AuditService::log('UPLOAD_FAILED', 'Documents', "Failed scanned document upload: {$fileName}. Reason: Gemini API Key missing.", null);
+            $fileSize = round($file->getSize() / 1024, 2);
+            $mimeType = $file->getMimeType();
+            \App\Services\AuditService::log('UPLOAD_FAILED', 'Documents', "Failed scanned document upload: {$fileName} (Size: {$fileSize} KB, Type: {$mimeType}). Reason: Gemini API Key missing.", null);
             return response()->json([
                 'success' => false,
                 'message' => 'Gemini API Key is not configured in the system (.env). Please add GEMINI_API_KEY to proceed.'
@@ -957,7 +977,7 @@ class DocumentController extends Controller
             $base64Image = base64_encode($imageBinary);
             $mimeType = $file->getMimeType();
 
-            // Construct the prompt for Gemini 1.5 Flash
+             // Construct the prompt for Gemini 2.5 Flash
             $promptInstruction = "Analyze this scanned legal document from the Barangay Lupon Tagapamayapa. " .
                                  "Identify and extract the following details precisely. Return your output " .
                                  "strictly as a flat JSON object matching this schema: " .
@@ -965,15 +985,15 @@ class DocumentController extends Controller
                                  "  \"complainant\": \"Name of the complainant(s) or null\"," .
                                  "  \"respondent\": \"Name of the respondent(s) or null\"," .
                                  "  \"case_no\": \"The formal case number or null\"," .
-                                 "  \"nature_of_case\": \"The issue/reason (e.g. Slander, Boundary dispute, Debt)\"," .
+                                 "  \"nature_of_case\": \"The issue/reason (e.g. Slander, Boundary dispute, Debt). For an Affidavit of Withdrawal, set this field to exactly 'Affidavit of Withdrawal'\"," .
                                  "  \"summary\": \"A short, objective summary of the narrative/statement written on the page.\"," .
-                                 "  \"document_type\": \"One of: complaint, summons, amicable_settlement, affidavit_withdrawal, or other\"" .
+                                 "  \"document_type\": \"Must be either 'complaint' (if it is a complaint form, statement of dispute, or complaint narrative) or 'affidavit_withdrawal' (if it is an affidavit of withdrawal, request for dismissal, or withdrawal statement)\"" .
                                  "}";
 
             // Send POST request to Google AI Studio
             $response = \Illuminate\Support\Facades\Http::withHeaders([
                 'Content-Type' => 'application/json'
-            ])->timeout(45)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={$apiKey}", [
+            ])->timeout(45)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}", [
                 'contents' => [
                     [
                         'parts' => [
@@ -1002,7 +1022,13 @@ class DocumentController extends Controller
             $extractedData = json_decode($rawTextResponse, true);
 
             // Log successful upload & parse in Audit Trail
-            \App\Services\AuditService::log('UPLOAD', 'Documents', "Successfully scanned and parsed image: {$fileName} via Gemini AI.", null);
+            $fileSize = round($file->getSize() / 1024, 2);
+            \App\Services\AuditService::log(
+                'UPLOAD',
+                'Documents',
+                "Successfully scanned and parsed image: {$fileName} ({$fileSize} KB, {$mimeType}) via Gemini AI.",
+                null
+            );
 
             return response()->json([
                 'success' => true,
@@ -1017,7 +1043,14 @@ class DocumentController extends Controller
             \Log::error('AI Scan Ingestion Error: ' . $e->getMessage());
 
             // Log failed upload & parse in Audit Trail
-            \App\Services\AuditService::log('UPLOAD_FAILED', 'Documents', "Failed scanned document upload: {$fileName}. Reason: " . $e->getMessage(), null);
+            $fileSize = isset($file) ? round($file->getSize() / 1024, 2) : 0;
+            $mimeType = isset($file) ? $file->getMimeType() : 'unknown';
+            \App\Services\AuditService::log(
+                'UPLOAD_FAILED',
+                'Documents',
+                "Failed scanned document upload: {$fileName} (Size: {$fileSize} KB, Type: {$mimeType}). Reason: " . $e->getMessage(),
+                null
+            );
 
             return response()->json([
                 'success' => false,
@@ -1130,18 +1163,23 @@ class DocumentController extends Controller
 
             \App\Services\AuditService::log('CREATE', 'Documents', "Saved scanned {$type} document for Case #{$caseId}", $caseId);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Scanned document saved successfully!',
-                'document' => $document
-            ]);
+            return redirect()->route('documents.index')
+                ->with('success', 'Scanned document saved successfully!');
 
         } catch (\Exception $e) {
             \Log::error('AI Scan Save Error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Error saving scanned document: ' . $e->getMessage()
-            ], 500);
+
+            $fileName = basename($tempPath ?? 'unknown');
+            \App\Services\AuditService::log(
+                'SAVE_SCANNED_FAILED',
+                'Documents',
+                "Failed saving scanned document {$fileName} to database. Reason: " . $e->getMessage(),
+                null
+            );
+
+            return back()->withErrors([
+                'error' => 'Error saving scanned document: ' . $e->getMessage()
+            ]);
         }
     }
 
