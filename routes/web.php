@@ -19,6 +19,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Ang middleware na 'role' ay sinisiguro na ang 'Administrator' o 'Data Encoder' lang ang makakabukas ng mga route na ito.
     // Kapag sinubukan itong buksan ng ordinaryong user o hacker, sila ay ma-blo-block (403 Forbidden).
     Route::middleware('role:Administrator|Data Encoder')->group(function () {
+        Route::put('/cases/{id}', [App\Http\Controllers\CaseController::class, 'update'])->name('cases.update');
         Route::get('dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
         // Views for Cases
@@ -45,7 +46,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Encoder and Admin Routes (Editing cases, documents, etc.)
     Route::middleware('role:Administrator|Data Encoder')->group(function () {
         Route::post('cases', [App\Http\Controllers\CaseController::class, 'store'])->name('cases.store');
-        Route::put('/cases/{id}', [App\Http\Controllers\CaseController::class, 'update'])->name('cases.update');
         Route::delete('/cases/{id}', [App\Http\Controllers\CaseController::class, 'destroy'])->name('cases.destroy');
         Route::post('/cases/{id}/archive', [App\Http\Controllers\CaseController::class, 'destroy'])->name('cases.archive-single');
         Route::post('/cases/{id}/restore', [App\Http\Controllers\CaseController::class, 'restore'])->name('cases.restore');
@@ -60,6 +60,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('documents/fill-custom/{id}', [App\Http\Controllers\DocumentController::class, 'fillCustom'])->name('documents.fill-custom');
         Route::post('documents/delete/{id}', [App\Http\Controllers\DocumentController::class, 'destroy'])->name('documents.destroy');
         Route::post('documents/save-layout', [App\Http\Controllers\DocumentController::class, 'saveLayout'])->name('documents.save-layout');
+        Route::post('documents/auto-align-ai', [App\Http\Controllers\DocumentController::class, 'autoAlignAI'])->name('documents.auto-align-ai');
         Route::post('documents/generate', [App\Http\Controllers\DocumentController::class, 'generate'])->name('documents.generate');
         Route::post('documents/generate-word', [App\Http\Controllers\DocumentController::class, 'generateWord'])->name('documents.generate-word');
         Route::post('documents/upload', [App\Http\Controllers\DocumentController::class, 'upload'])->name('documents.upload');

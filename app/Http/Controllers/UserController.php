@@ -140,6 +140,7 @@ class UserController extends Controller
      */
     public function destroy(string $id)
     {
+        
         $user = User::findOrFail($id);
 
         // Prevent deleting self (optional safety)

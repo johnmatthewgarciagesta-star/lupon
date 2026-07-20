@@ -197,6 +197,8 @@
             background: white;
             box-shadow: 0 8px 40px rgba(0,0,0,0.6);
             flex-shrink: 0;
+            container-type: inline-size;
+            container-name: calibration;
         }
 
         .calibration-paper img {
@@ -211,7 +213,7 @@
         .calib-field {
             position: absolute;
             font-family: Arial, sans-serif;
-            font-size: 11pt;
+            font-size: 2.0cqw; /* Dynamic scaling with paper width! */
             font-weight: normal;
             color: #000;
             background: transparent;
@@ -222,10 +224,24 @@
             box-sizing: border-box;
             min-width: 40px;
             min-height: 20px;
-            line-height: 1.2;
+            line-height: 1.25;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end; /* Rest baseline perfectly on lines! */
             transition: border-color 0.2s;
             outline: none;
             /* remove native resize */
+        }
+
+        .calib-field[data-locked="true"] {
+            border: 1.5px solid #ef4444 !important;
+            background: rgba(239, 68, 68, 0.05) !important;
+            cursor: not-allowed !important;
+        }
+
+        .calib-field[data-locked="true"] .calib-drag-handle,
+        .calib-field[data-locked="true"] .calib-resize-handle {
+            display: none !important;
         }
 
         .calib-field:hover, .calib-field:focus {
@@ -709,6 +725,8 @@
             box-shadow: 0 2px 12px rgba(0,0,0,0.15);
             overflow: hidden;
             border-radius: 2px;
+            container-type: inline-size;
+            container-name: preview;
         }
 
         .preview-frame img.bg {
@@ -728,7 +746,7 @@
         .preview-field-text {
             position: absolute;
             font-family: Arial, sans-serif;
-            font-size: 9pt; /* Slightly larger for screen preview */
+            font-size: 1.6cqw; /* Scale font-size dynamically with container width! */
             font-weight: 500;
             font-style: normal;
             color: #000000;
@@ -736,10 +754,13 @@
             background: rgba(26,115,232,0.04); /* Subtle highlight to see where text will be */
             border-bottom: 1px dashed rgba(26,115,232,0.2);
             white-space: pre-wrap;
-            line-height: 1.2;
+            line-height: 1.25;
             word-wrap: break-word;
             min-height: 1.2em;
             z-index: 50;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end; /* Rest baseline perfectly on the document line! */
         }
 
         .preview-field-text:not(:empty) {
@@ -983,15 +1004,17 @@
                 position: relative !important;
             }
 
-            /* Text overlay printed black, Arial, no decoration */
+            /* Text overlay printed black, no decoration */
             .preview-field-text {
                 color: #000000 !important;
-                font-family: Arial, sans-serif !important;
                 font-weight: normal !important;
                 font-style: normal !important;
                 text-decoration: none !important;
                 border: none !important;
                 background: transparent !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: flex-end !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
@@ -1196,6 +1219,7 @@
                 </div>
             </div>
 
+
             @elseif($isDate)
             <div class="form-card">
                 <div class="question-card-inner">
@@ -1372,6 +1396,12 @@
                                 // Skip hidden/date_split fields from the preview (they don't need to show)
                                 if (in_array($fieldType, ['hidden', 'date_split'])) continue;
                                 $styles = "top:{$field['y']};left:{$field['x']};width:{$field['w']};";
+                                if (isset($field['font_family'])) {
+                                    $styles .= "font-family: '{$field['font_family']}', Arial, sans-serif;";
+                                }
+                                if (isset($field['font_size'])) {
+                                    $styles .= "font-size: {$field['font_size']};";
+                                }
                                 if(isset($field['class'])) {
                                     if(str_contains($field['class'],'text-right')) $styles .= 'text-align:right;';
                                     if(str_contains($field['class'],'text-center')) $styles .= 'text-align:center;';
@@ -1637,9 +1667,11 @@
 {{-- ===== CALIBRATION OVERLAY ===== --}}
 <div class="calibration-overlay" id="calibrationOverlay">
 
-    {{-- Toolbar --}}
     <div class="calibration-toolbar">
-        <div style="display:flex; align-items:center; gap:16px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button type="button" onclick="closeCalibration()" title="Go Back to Form" style="background:transparent; border:none; cursor:pointer; color:#444746; display:flex; align-items:center; justify-content:center; padding:6px; border-radius:50%; width:36px; height:36px; margin-right:4px; transition: background 0.2s;" onmouseover="this.style.background='#f1f3f4'" onmouseout="this.style.background='transparent'">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            </button>
             <div style="width: 44px; height: 44px; background: #0B57D0; border-radius: 4px; display:flex; align-items:center; justify-content:center;">
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="#fff"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-2 16H8v-2h4v2zm4-4H8v-2h8v2zm0-4H8V8h8v2z"/></svg>
             </div>
@@ -1664,7 +1696,10 @@
          <button onclick="undoCalibration()" title="Undo action & position" style="background:transparent; border:none; cursor:pointer; color:#444746; display:flex; align-items:center; justify-content:center; padding:4px; border-radius:4px;" onmouseover="this.style.background='#E1E5EA'" onmouseout="this.style.background='transparent'">
              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
          </button>
-         <span style="width:1px; height:20px; background:#c7c7c7;"></span>
+         <button type="button" onclick="triggerAIAlign()" id="aiAlignBtn" title="Auto-Align Fields with Gemini AI" style="background:#0B57D0; border:none; cursor:pointer; color:#fff; display:flex; align-items:center; gap:6px; padding:6px 14px; border-radius:18px; font-size:12px; font-weight:600; transition:all 0.2s;">
+             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:2px;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+             <span>Auto-Align with AI</span>
+         </button>
          <span style="font-size:13px; color:#444746; font-weight:bold; display:flex; align-items:center; gap:4px;">100% <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></span>
          <span style="width:1px; height:20px; background:#c7c7c7;"></span>
          <button onmousedown="event.preventDefault();" onclick="document.execCommand('formatBlock', false, 'p')" title="Normal text" style="background:transparent;border:none;cursor:pointer;font-size:13px;color:#444746;display:flex;align-items:center;gap:4px;">Normal text</button>
@@ -1823,7 +1858,7 @@ baseLayouts.forEach(f => {
     // Convert percent string like "10%" to number 10
     const px = parseFloat((f.x || '10%').replace('%',''));
     const py = parseFloat((f.y || '10%').replace('%',''));
-    calibPositions[f.name] = { x: px, y: py, w: f.w || '40%', h: f.h || 'auto' };
+    calibPositions[f.name] = { x: px, y: py, w: f.w || '40%', h: f.h || 'auto', locked: !!f.locked };
 });
 
 function openCalibration() {
@@ -1859,6 +1894,7 @@ function openCalibration() {
             const box = document.createElement('div');
             box.className    = 'calib-field';
             box.dataset.name = name;
+            box.dataset.locked = f.locked ? 'true' : 'false';
             box.style.left   = xPx + 'px';
             box.style.top    = yPx + 'px';
             box.style.width  = wPx + 'px';
@@ -1926,6 +1962,7 @@ function closeCalibration() {
 }
 
 function makeDraggable(el, handle) {
+    if (el.dataset.locked === 'true') return;
     const paper   = document.getElementById('calibPaper');
     const readout = document.getElementById('calibReadout');
 
@@ -1997,6 +2034,7 @@ function makeDraggable(el, handle) {
 }
 
 function makeResizable(el, resizer) {
+    if (el.dataset.locked === 'true') return;
     const paper = document.getElementById('calibPaper');
 
     resizer.addEventListener('mousedown', function(e) {
@@ -2127,6 +2165,96 @@ function showCalibToast() {
     const toast = document.getElementById('calibToast');
     toast.classList.add('show');
     setTimeout(() => toast.classList.remove('show'), 3500);
+}
+
+function triggerAIAlign() {
+    const btn = document.getElementById('aiAlignBtn');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = 'Aligning...';
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+    fetch('{{ route("documents.auto-align-ai") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+            document_type: '{{ $type }}'
+        }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+
+        if (data.success && data.fields) {
+            const paper = document.getElementById('calibPaper');
+            const paperW = paper.offsetWidth;
+            const paperH = paper.offsetHeight;
+
+            data.fields.forEach(f => {
+                const name = f.name;
+                
+                // Parse coordinates
+                const px = parseFloat((f.x || '10%').replace('%',''));
+                const py = parseFloat((f.y || '10%').replace('%',''));
+                calibPositions[name] = { x: px, y: py, w: f.w || '40%', h: f.h || 'auto' };
+
+                // Update visual calib field
+                const el = document.querySelector('.calib-field[data-name="' + name + '"]');
+                if (el) {
+                    el.style.left = f.x;
+                    el.style.top = f.y;
+                    el.style.width = f.w;
+                    if (f.h && f.h !== 'auto') {
+                        el.style.height = f.h;
+                    }
+                    
+                    // Set font details if returned
+                    if (f.font_family) {
+                        el.style.fontFamily = "'" + f.font_family + "', sans-serif";
+                    }
+                    if (f.font_size) {
+                        el.style.fontSize = f.font_size;
+                    }
+                }
+
+                // Update live preview layout
+                const previewEl = document.getElementById('preview-' + name);
+                if (previewEl) {
+                    previewEl.style.left = f.x;
+                    previewEl.style.top = f.y;
+                    previewEl.style.width = f.w;
+                    if (f.font_family) {
+                        previewEl.style.fontFamily = "'" + f.font_family + "', Arial, sans-serif";
+                    }
+                    if (f.font_size) {
+                        previewEl.style.fontSize = f.font_size;
+                    }
+                }
+            });
+
+            // Push state to undo stack
+            pushCalibState();
+            
+            // Show toast message
+            const toast = document.getElementById('calibToast');
+            toast.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> AI successfully aligned text fields!';
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3500);
+        } else {
+            alert('AI Alignment failed: ' + (data.error || 'Check that GEMINI_API_KEY is configured in your .env file.'));
+        }
+    })
+    .catch(err => {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+        alert('Network error: ' + err.message);
+    });
 }
 // ===== END CALIBRATION SYSTEM ===================================================
 </script>

@@ -240,6 +240,20 @@
             display: block;
             /* For Firefox */
         }
+
+        /* Locked Field Styles */
+        body.edit-layout-mode .doc-field[data-locked="true"] {
+            border: 1.5px solid #ef4444 !important;
+            background: rgba(239, 68, 68, 0.08) !important;
+            cursor: not-allowed !important;
+        }
+
+        body.edit-layout-mode .doc-field[data-locked="true"] .resizer-r,
+        body.edit-layout-mode .doc-field[data-locked="true"] .resizer-b,
+        body.edit-layout-mode .doc-field[data-locked="true"] .resizer-l,
+        body.edit-layout-mode .doc-field[data-locked="true"] .resizer-t {
+            display: none !important;
+        }
     </style>
 </head>
 
@@ -312,6 +326,12 @@
                     class="px-4 py-3 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 flex items-center gap-2 transition-all">
                     <span class="material-icons-outlined">delete</span>
                     <span class="font-medium">Delete</span>
+                </button>
+
+                <button type="button" onclick="toggleLockSelectedField()" id="btn-lock-field" style="display: none;"
+                    class="px-4 py-3 bg-amber-600 text-white rounded-full shadow-lg hover:bg-amber-700 flex items-center gap-2 transition-all">
+                    <span class="material-icons-outlined" id="lock-icon">lock</span>
+                    <span class="font-medium" id="lock-text">Lock</span>
                 </button>
 
                 <button type="button" onclick="copyLayoutConfig()" id="copy-layout-btn" title="Copy PHP Config"
@@ -436,18 +456,26 @@
                             $fieldName = $field['name'] ?? 'field_' . $loop->index;
                             $fieldDefault = $field['default'] ?? '';
                             $styles = "top: {$field['y']}; left: {$field['x']}; width: {$field['w']}; height: " . ($field['h'] ?? 'auto') . ";";
+                            if (isset($field['font_family'])) {
+                                $styles .= " font-family: '{$field['font_family']}', Times New Roman, serif;";
+                            }
+                            if (isset($field['font_size'])) {
+                                $styles .= " font-size: {$field['font_size']};";
+                            }
                             if (isset($field['class'])) {
                                 if (str_contains($field['class'], 'text-right'))
                                     $styles .= " text-align: right;";
                                 if (str_contains($field['class'], 'text-center'))
                                     $styles .= " text-align: center;";
                             }
+                            $isLocked = !empty($field['locked']);
                         @endphp
 
                         @if(isset($field['type']) && $field['type'] === 'checkbox')
                             <!-- Checkbox Field -->
                             <div class="doc-field cursor-pointer {{ $field['class'] ?? '' }}" style="{{ $styles }}"
                                 id="field-{{ $fieldName }}" data-name="{{ $fieldName }}" data-type="checkbox"
+                                data-locked="{{ $isLocked ? 'true' : 'false' }}"
                                 onclick="{{ ($readonly ?? false) ? '' : 'toggleCheckbox(this)' }}">{!! $fieldDefault !!}
                                 <div class="resizer-r"></div>
                                 <div class="resizer-b"></div>
@@ -458,7 +486,8 @@
                             <!-- Content Editable Div -->
                             <div class="doc-field {{ $field['class'] ?? '' }}" style="{{ $styles }}"
                                 contenteditable="{{ ($readonly ?? false) ? 'false' : 'true' }}" id="field-{{ $fieldName }}"
-                                data-name="{{ $fieldName }}" placeholder="{{ $field['label'] ?? '' }}">
+                                data-name="{{ $fieldName }}" placeholder="{{ $field['label'] ?? '' }}"
+                                data-locked="{{ $isLocked ? 'true' : 'false' }}">
                                 {!! $fieldDefault !!}
                                 <div class="resizer-r" contenteditable="false"></div>
                                 <div class="resizer-b" contenteditable="false"></div>
@@ -606,7 +635,7 @@
 
         // --- Layout Editing Logic ---
         let isLayoutMode = false;
-        let selectedEl = null;
+        let selectedEls = []; // Array of selected fields
 
         function toggleLayoutMode() {
             isLayoutMode = !isLayoutMode;
@@ -617,6 +646,7 @@
             const addTextBtn = document.getElementById('btn-add-text');
             const deleteBtn = document.getElementById('btn-delete-field');
             const saveBtn = document.getElementById('btn-save-layout');
+            const lockBtn = document.getElementById('btn-lock-field');
 
             const fields = document.querySelectorAll('.doc-field');
 
@@ -626,9 +656,9 @@
 
                 if (copyBtn) copyBtn.style.display = 'flex';
                 if (addTextBtn) addTextBtn.style.display = 'flex';
-                if (deleteBtn) deleteBtn.style.display = 'flex';
                 if (saveBtn) saveBtn.style.display = 'flex';
 
+                updateLockBtnState();
                 enableDragAndResize();
 
                 // Disable content editing while in layout mode to prevent focus stealing
@@ -646,6 +676,7 @@
                 if (addTextBtn) addTextBtn.style.display = 'none';
                 if (deleteBtn) deleteBtn.style.display = 'none';
                 if (saveBtn) saveBtn.style.display = 'none';
+                if (lockBtn) lockBtn.style.display = 'none';
 
                 disableDragAndResize();
                 deselectField();
@@ -659,31 +690,25 @@
             }
         }
 
-        // ... addField, deleteSelectedField, selectField, deselectField, makeDraggable ...
-
-        function onMouseDown(e) {
-            if (!isLayoutMode) return;
-
-            // Ignore if clicking on resizers
-            if (e.target.classList.contains('resizer-r') ||
-                e.target.classList.contains('resizer-b') ||
-                e.target.classList.contains('resizer-l') ||
-                e.target.classList.contains('resizer-t')) return;
-
-            // Prevent default to stop text selection or focus
-            e.preventDefault();
-
-            selectField(e.currentTarget);
-
-            draggedEl = e.currentTarget;
-            startX = e.clientX;
-            startY = e.clientY;
-            startLeft = draggedEl.offsetLeft;
-            startTop = draggedEl.offsetTop;
-
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
-        }
+        // Set background click handlers to deselect when clicking canvas or workspace
+        document.addEventListener('DOMContentLoaded', () => {
+            const fieldLayer = document.getElementById('field-layer');
+            if (fieldLayer) {
+                fieldLayer.addEventListener('mousedown', function(e) {
+                    if (e.target === this) {
+                        deselectField();
+                    }
+                });
+            }
+            const workspace = document.querySelector('.workspace');
+            if (workspace) {
+                workspace.addEventListener('mousedown', function(e) {
+                    if (e.target === this) {
+                        deselectField();
+                    }
+                });
+            }
+        });
 
         function addField(type) {
             const id = 'custom_' + Date.now();
@@ -696,6 +721,7 @@
             div.className = 'doc-field';
             div.style.top = '50px';
             div.style.left = '50px';
+            div.setAttribute('data-locked', 'false');
 
             if (type === 'checkbox') {
                 // Removed per user request
@@ -718,32 +744,97 @@
 
             if (isLayoutMode) {
                 makeDraggable(div);
-                selectField(div);
+                selectField(div, false);
             }
         }
 
         function deleteSelectedField() {
-            if (selectedEl && confirm('Delete selected field?')) {
-                selectedEl.remove();
-                selectedEl = null;
-            } else if (!selectedEl) {
+            if (selectedEls.length > 0) {
+                const count = selectedEls.length;
+                if (confirm(`Delete ${count} selected field${count > 1 ? 's' : ''}?`)) {
+                    selectedEls.forEach(el => {
+                        el.remove();
+                    });
+                    selectedEls = [];
+                    updateLockBtnState();
+                }
+            } else {
                 alert('Click a field to select it first.');
             }
         }
 
-        function selectField(el) {
-            if (selectedEl) {
-                selectedEl.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-50');
+        function selectField(el, append = false) {
+            if (!append) {
+                selectedEls.forEach(item => {
+                    item.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-50');
+                });
+                selectedEls = [el];
+            } else {
+                const index = selectedEls.indexOf(el);
+                if (index > -1) {
+                    el.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-50');
+                    selectedEls.splice(index, 1);
+                    updateLockBtnState();
+                    return;
+                } else {
+                    selectedEls.push(el);
+                }
             }
-            selectedEl = el;
-            selectedEl.classList.add('ring-2', 'ring-blue-500', 'bg-blue-50');
+
+            el.classList.add('ring-2', 'ring-blue-500', 'bg-blue-50');
+            updateLockBtnState();
         }
 
         function deselectField() {
-            if (selectedEl) {
-                selectedEl.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-50');
+            selectedEls.forEach(item => {
+                item.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-50');
+            });
+            selectedEls = [];
+            updateLockBtnState();
+        }
+
+        function toggleLockSelectedField() {
+            if (selectedEls.length === 0) return;
+
+            const anyLocked = selectedEls.some(el => el.getAttribute('data-locked') === 'true');
+            const targetState = anyLocked ? 'false' : 'true';
+
+            selectedEls.forEach(el => {
+                el.setAttribute('data-locked', targetState);
+            });
+
+            updateLockBtnState();
+        }
+
+        function updateLockBtnState() {
+            const lockBtn = document.getElementById('btn-lock-field');
+            const lockIcon = document.getElementById('lock-icon');
+            const lockText = document.getElementById('lock-text');
+            const deleteBtn = document.getElementById('btn-delete-field');
+
+            if (!lockBtn) return;
+
+            if (selectedEls.length === 0 || !isLayoutMode) {
+                lockBtn.style.display = 'none';
+                if (deleteBtn) deleteBtn.style.display = 'none';
+                return;
             }
-            selectedEl = null;
+
+            lockBtn.style.display = 'flex';
+            if (deleteBtn) deleteBtn.style.display = 'flex';
+
+            const anyLocked = selectedEls.some(el => el.getAttribute('data-locked') === 'true');
+            if (anyLocked) {
+                lockIcon.innerText = 'lock_open';
+                lockText.innerText = 'Unlock';
+                lockBtn.classList.remove('bg-amber-600', 'hover:bg-amber-700');
+                lockBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+            } else {
+                lockIcon.innerText = 'lock';
+                lockText.innerText = 'Lock';
+                lockBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                lockBtn.classList.add('bg-amber-600', 'hover:bg-amber-700');
+            }
         }
 
         function makeDraggable(el) {
@@ -781,55 +872,78 @@
 
         // Resize State
         let resizingEl = null;
-        let resizeRefX, resizeRefY, resizeStartW, resizeStartH, resizeStartLeft, resizeStartTop, resizeMode;
+        let resizingFields = [];
+        let resizeRefX, resizeRefY, resizeMode;
 
         function onResizeStart(e, mode) {
             if (!isLayoutMode) return;
+            
+            const clickedField = e.currentTarget.parentElement;
+            if (clickedField.getAttribute('data-locked') === 'true') return;
+
             e.preventDefault();
             e.stopPropagation(); // Prevent drag
 
-            resizingEl = e.currentTarget.parentElement;
+            resizingEl = clickedField;
             resizeMode = mode;
             resizeRefX = e.clientX;
             resizeRefY = e.clientY;
-            resizeStartW = resizingEl.offsetWidth;
-            resizeStartH = resizingEl.offsetHeight;
-            resizeStartLeft = resizingEl.offsetLeft;
-            resizeStartTop = resizingEl.offsetTop;
+
+            // Make sure the clicked field is part of the selection.
+            if (!selectedEls.includes(resizingEl)) {
+                selectField(resizingEl, false);
+            }
+
+            resizingFields = [];
+            selectedEls.forEach(el => {
+                if (el.getAttribute('data-locked') !== 'true') {
+                    resizingFields.push({
+                        el: el,
+                        startW: el.offsetWidth,
+                        startH: el.offsetHeight,
+                        startLeft: el.offsetLeft,
+                        startTop: el.offsetTop
+                    });
+                }
+            });
 
             document.addEventListener('mousemove', onResizeMove);
             document.addEventListener('mouseup', onResizeEnd);
         }
 
         function onResizeMove(e) {
-            if (!resizingEl) return;
+            if (!resizingEl || resizingFields.length === 0) return;
             e.preventDefault();
 
             const dx = e.clientX - resizeRefX;
             const dy = e.clientY - resizeRefY;
 
-            if (resizeMode === 'w') {
-                resizingEl.style.width = (resizeStartW + dx) + 'px';
-            } else if (resizeMode === 'h') {
-                resizingEl.style.height = (resizeStartH + dy) + 'px';
-            } else if (resizeMode === 'l') {
-                resizingEl.style.width = (resizeStartW - dx) + 'px';
-                resizingEl.style.left = (resizeStartLeft + dx) + 'px';
-            } else if (resizeMode === 't') {
-                resizingEl.style.height = (resizeStartH - dy) + 'px';
-                resizingEl.style.top = (resizeStartTop + dy) + 'px';
-            }
+            resizingFields.forEach(item => {
+                if (resizeMode === 'w') {
+                    item.el.style.width = (item.startW + dx) + 'px';
+                } else if (resizeMode === 'h') {
+                    item.el.style.height = (item.startH + dy) + 'px';
+                } else if (resizeMode === 'l') {
+                    item.el.style.width = (item.startW - dx) + 'px';
+                    item.el.style.left = (item.startLeft + dx) + 'px';
+                } else if (resizeMode === 't') {
+                    item.el.style.height = (item.startH - dy) + 'px';
+                    item.el.style.top = (item.startTop + dy) + 'px';
+                }
+            });
         }
 
         function onResizeEnd() {
             resizingEl = null;
+            resizingFields = [];
             document.removeEventListener('mousemove', onResizeMove);
             document.removeEventListener('mouseup', onResizeEnd);
         }
 
         // Draggable State
         let draggedEl = null;
-        let startX, startY, startLeft, startTop;
+        let draggedFields = [];
+        let startX, startY;
 
         function onMouseDown(e) {
             if (!isLayoutMode) return;
@@ -843,38 +957,63 @@
             // Prevent default to stop text selection or focus
             e.preventDefault();
 
-            selectField(e.currentTarget);
+            const clickedEl = e.currentTarget;
 
-            draggedEl = e.currentTarget;
-            draggedEl.style.zIndex = 1000; // Bring to front
+            // Toggle/append with Ctrl key
+            if (e.ctrlKey) {
+                selectField(clickedEl, true);
+            } else {
+                if (!selectedEls.includes(clickedEl)) {
+                    selectField(clickedEl, false);
+                }
+            }
 
+            // Locked fields cannot be dragged
+            if (clickedEl.getAttribute('data-locked') === 'true') {
+                return;
+            }
+
+            draggedEl = clickedEl;
             startX = e.clientX;
             startY = e.clientY;
-            startLeft = draggedEl.offsetLeft;
-            startTop = draggedEl.offsetTop;
 
-            console.log('Drag Start:', { startX, startY, startLeft, startTop, el: draggedEl });
+            // Collect starting positions for all selected, unlocked fields
+            draggedFields = [];
+            selectedEls.forEach(el => {
+                if (el.getAttribute('data-locked') !== 'true') {
+                    el.style.zIndex = 1000; // Bring to front during drag
+                    draggedFields.push({
+                        el: el,
+                        startLeft: el.offsetLeft,
+                        startTop: el.offsetTop
+                    });
+                }
+            });
 
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('mouseup', onMouseUp);
         }
 
         function onMouseMove(e) {
-            if (!draggedEl) return;
-            console.log('Dragging...');
+            if (!draggedEl || draggedFields.length === 0) return;
             e.preventDefault();
             const dx = e.clientX - startX;
             const dy = e.clientY - startY;
-            draggedEl.style.left = (startLeft + dx) + 'px';
-            draggedEl.style.top = (startTop + dy) + 'px';
+
+            draggedFields.forEach(item => {
+                item.el.style.left = (item.startLeft + dx) + 'px';
+                item.el.style.top = (item.startTop + dy) + 'px';
+            });
         }
 
         function onMouseUp() {
-            if (draggedEl) {
-                console.log('Drag End');
-                draggedEl.style.zIndex = ''; // Reset z-index
+            if (draggedFields.length > 0) {
+                draggedFields.forEach(item => {
+                    item.el.style.zIndex = ''; // Reset z-index
+                });
             }
             draggedEl = null;
+            draggedFields = [];
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
         }
@@ -1013,8 +1152,9 @@
 
                 let classStr = classes.length ? `, 'class' => '${classes.join(' ')}'` : '';
                 let typeStr = el.style.height !== 'auto' && parseInt(el.style.height) > 30 ? ", 'type' => 'textarea'" : "";
+                let lockedStr = el.getAttribute('data-locked') === 'true' ? ", 'locked' => true" : "";
 
-                output += `    ['name' => '${name}', 'label' => '${label}', 'x' => '${x}', 'y' => '${y}', 'w' => '${w}', 'h' => '${h}'${classStr}${typeStr}],\n`;
+                output += `    ['name' => '${name}', 'label' => '${label}', 'x' => '${x}', 'y' => '${y}', 'w' => '${w}', 'h' => '${h}'${classStr}${typeStr}${lockedStr}],\n`;
             });
             output += "]";
 
@@ -1069,9 +1209,10 @@
                     y: y,
                     w: w,
                     h: h,
-                    class: field.className.replace('doc-field', '').replace('cursor-pointer', '').trim(),
+                    class: field.className.replace('doc-field', '').replace('cursor-pointer', '').replace('ring-2', '').replace('ring-blue-500', '').replace('bg-blue-50', '').trim(),
                     type: field.getAttribute('data-type') || 'text',
-                    default: field.innerHTML
+                    default: field.innerHTML,
+                    locked: field.getAttribute('data-locked') === 'true'
                 });
             });
 

@@ -221,12 +221,16 @@ class DocumentController extends Controller
         $case = $document->case;
 
         // I-log sa Audit Trail kapag binuksan ang dokumento
-        \App\Services\AuditService::log(
-            'READ', 
-            'Documents', 
-            "Viewed Document ({$type})" . ($case ? " for Case #{$case->case_number}" : ""), 
-            $document->id
-        );
+        $sessionKey = 'viewed_document_' . $id;
+        if (!session()->has($sessionKey)) {
+            \App\Services\AuditService::log(
+                'READ', 
+                'Documents', 
+                "Viewed Document ({$type})" . ($case ? " for Case #{$case->case_number}" : ""), 
+                $document->id
+            );
+            session()->put($sessionKey, true);
+        }
 
         // Get Layout
         $savedLayout = FormLayout::where('document_type', $type)->first();
@@ -280,12 +284,16 @@ class DocumentController extends Controller
         $type = $data['document_type'] ?? $data['type'] ?? 'complaint';
 
         // I-log sa Audit Trail kapag binuksan ang detalye/dokumento ng kaso
-        \App\Services\AuditService::log(
-            'READ', 
-            'Cases', 
-            "Viewed documents/details for Case #{$case->case_number}", 
-            $case->case_number
-        );
+        $sessionKey = 'viewed_case_' . $id;
+        if (!session()->has($sessionKey)) {
+            \App\Services\AuditService::log(
+                'READ', 
+                'Cases', 
+                "Viewed documents/details for Case #{$case->case_number}", 
+                $case->case_number
+            );
+            session()->put($sessionKey, true);
+        }
 
         // Get Layout
         $savedLayout = FormLayout::where('document_type', $type)->first();
@@ -650,10 +658,34 @@ class DocumentController extends Controller
     {
         $type = $request->input('document_type');
         $positions = $request->input('positions'); // array: name → {x, y, w, h}
+        $layout = $request->input('layout');
         $content = $request->input('content');
         $caseId = $request->input('case_id') ?: null;
 
-        if (! $type || ! is_array($positions)) {
+        if (!$type) {
+            return response()->json(['error' => 'Invalid data'], 422);
+        }
+
+        // Convert layout to positions if it exists (from visual-editor)
+        if (is_array($layout)) {
+            $positions = [];
+            foreach ($layout as $field) {
+                if (isset($field['name'])) {
+                    $positions[$field['name']] = [
+                        'x' => $field['x'] ?? '0%',
+                        'y' => $field['y'] ?? '0%',
+                        'w' => $field['w'] ?? '10%',
+                        'h' => $field['h'] ?? 'auto',
+                        'class' => $field['class'] ?? '',
+                        'type' => $field['type'] ?? 'text',
+                        'default' => $field['default'] ?? '',
+                        'locked' => !empty($field['locked']),
+                    ];
+                }
+            }
+        }
+
+        if (!is_array($positions)) {
             return response()->json(['error' => 'Invalid data'], 422);
         }
 
@@ -677,16 +709,46 @@ class DocumentController extends Controller
             $content = $template->content;
             $fields = $content['fields'] ?? [];
 
-            foreach ($fields as &$field) {
-                if (isset($positions[$field['name']])) {
-                    $pos = $positions[$field['name']];
-                    $field['x'] = $pos['x'];
-                    $field['y'] = $pos['y'];
-                    $field['w'] = $pos['w'] ?? ($field['w'] ?? '30%');
-                    $field['h'] = $pos['h'] ?? ($field['h'] ?? 'auto');
+            if (is_array($layout)) {
+                $existingFieldMap = [];
+                foreach ($fields as $field) {
+                    $existingFieldMap[$field['name']] = $field;
                 }
+                
+                $newFields = [];
+                foreach ($layout as $field) {
+                    $name = $field['name'];
+                    $orig = $existingFieldMap[$name] ?? [];
+                    $newFields[] = array_merge($orig, [
+                        'name' => $name,
+                        'x' => $field['x'],
+                        'y' => $field['y'],
+                        'w' => $field['w'],
+                        'h' => $field['h'],
+                        'class' => $field['class'] ?? ($orig['class'] ?? ''),
+                        'type' => $field['type'] ?? ($orig['type'] ?? 'text'),
+                        'default' => $field['default'] ?? ($orig['default'] ?? ''),
+                        'locked' => !empty($field['locked']),
+                    ]);
+                }
+                $fields = $newFields;
+            } else {
+                foreach ($fields as &$field) {
+                    if (isset($positions[$field['name']])) {
+                        $pos = $positions[$field['name']];
+                        $field['x'] = $pos['x'];
+                        $field['y'] = $pos['y'];
+                        $field['w'] = $pos['w'] ?? ($field['w'] ?? '30%');
+                        $field['h'] = $pos['h'] ?? ($field['h'] ?? 'auto');
+                        if (isset($pos['locked'])) {
+                            $field['locked'] = !empty($pos['locked']);
+                        }
+                        if (isset($pos['font_family'])) $field['font_family'] = $pos['font_family'];
+                        if (isset($pos['font_size'])) $field['font_size'] = $pos['font_size'];
+                    }
+                }
+                unset($field);
             }
-            unset($field);
 
             $content['fields'] = $fields;
             $template->update(['content' => $content]);
@@ -695,7 +757,14 @@ class DocumentController extends Controller
         }
 
         // Merge incoming positions onto the base config layout
-        $baseFields = FormLayouts::getLayout($type);
+        // Check if there is already a saved layout in the database first
+        $savedLayout = FormLayout::where('document_type', $type)->first();
+        if ($savedLayout) {
+            $baseFields = $savedLayout->layout_json;
+        } else {
+            $baseFields = FormLayouts::getLayout($type);
+        }
+
         $fieldMap = [];
         foreach ($baseFields as $i => $f) {
             $fieldMap[$f['name']] = $i;
@@ -708,6 +777,25 @@ class DocumentController extends Controller
                 $baseFields[$idx]['y'] = $pos['y'];
                 $baseFields[$idx]['w'] = $pos['w'] ?? $baseFields[$idx]['w'];
                 $baseFields[$idx]['h'] = $pos['h'] ?? $baseFields[$idx]['h'];
+                if (isset($pos['class'])) $baseFields[$idx]['class'] = $pos['class'];
+                if (isset($pos['type'])) $baseFields[$idx]['type'] = $pos['type'];
+                if (isset($pos['default'])) $baseFields[$idx]['default'] = $pos['default'];
+                if (isset($pos['locked'])) $baseFields[$idx]['locked'] = !empty($pos['locked']);
+                if (isset($pos['font_family'])) $baseFields[$idx]['font_family'] = $pos['font_family'];
+                if (isset($pos['font_size'])) $baseFields[$idx]['font_size'] = $pos['font_size'];
+            } else {
+                $baseFields[] = [
+                    'name' => $name,
+                    'label' => $pos['label'] ?? '',
+                    'x' => $pos['x'],
+                    'y' => $pos['y'],
+                    'w' => $pos['w'],
+                    'h' => $pos['h'],
+                    'class' => $pos['class'] ?? '',
+                    'type' => $pos['type'] ?? 'text',
+                    'default' => $pos['default'] ?? '',
+                    'locked' => !empty($pos['locked']),
+                ];
             }
         }
 
@@ -718,6 +806,82 @@ class DocumentController extends Controller
         );
 
         return response()->json(['success' => true, 'message' => 'Layout saved!']);
+    }
+
+    /**
+     * Trigger manual AI-powered layout auto-alignment for standard or custom forms.
+     * Accessible via the "Auto-Align with AI" button on the calibration overlay.
+     */
+    public function autoAlignAI(Request $request)
+    {
+        $type = $request->input('document_type');
+        
+        if (!$type) {
+            return response()->json(['success' => false, 'error' => 'Missing document type'], 422);
+        }
+
+        // Get current fields structure
+        $fields = [];
+        $filePath = null;
+        
+        if (str_starts_with($type, 'custom_')) {
+            $id = str_replace('custom_', '', $type);
+            $template = \App\Models\Document::findOrFail($id);
+            $fields = $template->content['fields'] ?? [];
+            $filePath = $template->file_path;
+        } else {
+            // Standard Form Layout from config/db
+            $savedLayout = FormLayout::where('document_type', $type)->first();
+            if ($savedLayout) {
+                $fields = $savedLayout->layout_json;
+            } else {
+                $fields = FormLayouts::getLayout($type);
+            }
+            // Resolve relative path for standard forms in public/forms
+            $filePath = public_path("forms/{$type}.pdf");
+            // If public file does not exist, use relative placeholder path
+            if (!file_exists($filePath)) {
+                $filePath = "forms/{$type}.pdf";
+            }
+        }
+
+        // Map IDs to names
+        foreach ($fields as &$f) {
+            if (!isset($f['name']) && isset($f['id'])) {
+                $f['name'] = $f['id'];
+            }
+        }
+        unset($f);
+
+        // Run Gemini AI Alignment
+        if ($filePath) {
+            if (str_contains($filePath, public_path('forms'))) {
+                // Pass standard forms by passing absolute path directly as third param
+                $this->alignCustomTemplateWithAI(basename($filePath), $fields, $filePath);
+            } else {
+                $this->alignCustomTemplateWithAI($filePath, $fields);
+            }
+        }
+
+        // Save layout to DB to persist positions immediately
+        if (str_starts_with($type, 'custom_')) {
+            $id = str_replace('custom_', '', $type);
+            $template = \App\Models\Document::findOrFail($id);
+            $content = $template->content;
+            $content['fields'] = $fields;
+            $template->update(['content' => $content]);
+        } else {
+            FormLayout::updateOrCreate(
+                ['document_type' => $type],
+                ['layout_json' => $fields]
+            );
+        }
+
+        return response()->json([
+            'success' => true, 
+            'fields' => $fields,
+            'message' => 'AI successfully aligned layout positions and matched styles!'
+        ]);
     }
 
     // -------------------------------------------------------------------------
@@ -784,6 +948,120 @@ class DocumentController extends Controller
         \Illuminate\Support\Facades\Log::error('Ghostscript failed for '.$type.': '.implode("\n", $output));
 
         return '';
+    }
+
+    /**
+     * Use Gemini AI to automatically estimate layout alignment coordinates (x, y, w, h)
+     * and match the dominant font family and font size of the uploaded template document.
+     */
+    private function alignCustomTemplateWithAI(string $filePath, array &$fields, string $customPath = null)
+    {
+        $apiKey = env('GEMINI_API_KEY');
+        if (empty($apiKey)) {
+            return;
+        }
+
+        // Generate base64 image of the uploaded PDF template page 1
+        $imageBase64 = $this->generateBackgroundImage('custom_temp', $customPath ?? storage_path('app/public/' . $filePath));
+        if (empty($imageBase64)) {
+            return;
+        }
+
+        $fieldNames = [];
+        foreach ($fields as $f) {
+            $fieldNames[] = $f['name'] ?? $f['id'] ?? '';
+        }
+        $fieldNames = array_filter($fieldNames);
+
+        try {
+            $promptInstruction = "You are an expert document layout analysis system. " .
+                                 "We have an uploaded template form image (A4 paper). We want to overlay fillable text fields onto this form. " .
+                                 "Analyze the document layout, locate the blank fillable lines or spaces for the following fields, and estimate their coordinates as percentages of the A4 page width (x, w) and height (y, h). " .
+                                 "Also, analyze the surrounding printed text on the page, detect the dominant Font Family (e.g., Arial, Times New Roman, Calibri, Courier) and the average Font Size (in pt, e.g. 10pt, 11pt, 12pt). " .
+                                 "Here is the list of fields to detect: " . json_encode($fieldNames) . "\n\n" .
+                                 "Return your response strictly as a JSON object matching this schema: " .
+                                 "{" .
+                                 "  \"font_family\": \"Detected font name (e.g., Arial, Times New Roman, Calibri)\"," .
+                                 "  \"font_size\": \"Detected size in pt (e.g. 10pt)\"," .
+                                 "  \"layout\": [" .
+                                 "    { \"name\": \"field_name\", \"x\": \"X%\", \"y\": \"Y%\", \"w\": \"Width%\", \"h\": \"Height%\" }" .
+                                 "  ]" .
+                                 "}";
+
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'Content-Type' => 'application/json'
+            ])->timeout(45)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}", [
+                'contents' => [
+                    [
+                        'parts' => [
+                            ['text' => $promptInstruction],
+                            [
+                                'inlineData' => [
+                                    'mimeType' => 'image/png',
+                                    'data' => $imageBase64
+                                ]
+                            ]
+                        ]
+                    ]
+                ],
+                'generationConfig' => [
+                    'responseMimeType' => 'application/json'
+                ]
+            ]);
+
+            if ($response->successful()) {
+                $rawTextResponse = $response->json('candidates.0.content.parts.0.text');
+                $aiData = json_decode($rawTextResponse, true);
+
+                if (is_array($aiData)) {
+                    $fontFamily = $aiData['font_family'] ?? 'Arial';
+                    // Convert font_size to cqw or relative scaling if it was parsed as string (e.g. "11pt" -> "11pt")
+                    $fontSize = $aiData['font_size'] ?? '9.5pt';
+                    
+                    $layoutMap = [];
+                    if (isset($aiData['layout']) && is_array($aiData['layout'])) {
+                        foreach ($aiData['layout'] as $l) {
+                            if (isset($l['name'])) {
+                                $layoutMap[$l['name']] = $l;
+                            }
+                        }
+                    }
+
+                    // Apply layout settings to original fields array
+                    foreach ($fields as &$field) {
+                        $name = $field['name'] ?? $field['id'];
+                        
+                        // Set font family and size
+                        $field['font_family'] = $fontFamily;
+                        
+                        // Convert pt to cqw unit on screen for auto-scaling preview, e.g. 11pt -> 1.8cqw
+                        $fontSizePt = floatval($fontSize);
+                        if ($fontSizePt > 0) {
+                            // 9.5pt -> 1.6cqw, so cqw = pt * 0.168
+                            $field['font_size'] = number_format($fontSizePt * 0.168, 2) . 'cqw';
+                        } else {
+                            $field['font_size'] = '1.6cqw';
+                        }
+
+                        if (isset($layoutMap[$name])) {
+                            $field['x'] = $layoutMap[$name]['x'];
+                            $field['y'] = $layoutMap[$name]['y'];
+                            $field['w'] = $layoutMap[$name]['w'];
+                            $field['h'] = $layoutMap[$name]['h'] ?? 'auto';
+                        } else {
+                            // Defaults if AI missed it
+                            $field['x'] = $field['x'] ?? '15%';
+                            $field['y'] = $field['y'] ?? '20%';
+                            $field['w'] = $field['w'] ?? '35%';
+                            $field['h'] = $field['h'] ?? 'auto';
+                        }
+                    }
+                    unset($field);
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::error('AI Layout Analysis failed: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -1270,6 +1548,19 @@ class DocumentController extends Controller
                 ['id' => 'witness',        'type' => 'text', 'label' => 'Witness Name',      'required' => false],
                 ['id' => 'signature',      'type' => 'text', 'label' => 'Signature Line',    'required' => false],
             ];
+        }
+
+        // Map builder 'id' to 'name' so visual-editor and form-fill can load them correctly
+        foreach ($fields as &$f) {
+            if (!isset($f['name']) && isset($f['id'])) {
+                $f['name'] = $f['id'];
+            }
+        }
+        unset($f);
+
+        // Analyze and align layout and match fonts from the uploaded PDF
+        if ($filePath) {
+            $this->alignCustomTemplateWithAI($filePath, $fields);
         }
 
         $document = \App\Models\Document::create([

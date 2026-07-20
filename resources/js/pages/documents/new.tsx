@@ -520,7 +520,7 @@ export default function NewDocument({ existingTemplate }: { existingTemplate?: D
                                                         const noticeFields: FormField[] = [
                                                             { id: 'complainant', type: 'text', label: 'Complainant (Full Name)', placeholder: 'Full legal name of the complainant', required: true },
                                                             { id: 'respondent', type: 'text', label: 'Respondent / Addressee', placeholder: 'Full legal name of the respondent', required: true },
-                                                            { id: 'case_no', type: 'text', label: 'Case Number', placeholder: 'e.g. 2024-001', required: true },
+                                                            { id: 'case_no', type: 'text', label: 'Case Number', placeholder: 'e.g. 26-001', required: true },
                                                             { id: 'hearing_date', type: 'text', label: 'Hearing Date & Time', placeholder: 'e.g. February 28, 2026 at 9:00 AM', required: true },
                                                             { id: 'place', type: 'text', label: 'Place (City/Municipality)', required: true },
                                                             { id: 'province', type: 'text', label: 'Province', required: true }
