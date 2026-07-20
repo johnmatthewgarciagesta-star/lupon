@@ -79,4 +79,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 });
 
+// Capture Frontend Crashes to Audit Trail (Defense Sabotage Tracker)
+Route::post('/api/system-error', function (\Illuminate\Http\Request $request) {
+    try {
+        \App\Services\AuditService::log(
+            'FRONTEND_ERROR',
+            'React UI Interface',
+            substr('Browser Crash: ' . $request->input('message') . ' at ' . $request->input('url'), 0, 1000),
+            null,
+            \Illuminate\Support\Facades\Auth::check() ? \Illuminate\Support\Facades\Auth::id() : null
+        );
+    } catch (\Exception $e) {}
+    return response()->json(['status' => 'logged']);
+})->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+
 require __DIR__.'/settings.php';

@@ -22,6 +22,10 @@ class ReportController extends Controller
     {
         set_time_limit(300); // 5 minutes execution time for PDF generation
         $type = $request->input('type', 'summary');
+        
+        // Security Audit Log
+        \App\Services\AuditService::log('EXPORT', 'System Reports', "Generated System Report ({$type})", null);
+        
         $stats = $this->getStats();
 
         $html = view('reports.pdf', compact('stats', 'type'))->render();

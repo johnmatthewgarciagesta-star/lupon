@@ -184,13 +184,13 @@ export default function AuditTrailPage({ logs, stats, filters, users }: PageProp
                             <Input type="date" className="w-full" value={dateFilter} onChange={handleDateChange} />
                         </div>
                         <div className="space-y-2">
-                            <span className="text-sm font-medium">User</span>
+                            <span className="text-sm font-medium">Initiator</span>
                             <Select value={userFilter} onValueChange={(val) => handleFilterChange('user', val)}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="All Users" />
+                                    <SelectValue placeholder="All Initiators" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Users</SelectItem>
+                                    <SelectItem value="all">All Initiators</SelectItem>
                                     {users.map(u => (
                                         <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>
                                     ))}
@@ -258,7 +258,7 @@ export default function AuditTrailPage({ logs, stats, filters, users }: PageProp
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Timestamp</TableHead>
-                                        <TableHead>User</TableHead>
+                                        <TableHead>Initiator</TableHead>
                                         <TableHead>Action</TableHead>
                                         <TableHead>Module</TableHead>
                                         <TableHead>Details</TableHead>
@@ -298,6 +298,7 @@ export default function AuditTrailPage({ logs, stats, filters, users }: PageProp
                                                                     }
                                                                     if (log.module === 'Website Navigation' || log.module === 'Form Submission') return 'Website Visitor';
                                                                     if (log.module === 'System Kernel' || log.module === 'Database System') return 'System Process';
+                                                                    if (log.module === 'React UI Interface') return 'Client Browser';
                                                                     
                                                                     return 'System / Unknown';
                                                                 })()}
@@ -311,7 +312,7 @@ export default function AuditTrailPage({ logs, stats, filters, users }: PageProp
                                                         ${log.action === 'CREATE' ? 'bg-green-50 text-green-700 border-green-200' : ''}
                                                         ${log.action === 'UPDATE' ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
                                                         ${log.action === 'DELETE' ? 'bg-red-50 text-red-700 border-red-200' : ''}
-                                                        ${['PAGE_NOT_FOUND', 'DATABASE_ERROR', 'VALIDATION_FAILED', 'SYSTEM_ERROR', 'ACCESS_DENIED', 'ERROR'].includes(log.action) ? 'bg-orange-50 text-orange-700 border-orange-200' : ''}
+                                                        ${['PAGE_NOT_FOUND', 'DATABASE_ERROR', 'VALIDATION_FAILED', 'SYSTEM_ERROR', 'FRONTEND_ERROR', 'ACCESS_DENIED', 'ERROR'].includes(log.action) ? 'bg-destructive/10 text-destructive border-destructive/20' : ''}
                                                     `}>
                                                         {log.action}
                                                     </Badge>
