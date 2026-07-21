@@ -475,6 +475,7 @@
                             <!-- Checkbox Field -->
                             <div class="doc-field cursor-pointer {{ $field['class'] ?? '' }}" style="{{ $styles }}"
                                 id="field-{{ $fieldName }}" data-name="{{ $fieldName }}" data-type="checkbox"
+                                data-x="{{ $field['x'] }}" data-y="{{ $field['y'] }}" data-w="{{ $field['w'] }}" data-h="{{ $field['h'] ?? 'auto' }}"
                                 data-locked="{{ $isLocked ? 'true' : 'false' }}"
                                 onclick="{{ ($readonly ?? false) ? '' : 'toggleCheckbox(this)' }}">{!! $fieldDefault !!}
                                 <div class="resizer-r"></div>
@@ -487,6 +488,7 @@
                             <div class="doc-field {{ $field['class'] ?? '' }}" style="{{ $styles }}"
                                 contenteditable="{{ ($readonly ?? false) ? 'false' : 'true' }}" id="field-{{ $fieldName }}"
                                 data-name="{{ $fieldName }}" placeholder="{{ $field['label'] ?? '' }}"
+                                data-x="{{ $field['x'] }}" data-y="{{ $field['y'] }}" data-w="{{ $field['w'] }}" data-h="{{ $field['h'] ?? 'auto' }}"
                                 data-locked="{{ $isLocked ? 'true' : 'false' }}">
                                 {!! $fieldDefault !!}
                                 <div class="resizer-r" contenteditable="false"></div>
@@ -612,15 +614,22 @@
                 input.value = value;
                 container.appendChild(input);
 
-                // Calculate positions for override
-                // We send these to the backend to generate the PDF with exact visual positions
-                const x = (field.offsetLeft / parentW * 100).toFixed(2) + '%';
-                const y = (field.offsetTop / parentH * 100).toFixed(2) + '%';
-                const w = (field.offsetWidth / parentW * 100).toFixed(2) + '%';
+                // Use explicit stored attributes unless in layout mode
+                let x = field.getAttribute('data-x');
+                let y = field.getAttribute('data-y');
+                let w = field.getAttribute('data-w');
+                let h = field.getAttribute('data-h') || 'auto';
 
-                let h = 'auto';
-                // Check if height is explicitly set (via resize or style)
-                if (field.style.height && field.style.height !== 'auto') {
+                if (!x || isLayoutMode) {
+                    x = (field.offsetLeft / parentW * 100).toFixed(2) + '%';
+                }
+                if (!y || isLayoutMode) {
+                    y = (field.offsetTop / parentH * 100).toFixed(2) + '%';
+                }
+                if (!w || isLayoutMode) {
+                    w = (field.offsetWidth / parentW * 100).toFixed(2) + '%';
+                }
+                if (isLayoutMode && field.style.height && field.style.height !== 'auto') {
                     h = (field.offsetHeight / parentH * 100).toFixed(2) + '%';
                 }
 
@@ -933,7 +942,32 @@
             });
         }
 
+        function updateFieldDataPos(el) {
+            const parent = document.getElementById('page-canvas');
+            if (!parent) return;
+            const parentW = parent.offsetWidth;
+            const parentH = parent.offsetHeight;
+            if (parentW && parentH) {
+                const x = ((el.offsetLeft / parentW) * 100).toFixed(2) + '%';
+                const y = ((el.offsetTop / parentH) * 100).toFixed(2) + '%';
+                const w = ((el.offsetWidth / parentW) * 100).toFixed(2) + '%';
+                let h = 'auto';
+                if (el.style.height && el.style.height !== 'auto') {
+                    h = ((el.offsetHeight / parentH) * 100).toFixed(2) + '%';
+                }
+                el.setAttribute('data-x', x);
+                el.setAttribute('data-y', y);
+                el.setAttribute('data-w', w);
+                el.setAttribute('data-h', h);
+            }
+        }
+
         function onResizeEnd() {
+            if (resizingFields.length > 0) {
+                resizingFields.forEach(item => {
+                    updateFieldDataPos(item.el);
+                });
+            }
             resizingEl = null;
             resizingFields = [];
             document.removeEventListener('mousemove', onResizeMove);
@@ -1010,6 +1044,7 @@
             if (draggedFields.length > 0) {
                 draggedFields.forEach(item => {
                     item.el.style.zIndex = ''; // Reset z-index
+                    updateFieldDataPos(item.el);
                 });
             }
             draggedEl = null;

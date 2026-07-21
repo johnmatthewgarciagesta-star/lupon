@@ -26,7 +26,7 @@ class Document extends Model
 
     public function case()
     {
-        return $this->belongsTo(LuponCase::class, 'case_id');
+        return $this->belongsTo(LuponCase::class, 'case_id')->withTrashed();
     }
 
     public function creator()

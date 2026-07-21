@@ -31,7 +31,12 @@ class ReportController extends Controller
         $html = view('reports.pdf', compact('stats', 'type'))->render();
 
         try {
-            $pdf = Browsershot::html($html)
+            $browsershot = Browsershot::html($html);
+            if (env('CHROME_PATH')) {
+                $browsershot->setChromePath(env('CHROME_PATH'));
+            }
+
+            $pdf = $browsershot
                 ->format('A4')
                 ->margins(10, 10, 10, 10)
                 ->showBackground()

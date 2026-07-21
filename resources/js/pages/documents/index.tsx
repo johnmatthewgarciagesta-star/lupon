@@ -698,13 +698,13 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                         <div className="flex flex-col items-center justify-center border-2 border-dashed border-muted-foreground/20 rounded-lg p-8 hover:bg-muted/30 transition-colors cursor-pointer relative min-h-[200px]">
                             <input
                                 type="file"
-                                accept="image/*"
+                                accept="image/*,.pdf,application/pdf"
                                 onChange={handleFileUpload}
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                             />
                             <Upload className="h-10 w-10 text-muted-foreground/60 mb-4" />
-                            <p className="text-sm font-semibold mb-1">Click to upload scanned image</p>
-                            <p className="text-xs text-muted-foreground">PNG, JPG, or JPEG up to 15MB</p>
+                            <p className="text-sm font-semibold mb-1">Click to upload scanned document or image</p>
+                            <p className="text-xs text-muted-foreground">PDF, PNG, JPG, or JPEG up to 15MB</p>
                             {scanError && (
                                 <p className="text-xs text-red-500 mt-4 text-center bg-red-50 dark:bg-red-950/20 px-3 py-2 rounded-md border border-red-200 dark:border-red-900/30">
                                     {scanError}

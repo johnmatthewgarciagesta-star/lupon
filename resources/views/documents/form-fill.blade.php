@@ -2088,26 +2088,19 @@ function saveCalibration() {
     const btn = document.getElementById('calibSaveBtn');
     btn.textContent = 'Saving...';
     btn.disabled    = true;
-    
-    // Ensure all sizes are properly captured in % before saving
-    const paperW = document.getElementById('calibPaper').offsetWidth;
-    const paperH = document.getElementById('calibPaper').offsetHeight;
-    document.querySelectorAll('.calib-field').forEach(el => {
-        const name = el.dataset.name;
-        if (paperW && paperH) {
-             calibPositions[name].w = ((el.offsetWidth / paperW) * 100).toFixed(2) + '%';
-             calibPositions[name].h = ((el.offsetHeight / paperH) * 100).toFixed(2) + '%';
-        }
-    });
 
     // Build positions payload: name → { x: "12.5%", y: "22.1%", w, h }
     const positions = {};
     Object.entries(calibPositions).forEach(([name, pos]) => {
+        const xVal = typeof pos.x === 'number' ? pos.x.toFixed(2) + '%' : pos.x;
+        const yVal = typeof pos.y === 'number' ? pos.y.toFixed(2) + '%' : pos.y;
+        const wVal = pos.w || '40%';
+        const hVal = pos.h || 'auto';
         positions[name] = {
-            x: pos.x.toFixed(2) + '%',
-            y: pos.y.toFixed(2) + '%',
-            w: pos.w,
-            h: pos.h,
+            x: xVal,
+            y: yVal,
+            w: wVal,
+            h: hVal,
         };
     });
 

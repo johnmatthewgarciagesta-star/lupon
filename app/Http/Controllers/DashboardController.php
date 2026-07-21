@@ -24,6 +24,7 @@ class DashboardController extends Controller
 
             // 2. Recent Cases (Table)
             $recentCases = LuponCase::orderBy('date_filed', 'desc')
+                ->orderBy('created_at', 'desc')
                 ->take(5)
                 ->get()
                 ->map(function ($case) {

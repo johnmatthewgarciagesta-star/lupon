@@ -17,8 +17,11 @@ class DocumentController extends Controller
     public function index(Request $request)
     {
         try {
-            // ... Logic for filtering (already has a query)
-            $query = \App\Models\Document::with(['case', 'creator']);
+            $query = \App\Models\Document::with(['case', 'creator'])
+                ->where(function ($q) {
+                    $q->whereNull('content->is_scanned')
+                      ->orWhere('content->is_scanned', false);
+                });
 
             if ($request->filled('search')) {
                 $search = $request->input('search');
@@ -253,16 +256,6 @@ class DocumentController extends Controller
             if (isset($data[$field['name']])) {
                 $field['default'] = $data[$field['name']];
             }
-            // Apply layout overrides if stored
-            if (isset($data['layout_overrides'][$field['name']])) {
-                $override = $data['layout_overrides'][$field['name']];
-                $field['x'] = $override['x'];
-                $field['y'] = $override['y'];
-                $field['w'] = $override['w'];
-                if (isset($override['h']) && $override['h'] !== 'auto') {
-                    $field['h'] = $override['h'];
-                }
-            }
         }
         unset($field);
 
@@ -278,7 +271,7 @@ class DocumentController extends Controller
      */
     public function viewCase($id)
     {
-        $case = \App\Models\LuponCase::where('id', $id)->orWhere('case_number', $id)->firstOrFail();
+        $case = \App\Models\LuponCase::withTrashed()->where('id', $id)->orWhere('case_number', $id)->firstOrFail();
         $data = $case->document_data ?? [];
 
         $type = $data['document_type'] ?? $data['type'] ?? 'complaint';
@@ -311,19 +304,10 @@ class DocumentController extends Controller
             $fields = FormLayouts::getLayout($type);
         }
 
-        // Populate fields with saved data and apply overrides
+        // Populate fields with saved data
         foreach ($fields as &$field) {
             if (isset($data[$field['name']])) {
                 $field['default'] = $data[$field['name']];
-            }
-            if (isset($data['layout_overrides'][$field['name']])) {
-                $override = $data['layout_overrides'][$field['name']];
-                $field['x'] = $override['x'];
-                $field['y'] = $override['y'];
-                $field['w'] = $override['w'];
-                if (isset($override['h']) && $override['h'] !== 'auto') {
-                    $field['h'] = $override['h'];
-                }
             }
         }
         unset($field);
@@ -1214,7 +1198,7 @@ class DocumentController extends Controller
         $fileName = $file ? $file->getClientOriginalName() : ($request->has('file') ? 'Invalid File' : 'No File');
 
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
-            'file' => 'required|image|max:15360|mimes:png,jpg,jpeg',
+            'file' => 'required|file|max:15360|mimes:png,jpg,jpeg,pdf',
         ]);
 
         if ($validator->fails()) {
@@ -1249,11 +1233,33 @@ class DocumentController extends Controller
         try {
             // Store temporarily in scans/temp
             $tempPath = $file->store('scans/temp', 'public');
-
-            // Get base64 representation of the image
-            $imageBinary = Storage::disk('public')->get($tempPath);
-            $base64Image = base64_encode($imageBinary);
             $mimeType = $file->getMimeType();
+
+            // If uploaded file is a PDF, render Page 1 as PNG image using Ghostscript if available
+            if ($file->getClientOriginalExtension() === 'pdf' || $mimeType === 'application/pdf') {
+                $gsPath = $this->getGhostscriptPath();
+                $pdfFullPath = Storage::disk('public')->path($tempPath);
+                $pngTempPath = 'scans/temp/' . uniqid('pdf_page_') . '.png';
+                $pngFullPath = Storage::disk('public')->path($pngTempPath);
+
+                $cmd = "{$gsPath} -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r300 -dFirstPage=1 -dLastPage=1 -sOutputFile=\"{$pngFullPath}\" \"{$pdfFullPath}\" 2>&1";
+                exec($cmd, $gsOutput, $returnCode);
+
+                if ($returnCode === 0 && file_exists($pngFullPath)) {
+                    $imageBinary = file_get_contents($pngFullPath);
+                    $base64Image = base64_encode($imageBinary);
+                    $mimeType = 'image/png';
+                    @unlink($pngFullPath);
+                } else {
+                    // Fallback to sending native PDF binary directly to Gemini 2.5 Flash
+                    $imageBinary = Storage::disk('public')->get($tempPath);
+                    $base64Image = base64_encode($imageBinary);
+                    $mimeType = 'application/pdf';
+                }
+            } else {
+                $imageBinary = Storage::disk('public')->get($tempPath);
+                $base64Image = base64_encode($imageBinary);
+            }
 
              // Construct the prompt for Gemini 2.5 Flash
             $promptInstruction = "Analyze this scanned legal document from the Barangay Lupon Tagapamayapa. " .
@@ -1351,20 +1357,25 @@ class DocumentController extends Controller
             'case_id' => 'nullable|integer',
         ]);
 
-        $tempPath = $request->input('temp_file');
+        $rawTemp = $request->input('temp_file');
+        $tempPath = str_replace('\\', '/', $rawTemp);
+        $fileName = basename($tempPath);
+        $permanentPath = "scans/{$fileName}";
 
-        if (!Storage::disk('public')->exists($tempPath)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Scanned file not found. Please upload again.'
-            ], 400);
+        if (Storage::disk('public')->exists($tempPath)) {
+            try {
+                if (Storage::disk('public')->exists($permanentPath)) {
+                    Storage::disk('public')->delete($permanentPath);
+                }
+                Storage::disk('public')->move($tempPath, $permanentPath);
+            } catch (\Exception $e) {
+                @Storage::disk('public')->copy($tempPath, $permanentPath);
+            }
+        } elseif (!Storage::disk('public')->exists($permanentPath)) {
+            $permanentPath = $tempPath;
         }
 
         try {
-            // Move file to permanent scans folder
-            $fileName = basename($tempPath);
-            $permanentPath = "scans/{$fileName}";
-            Storage::disk('public')->move($tempPath, $permanentPath);
 
             $caseId = $request->input('case_id');
             $caseNo = $request->input('case_no');
@@ -1374,52 +1385,65 @@ class DocumentController extends Controller
             $summary = $request->input('summary');
             $type = $request->input('type');
 
-            // Dynamically associate or create Case
-            if (!$caseId) {
-                if (empty($caseNo)) {
-                    $caseNo = 'CAS-' . date('YmdHis');
-                }
-
-                // Check if case already exists by case_number
+            // Dynamically associate, update, or create Case
+            if (!$caseId && !empty($caseNo)) {
                 $existingCase = \App\Models\LuponCase::withTrashed()->where('case_number', $caseNo)->first();
                 if ($existingCase) {
                     $caseId = $existingCase->id;
-                    if ($existingCase->trashed()) {
-                        $existingCase->restore();
-                    }
-                } else {
-                    // Create new Case dynamically
-                    $case = \App\Models\LuponCase::create([
-                        'case_number' => $caseNo,
-                        'title' => "{$complainant} vs {$respondent}",
-                        'complainant' => $complainant,
-                        'respondent' => $respondent,
-                        'nature_of_case' => $natureOfCase,
-                        'status' => 'Pending',
-                        'date_filed' => now(),
-                        'complaint_narrative' => $summary,
-                        'admin_notes' => 'Created via Scanned AI Ingestion',
-                        'created_by' => auth()->id(),
-                    ]);
-                    $caseId = $case->id;
-                    
-                    \App\Services\AuditService::log('CREATE', 'Cases', "Auto-created Case #{$caseNo} from AI scan", $caseNo);
                 }
-            } else {
-                // Update existing Case
+            }
+
+            $docContentMap = [
+                'case_no' => $caseNo,
+                'complainant' => $complainant,
+                'respondent' => $respondent,
+                'nature_of_case' => $natureOfCase,
+                'narrative' => $summary,
+                'For' => $natureOfCase,
+                'type' => $type,
+                'is_scanned' => true
+            ];
+
+            if ($caseId) {
                 $case = \App\Models\LuponCase::withTrashed()->find($caseId);
                 if ($case) {
                     if ($case->trashed()) {
                         $case->restore();
                     }
                     $case->update([
+                        'case_number' => $caseNo ?: $case->case_number,
                         'complainant' => $complainant,
                         'respondent' => $respondent,
                         'nature_of_case' => $natureOfCase,
-                        'title' => "{$complainant} vs {$respondent}"
+                        'title' => "{$complainant} vs {$respondent}",
+                        'complaint_narrative' => $summary ?: $case->complaint_narrative,
+                        'date_filed' => now(),
+                        'document_data' => $docContentMap,
                     ]);
                     \App\Services\AuditService::log('UPDATE', 'Cases', "Updated Case #{$case->case_number} details from AI scan", $case->case_number);
                 }
+            } else {
+                if (empty($caseNo)) {
+                    $caseNo = 'CAS-' . date('YmdHis');
+                    $docContentMap['case_no'] = $caseNo;
+                }
+
+                $case = \App\Models\LuponCase::create([
+                    'case_number' => $caseNo,
+                    'title' => "{$complainant} vs {$respondent}",
+                    'complainant' => $complainant,
+                    'respondent' => $respondent,
+                    'nature_of_case' => $natureOfCase,
+                    'status' => 'Pending',
+                    'date_filed' => now(),
+                    'complaint_narrative' => $summary,
+                    'admin_notes' => 'Created via Scanned AI Ingestion',
+                    'document_data' => $docContentMap,
+                    'created_by' => auth()->id(),
+                ]);
+                $caseId = $case->id;
+                
+                \App\Services\AuditService::log('CREATE', 'Cases', "Auto-created Case #{$caseNo} from AI scan", $caseNo);
             }
 
             // Create Document record
@@ -1441,8 +1465,8 @@ class DocumentController extends Controller
 
             \App\Services\AuditService::log('CREATE', 'Documents', "Saved scanned {$type} document for Case #{$caseId}", $caseId);
 
-            return redirect()->route('documents.index')
-                ->with('success', 'Scanned document saved successfully!');
+            return redirect()->route('cases.index')
+                ->with('success', "Scanned document and Case #{$caseNo} saved to database successfully!");
 
         } catch (\Exception $e) {
             \Log::error('AI Scan Save Error: ' . $e->getMessage());
