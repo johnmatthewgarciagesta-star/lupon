@@ -273,8 +273,8 @@ class DocumentController extends Controller
     {
         $case = \App\Models\LuponCase::withTrashed()->where('id', $id)->orWhere('case_number', $id)->firstOrFail();
         $data = $case->document_data ?? [];
-
-        $type = $data['document_type'] ?? $data['type'] ?? 'complaint';
+        $latestDoc = $case->documents()->latest()->first();
+        $type = $latestDoc->type ?? $data['document_type'] ?? $data['type'] ?? 'complaint';
 
         // I-log sa Audit Trail kapag binuksan ang detalye/dokumento ng kaso
         $sessionKey = 'viewed_case_' . $id;
@@ -316,7 +316,11 @@ class DocumentController extends Controller
         $readonly = request('mode') !== 'edit';
         $missingData = empty($data);
 
-        return view('documents.visual-editor', compact('type', 'imageBase64', 'fields', 'readonly', 'case', 'missingData'));
+        if (request('mode') === 'edit') {
+            return view('documents.form-fill', compact('type', 'imageBase64', 'fields', 'data', 'case'));
+        }
+
+        return view('documents.templates.print', compact('type', 'imageBase64', 'fields', 'data', 'case'));
     }
 
     public function generate(Request $request)
@@ -783,13 +787,14 @@ class DocumentController extends Controller
             }
         }
 
-        // Upsert into DB
+        // Upsert into DB & FormLayouts config
         FormLayout::updateOrCreate(
             ['document_type' => $type],
             ['layout_json' => $baseFields]
         );
+        FormLayouts::saveLayoutToFile($type, $baseFields);
 
-        return response()->json(['success' => true, 'message' => 'Layout saved!']);
+        return response()->json(['success' => true, 'message' => 'Layout saved to database and FormLayouts.php!']);
     }
 
     /**
@@ -941,110 +946,153 @@ class DocumentController extends Controller
     private function alignCustomTemplateWithAI(string $filePath, array &$fields, string $customPath = null)
     {
         $apiKey = env('GEMINI_API_KEY');
-        if (empty($apiKey)) {
-            return;
-        }
+        $alignedViaGemini = false;
 
-        // Generate base64 image of the uploaded PDF template page 1
-        $imageBase64 = $this->generateBackgroundImage('custom_temp', $customPath ?? storage_path('app/public/' . $filePath));
-        if (empty($imageBase64)) {
-            return;
-        }
+        // Valid Google Gemini API keys start with AIza...
+        if (!empty($apiKey) && str_starts_with($apiKey, 'AIza')) {
+            // Generate base64 image of the uploaded PDF template page 1
+            $imageBase64 = $this->generateBackgroundImage('custom_temp', $customPath ?? storage_path('app/public/' . $filePath));
+            
+            if (!empty($imageBase64)) {
+                $fieldNames = [];
+                foreach ($fields as $f) {
+                    $fieldNames[] = $f['name'] ?? $f['id'] ?? '';
+                }
+                $fieldNames = array_filter($fieldNames);
 
-        $fieldNames = [];
-        foreach ($fields as $f) {
-            $fieldNames[] = $f['name'] ?? $f['id'] ?? '';
-        }
-        $fieldNames = array_filter($fieldNames);
+                try {
+                    $promptInstruction = "You are an expert document layout analysis system. " .
+                                         "We have an uploaded template form image (A4 paper). We want to overlay fillable text fields onto this form. " .
+                                         "Analyze the document layout, locate the blank fillable lines or spaces for the following fields, and estimate their coordinates as percentages of the A4 page width (x, w) and height (y, h). " .
+                                         "Also, analyze the surrounding printed text on the page, detect the dominant Font Family (e.g., Arial, Times New Roman, Calibri, Courier) and the average Font Size (in pt, e.g. 10pt, 11pt, 12pt). " .
+                                         "Here is the list of fields to detect: " . json_encode($fieldNames) . "\n\n" .
+                                         "Return your response strictly as a JSON object matching this schema: " .
+                                         "{" .
+                                         "  \"font_family\": \"Detected font name (e.g., Arial, Times New Roman, Calibri)\"," .
+                                         "  \"font_size\": \"Detected size in pt (e.g. 10pt)\"," .
+                                         "  \"layout\": [" .
+                                         "    { \"name\": \"field_name\", \"x\": \"X%\", \"y\": \"Y%\", \"w\": \"Width%\", \"h\": \"Height%\" }" .
+                                         "  ]" .
+                                         "}";
 
-        try {
-            $promptInstruction = "You are an expert document layout analysis system. " .
-                                 "We have an uploaded template form image (A4 paper). We want to overlay fillable text fields onto this form. " .
-                                 "Analyze the document layout, locate the blank fillable lines or spaces for the following fields, and estimate their coordinates as percentages of the A4 page width (x, w) and height (y, h). " .
-                                 "Also, analyze the surrounding printed text on the page, detect the dominant Font Family (e.g., Arial, Times New Roman, Calibri, Courier) and the average Font Size (in pt, e.g. 10pt, 11pt, 12pt). " .
-                                 "Here is the list of fields to detect: " . json_encode($fieldNames) . "\n\n" .
-                                 "Return your response strictly as a JSON object matching this schema: " .
-                                 "{" .
-                                 "  \"font_family\": \"Detected font name (e.g., Arial, Times New Roman, Calibri)\"," .
-                                 "  \"font_size\": \"Detected size in pt (e.g. 10pt)\"," .
-                                 "  \"layout\": [" .
-                                 "    { \"name\": \"field_name\", \"x\": \"X%\", \"y\": \"Y%\", \"w\": \"Width%\", \"h\": \"Height%\" }" .
-                                 "  ]" .
-                                 "}";
-
-            $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'Content-Type' => 'application/json'
-            ])->timeout(45)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}", [
-                'contents' => [
-                    [
-                        'parts' => [
-                            ['text' => $promptInstruction],
+                    $response = \Illuminate\Support\Facades\Http::withHeaders([
+                        'Content-Type' => 'application/json'
+                    ])->timeout(30)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}", [
+                        'contents' => [
                             [
-                                'inlineData' => [
-                                    'mimeType' => 'image/png',
-                                    'data' => $imageBase64
+                                'parts' => [
+                                    ['text' => $promptInstruction],
+                                    [
+                                        'inlineData' => [
+                                            'mimeType' => 'image/png',
+                                            'data' => $imageBase64
+                                        ]
+                                    ]
                                 ]
                             ]
+                        ],
+                        'generationConfig' => [
+                            'responseMimeType' => 'application/json'
                         ]
-                    ]
-                ],
-                'generationConfig' => [
-                    'responseMimeType' => 'application/json'
-                ]
-            ]);
+                    ]);
 
-            if ($response->successful()) {
-                $rawTextResponse = $response->json('candidates.0.content.parts.0.text');
-                $aiData = json_decode($rawTextResponse, true);
+                    if ($response->successful()) {
+                        $rawTextResponse = $response->json('candidates.0.content.parts.0.text');
+                        $aiData = json_decode($rawTextResponse, true);
 
-                if (is_array($aiData)) {
-                    $fontFamily = $aiData['font_family'] ?? 'Arial';
-                    // Convert font_size to cqw or relative scaling if it was parsed as string (e.g. "11pt" -> "11pt")
-                    $fontSize = $aiData['font_size'] ?? '9.5pt';
-                    
-                    $layoutMap = [];
-                    if (isset($aiData['layout']) && is_array($aiData['layout'])) {
-                        foreach ($aiData['layout'] as $l) {
-                            if (isset($l['name'])) {
-                                $layoutMap[$l['name']] = $l;
+                        if (is_array($aiData)) {
+                            $fontFamily = $aiData['font_family'] ?? 'Arial';
+                            $fontSize = $aiData['font_size'] ?? '9.5pt';
+                            
+                            $layoutMap = [];
+                            if (isset($aiData['layout']) && is_array($aiData['layout'])) {
+                                foreach ($aiData['layout'] as $l) {
+                                    if (isset($l['name'])) {
+                                        $layoutMap[$l['name']] = $l;
+                                    }
+                                }
                             }
+
+                            foreach ($fields as &$field) {
+                                $name = $field['name'] ?? $field['id'];
+                                $field['font_family'] = $fontFamily;
+                                
+                                $fontSizePt = floatval($fontSize);
+                                if ($fontSizePt > 0) {
+                                    $field['font_size'] = number_format($fontSizePt * 0.168, 2) . 'cqw';
+                                } else {
+                                    $field['font_size'] = '1.6cqw';
+                                }
+
+                                if (isset($layoutMap[$name])) {
+                                    $field['x'] = $layoutMap[$name]['x'];
+                                    $field['y'] = $layoutMap[$name]['y'];
+                                    $field['w'] = $layoutMap[$name]['w'];
+                                    $field['h'] = $layoutMap[$name]['h'] ?? 'auto';
+                                }
+                            }
+                            unset($field);
+                            $alignedViaGemini = true;
                         }
                     }
-
-                    // Apply layout settings to original fields array
-                    foreach ($fields as &$field) {
-                        $name = $field['name'] ?? $field['id'];
-                        
-                        // Set font family and size
-                        $field['font_family'] = $fontFamily;
-                        
-                        // Convert pt to cqw unit on screen for auto-scaling preview, e.g. 11pt -> 1.8cqw
-                        $fontSizePt = floatval($fontSize);
-                        if ($fontSizePt > 0) {
-                            // 9.5pt -> 1.6cqw, so cqw = pt * 0.168
-                            $field['font_size'] = number_format($fontSizePt * 0.168, 2) . 'cqw';
-                        } else {
-                            $field['font_size'] = '1.6cqw';
-                        }
-
-                        if (isset($layoutMap[$name])) {
-                            $field['x'] = $layoutMap[$name]['x'];
-                            $field['y'] = $layoutMap[$name]['y'];
-                            $field['w'] = $layoutMap[$name]['w'];
-                            $field['h'] = $layoutMap[$name]['h'] ?? 'auto';
-                        } else {
-                            // Defaults if AI missed it
-                            $field['x'] = $field['x'] ?? '15%';
-                            $field['y'] = $field['y'] ?? '20%';
-                            $field['w'] = $field['w'] ?? '35%';
-                            $field['h'] = $field['h'] ?? 'auto';
-                        }
-                    }
-                    unset($field);
+                } catch (\Exception $e) {
+                    \Log::error('AI Layout Analysis failed: ' . $e->getMessage());
                 }
             }
-        } catch (\Exception $e) {
-            \Log::error('AI Layout Analysis failed: ' . $e->getMessage());
+        }
+
+        // If Gemini API was missing or unfulfilled, run Built-in Smart Precision Aligner
+        if (!$alignedViaGemini) {
+            foreach ($fields as $index => &$field) {
+                $name = strtolower($field['name'] ?? $field['id'] ?? '');
+                
+                $field['font_family'] = $field['font_family'] ?? 'Arial';
+                $field['font_size'] = $field['font_size'] ?? '1.6cqw';
+
+                if (str_contains($name, 'complainant') || str_contains($name, 'nagrereklamo') || str_contains($name, 'plaintiff')) {
+                    $field['x'] = '22%';
+                    $field['y'] = '18.5%';
+                    $field['w'] = '36%';
+                    $field['h'] = 'auto';
+                } elseif (str_contains($name, 'respondent') || str_contains($name, 'isinusumbong') || str_contains($name, 'defendant')) {
+                    $field['x'] = '22%';
+                    $field['y'] = '23.8%';
+                    $field['w'] = '36%';
+                    $field['h'] = 'auto';
+                } elseif (str_contains($name, 'case_no') || str_contains($name, 'case_num') || str_contains($name, 'kaso')) {
+                    $field['x'] = '65%';
+                    $field['y'] = '18.5%';
+                    $field['w'] = '25%';
+                    $field['h'] = 'auto';
+                } elseif (str_contains($name, 'for') || str_contains($name, 'nature') || str_contains($name, 'ukol')) {
+                    $field['x'] = '65%';
+                    $field['y'] = '23.8%';
+                    $field['w'] = '25%';
+                    $field['h'] = 'auto';
+                } elseif (str_contains($name, 'body') || str_contains($name, 'narrative') || str_contains($name, 'reklamo') || str_contains($name, 'statement')) {
+                    $field['x'] = '15%';
+                    $field['y'] = '32.0%';
+                    $field['w'] = '72%';
+                    $field['h'] = '30%';
+                } elseif (str_contains($name, 'day') || str_contains($name, 'month') || str_contains($name, 'year') || str_contains($name, 'date')) {
+                    $field['x'] = $field['x'] ?? '25%';
+                    $field['y'] = $field['y'] ?? '68.0%';
+                    $field['w'] = $field['w'] ?? '20%';
+                    $field['h'] = 'auto';
+                } elseif (str_contains($name, 'sig') || str_contains($name, 'lupon') || str_contains($name, 'captain') || str_contains($name, 'chairman')) {
+                    $field['x'] = '55%';
+                    $field['y'] = '80.0%';
+                    $field['w'] = '35%';
+                    $field['h'] = 'auto';
+                } else {
+                    $yPos = 25.0 + ($index * 5.0);
+                    $field['x'] = $field['x'] ?? '20%';
+                    $field['y'] = sprintf('%.1f%%', min($yPos, 85.0));
+                    $field['w'] = $field['w'] ?? '40%';
+                    $field['h'] = $field['h'] ?? 'auto';
+                }
+            }
+            unset($field);
         }
     }
 
@@ -1385,14 +1433,31 @@ class DocumentController extends Controller
             $summary = $request->input('summary');
             $type = $request->input('type');
 
+            // Trim and sanitize case number
+            $caseNo = trim((string)$caseNo);
+
             // Dynamically associate, update, or create Case
             if (!$caseId && !empty($caseNo)) {
-                $existingCase = \App\Models\LuponCase::withTrashed()->where('case_number', $caseNo)->first();
+                $existingCase = \App\Models\LuponCase::withTrashed()
+                    ->whereRaw('LOWER(case_number) = ?', [strtolower($caseNo)])
+                    ->first();
                 if ($existingCase) {
                     $caseId = $existingCase->id;
                 }
             }
 
+            // If creating a new case, ensure case_number is unique
+            if (!$caseId && !empty($caseNo)) {
+                $count = 1;
+                $originalCaseNo = $caseNo;
+                while (\App\Models\LuponCase::withTrashed()->where('case_number', $caseNo)->exists()) {
+                    $caseNo = $originalCaseNo . '-' . $count;
+                    $count++;
+                }
+            }
+
+            $dateFiled = $request->input('date_filed');
+            $timestamp = !empty($dateFiled) ? strtotime($dateFiled) : time();
             $docContentMap = [
                 'case_no' => $caseNo,
                 'complainant' => $complainant,
@@ -1400,6 +1465,9 @@ class DocumentController extends Controller
                 'nature_of_case' => $natureOfCase,
                 'narrative' => $summary,
                 'For' => $natureOfCase,
+                'made_this_month' => date('F', $timestamp),
+                'made_this_day' => date('jS', $timestamp),
+                'year' => date('y', $timestamp),
                 'type' => $type,
                 'is_scanned' => true
             ];

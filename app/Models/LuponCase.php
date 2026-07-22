@@ -26,4 +26,9 @@ class LuponCase extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    public function documents()
+    {
+        return $this->hasMany(Document::class, 'case_id');
+    }
 }

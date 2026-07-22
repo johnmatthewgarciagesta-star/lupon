@@ -747,16 +747,16 @@
             position: absolute;
             font-family: Arial, sans-serif;
             font-size: 1.6cqw; /* Scale font-size dynamically with container width! */
-            font-weight: 500;
+            font-weight: 600;
             font-style: normal;
             color: #000000;
             text-decoration: none;
-            background: rgba(26,115,232,0.04); /* Subtle highlight to see where text will be */
-            border-bottom: 1px dashed rgba(26,115,232,0.2);
+            background: transparent;
+            border-bottom: none;
             white-space: pre-wrap;
-            line-height: 1.25;
+            line-height: 1.2;
             word-wrap: break-word;
-            min-height: 1.2em;
+            overflow: visible;
             z-index: 50;
             display: flex;
             flex-direction: column;
@@ -2065,16 +2065,25 @@ function makeResizable(el, resizer) {
             if (newHeight > maxH) newHeight = maxH;
 
             // Convert to % for responsiveness
-            const wPct = ((newWidth / paperRect.width) * 100).toFixed(2);
-            const hPct = ((newHeight / paperRect.height) * 100).toFixed(2);
+            const wPct = ((newWidth / paperRect.width) * 100).toFixed(2) + '%';
+            const hPct = ((newHeight / paperRect.height) * 100).toFixed(2) + '%';
 
-            el.style.width = wPct + '%';
-            el.style.height = hPct + '%';
+            el.style.width = wPct;
+            el.style.height = hPct;
+
+            if (calibPositions[name]) {
+                calibPositions[name].w = wPct;
+                calibPositions[name].h = hPct;
+            }
         }
 
         function onResizeUp() {
             document.removeEventListener('mousemove', onResizeMove);
             document.removeEventListener('mouseup', onResizeUp);
+            if (calibPositions[name]) {
+                calibPositions[name].w = el.style.width;
+                calibPositions[name].h = el.style.height;
+            }
             pushCalibState();
         }
 
@@ -2134,15 +2143,20 @@ function saveCalibration() {
 
         if (data.success) {
             showCalibToast();
-            // Update the live preview overlay positions to match
+            // Update the live preview overlay positions, width, and font styling to match
             Object.entries(positions).forEach(([name, pos]) => {
                 const previewEl = document.getElementById('preview-' + name);
                 if (previewEl) {
                     previewEl.style.left = pos.x;
                     previewEl.style.top  = pos.y;
+                    if (pos.w) previewEl.style.width = pos.w;
+                    if (pos.font_family) previewEl.style.fontFamily = "'" + pos.font_family + "', Arial, sans-serif";
+                    if (pos.font_size) previewEl.style.fontSize = pos.font_size;
                 }
             });
-            setTimeout(() => closeCalibration(), 1200);
+            setTimeout(() => {
+                closeCalibration();
+            }, 800);
         } else {
             alert('Error saving: ' + (data.error || 'Unknown error'));
         }

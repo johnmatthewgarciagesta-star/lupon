@@ -101,6 +101,8 @@
             background: white;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             position: relative;
+            container-type: inline-size;
+            container-name: page;
             /* Important for absolute positioning */
         }
 
@@ -127,20 +129,19 @@
 
         .doc-field {
             position: absolute;
-            font-family: 'Times New Roman', serif;
-            font-size: 12pt;
-            color: #000;
-            line-height: normal;
+            font-family: Arial, sans-serif;
+            font-size: 1.6cqw;
+            font-weight: bold;
+            color: #000000;
+            line-height: 1.2;
             background: transparent;
             outline: none;
             cursor: text;
-            /* Smooth transitions */
             transition: background 0.2s, box-shadow 0.2s;
-            overflow: hidden;
-            /* Hide overflow */
-            padding: 2px;
+            overflow: visible;
+            padding: 0;
             white-space: pre-wrap;
-            /* Preserve whitespace */
+            word-wrap: break-word;
         }
 
         /* Interaction States */
@@ -455,13 +456,29 @@
                         @php
                             $fieldName = $field['name'] ?? 'field_' . $loop->index;
                             $fieldDefault = $field['default'] ?? '';
-                            $styles = "top: {$field['y']}; left: {$field['x']}; width: {$field['w']}; height: " . ($field['h'] ?? 'auto') . ";";
+                            $rawH = $field['h'] ?? 'auto';
+                            $hVal = ($rawH === 'auto' || $rawH === '' || $rawH === null || ($readonly ?? false)) ? 'auto' : $rawH;
+                            $styles = "top: {$field['y']}; left: {$field['x']}; width: {$field['w']}; height: {$hVal}; min-height: 1.2em;";
+                            
                             if (isset($field['font_family'])) {
-                                $styles .= " font-family: '{$field['font_family']}', Times New Roman, serif;";
+                                $styles .= " font-family: '{$field['font_family']}', Arial, sans-serif;";
+                            } else {
+                                $styles .= " font-family: Arial, sans-serif;";
                             }
+
                             if (isset($field['font_size'])) {
-                                $styles .= " font-size: {$field['font_size']};";
+                                $fontSize = $field['font_size'];
+                                if (str_contains($fontSize, 'cqw')) {
+                                    $num = floatval($fontSize);
+                                    $ptSize = ($num > 0) ? number_format($num / 0.15, 1) . 'pt' : '11pt';
+                                    $styles .= " font-size: {$ptSize}; font-size: {$fontSize};";
+                                } else {
+                                    $styles .= " font-size: {$fontSize};";
+                                }
+                            } else {
+                                $styles .= " font-size: 1.6cqw;";
                             }
+
                             if (isset($field['class'])) {
                                 if (str_contains($field['class'], 'text-right'))
                                     $styles .= " text-align: right;";
@@ -475,26 +492,30 @@
                             <!-- Checkbox Field -->
                             <div class="doc-field cursor-pointer {{ $field['class'] ?? '' }}" style="{{ $styles }}"
                                 id="field-{{ $fieldName }}" data-name="{{ $fieldName }}" data-type="checkbox"
-                                data-x="{{ $field['x'] }}" data-y="{{ $field['y'] }}" data-w="{{ $field['w'] }}" data-h="{{ $field['h'] ?? 'auto' }}"
+                                data-x="{{ $field['x'] }}" data-y="{{ $field['y'] }}" data-w="{{ $field['w'] }}" data-h="{{ $hVal }}"
                                 data-locked="{{ $isLocked ? 'true' : 'false' }}"
                                 onclick="{{ ($readonly ?? false) ? '' : 'toggleCheckbox(this)' }}">{!! $fieldDefault !!}
-                                <div class="resizer-r"></div>
-                                <div class="resizer-b"></div>
-                                <div class="resizer-l"></div>
-                                <div class="resizer-t"></div>
+                                @if(!($readonly ?? false))
+                                    <div class="resizer-r"></div>
+                                    <div class="resizer-b"></div>
+                                    <div class="resizer-l"></div>
+                                    <div class="resizer-t"></div>
+                                @endif
                             </div>
                         @else
                             <!-- Content Editable Div -->
                             <div class="doc-field {{ $field['class'] ?? '' }}" style="{{ $styles }}"
                                 contenteditable="{{ ($readonly ?? false) ? 'false' : 'true' }}" id="field-{{ $fieldName }}"
                                 data-name="{{ $fieldName }}" placeholder="{{ $field['label'] ?? '' }}"
-                                data-x="{{ $field['x'] }}" data-y="{{ $field['y'] }}" data-w="{{ $field['w'] }}" data-h="{{ $field['h'] ?? 'auto' }}"
+                                data-x="{{ $field['x'] }}" data-y="{{ $field['y'] }}" data-w="{{ $field['w'] }}" data-h="{{ $hVal }}"
                                 data-locked="{{ $isLocked ? 'true' : 'false' }}">
                                 {!! $fieldDefault !!}
-                                <div class="resizer-r" contenteditable="false"></div>
-                                <div class="resizer-b" contenteditable="false"></div>
-                                <div class="resizer-l" contenteditable="false"></div>
-                                <div class="resizer-t" contenteditable="false"></div>
+                                @if(!($readonly ?? false))
+                                    <div class="resizer-r" contenteditable="false"></div>
+                                    <div class="resizer-b" contenteditable="false"></div>
+                                    <div class="resizer-l" contenteditable="false"></div>
+                                    <div class="resizer-t" contenteditable="false"></div>
+                                @endif
                             </div>
                         @endif
                     @endforeach

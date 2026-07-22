@@ -21,12 +21,52 @@
         body {
             margin: 0;
             padding: 0;
-            width: 210mm;
-            height: 297mm;
-            max-height: 297mm;
-            overflow: hidden;
-            background: white;
+            background: #f1f5f9;
+            font-family: Arial, sans-serif;
         }
+
+        .view-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 16px 40px;
+            min-height: 100vh;
+        }
+
+        .view-header-bar {
+            width: 100%;
+            max-width: 210mm;
+            background: #0f172a;
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary { background: #334155; color: #f8fafc; }
+        .btn-secondary:hover { background: #475569; }
+        .btn-primary { background: #2563eb; color: #ffffff; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-success { background: #16a34a; color: #ffffff; }
+        .btn-success:hover { background: #15803d; }
 
         .page-container {
             width: 210mm;
@@ -35,9 +75,15 @@
             position: relative;
             overflow: hidden;
             background-color: white;
-            /* Prevent Chromium from inserting a blank second page */
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
             page-break-after: avoid;
             page-break-inside: avoid;
+        }
+
+        @media print {
+            .view-wrapper { padding: 0 !important; }
+            .view-header-bar { display: none !important; }
+            .page-container { box-shadow: none !important; }
         }
 
         #background-image {
@@ -86,7 +132,24 @@
 </head>
 
 <body>
-    <div class="page-container">
+    <div class="view-wrapper">
+        @if(isset($case))
+        <div class="view-header-bar">
+            <a href="{{ route('cases.index') }}" class="btn-action btn-secondary">
+                ← Back to Cases
+            </a>
+            <div style="display:flex;gap:10px;align-items:center;">
+                <a href="?mode=edit" class="btn-action btn-primary">
+                    ✏️ Open Word Editor
+                </a>
+                <button onclick="window.print()" class="btn-action btn-success">
+                    🖨️ Print Document
+                </button>
+            </div>
+        </div>
+        @endif
+
+        <div class="page-container">
         <!-- Background: Ghostscript-rasterized form image -->
         @if(!empty($imagePath))
             <img id="background-image" src="{{ $imagePath }}" alt="Form">
@@ -99,15 +162,24 @@
             @if(isset($fields) && is_array($fields))
                 @foreach($fields as $field)
                     @php
-                        $name    = $field['name'] ?? '';
-                        $value   = $data[$name] ?? ($field['default'] ?? '');
-                        $x       = $field['x'] ?? '10%';
-                        $y       = $field['y'] ?? '10%';
-                        $w       = $field['w'] ?? '80%';
-                        $rawH    = $field['h'] ?? 'auto';
-                        $height  = ($rawH === 'auto' || $rawH === '' || $rawH === null) ? 'auto' : $rawH;
+                        $name       = $field['name'] ?? '';
+                        $value      = $data[$name] ?? ($field['default'] ?? '');
+                        $x          = $field['x'] ?? '10%';
+                        $y          = $field['y'] ?? '10%';
+                        $w          = $field['w'] ?? '80%';
+                        $rawH       = $field['h'] ?? 'auto';
+                        $height     = ($rawH === 'auto' || $rawH === '' || $rawH === null) ? 'auto' : $rawH;
+                        $fontFamily = $field['font_family'] ?? 'Arial, sans-serif';
+                        
+                        $rawFontSize = $field['font_size'] ?? '11pt';
+                        if (str_contains($rawFontSize, 'cqw')) {
+                            $num = floatval($rawFontSize);
+                            $fontSize = ($num > 0) ? number_format($num / 0.15, 1) . 'pt' : '11pt';
+                        } else {
+                            $fontSize = $rawFontSize;
+                        }
+
                         $classes = $field['class'] ?? '';
-                        // Strip out classes that are visual-editor-only (flex, items-center, etc.)
                         $classes = preg_replace('/\b(flex|items-center|justify-center|bg-transparent|cursor-pointer|font-bold|text-xl)\b/', '', $classes);
                         $classes = trim(preg_replace('/\s+/', ' ', $classes));
                     @endphp
@@ -120,6 +192,8 @@
                                 left: {{ $x }};
                                 width: {{ $w }};
                                 {{ $height !== 'auto' ? 'height: ' . $height . ';' : '' }}
+                                font-family: '{{ $fontFamily }}', Arial, sans-serif;
+                                font-size: {{ $fontSize }};
                             "
                         >{{ $value }}</div>
                     @endif
@@ -128,5 +202,4 @@
         </div>
     </div>
 </body>
-
 </html>

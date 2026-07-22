@@ -18,33 +18,46 @@ class FormLayouts
 
         $layouts = [
 
-            // KP Form 7 - Complaint Form
+            // KP Form 7 - Complaint Form (11 Text Boxes)
             'complaint' => [
-                ['name' => 'complainant',    'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant',         'x' => '8.5%',  'y' => '18%',   'w' => '40%', 'h' => 'auto'],
-                ['name' => 'respondent',     'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',          'x' => '8.5%',  'y' => '29%',   'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',        'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',            'x' => '71.5%', 'y' => '18.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-left'],
-                ['name' => 'For',            'label' => 'For (Nature)',        'x' => '59%',   'y' => '20.5%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
-                ['name' => 'narrative',      'label' => 'Complaint Narrative', 'x' => '8.5%',  'y' => '44%',   'w' => '85%', 'h' => '30%',  'type' => 'textarea'],
-                ...$footerFields,
+                ['name' => 'case_no',         'label' => 'Case No',           'placeholder' => 'e.g. 2024-001', 'x' => '65%', 'y' => '18.5%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'For',             'label' => 'For',               'placeholder' => 'Nature of Dispute / Case', 'x' => '65%', 'y' => '22.8%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'complainant',     'label' => 'Complainant/s',     'placeholder' => 'Full legal name of complainant(s)', 'x' => '8.5%', 'y' => '18%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'respondent',      'label' => 'Respondent/s',      'placeholder' => 'Full legal name of respondent(s)', 'x' => '8.5%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'narrative',      'label' => 'Complaint',         'placeholder' => 'Complaint details...', 'x' => '8.5%', 'y' => '44%', 'w' => '83%', 'h' => '25%', 'type' => 'textarea'],
+                ['name' => 'made_this_month', 'label' => 'Month',             'placeholder' => 'e.g. February', 'x' => '50%', 'y' => '72%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'made_this_day',   'label' => 'Date',              'placeholder' => 'e.g. 28th', 'x' => '28.5%', 'y' => '72%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'year',            'label' => 'Year',              'placeholder' => 'e.g. 2026', 'x' => '67%', 'y' => '72.5%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'received_month', 'label' => 'Month (Received)',  'placeholder' => 'e.g. February', 'x' => '50%', 'y' => '82%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'received_day',   'label' => 'Date (Received)',   'placeholder' => 'e.g. 28th', 'x' => '28.5%', 'y' => '82%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'received_year',  'label' => 'Year (Received)',   'placeholder' => 'e.g. 2026', 'x' => '67%', 'y' => '82.5%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
             ],
 
-            // KP Form 9 - Summons
+            // KP Form 9 - Summons (9 Text Boxes)
             'summons' => [
-                ['name' => 'respondent',        'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',        'x' => '8.5%',  'y' => '29%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',           'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',          'x' => '71.5%', 'y' => '18.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-left'],
-                ['name' => 'hearing_date_time', 'label' => 'Hearing Date & Time', 'placeholder' => 'e.g. February 28, 2026 at 9:00 AM', 'x' => '20%',   'y' => '40%', 'w' => '60%', 'h' => 'auto'],
-                ['name' => 'served_personal',   'label' => 'Served (Personal)', 'x' => '10%',   'y' => '55%', 'w' => '30px', 'h' => '30px', 'type' => 'checkbox', 'class' => 'bg-transparent flex items-center justify-center font-bold text-xl'],
-                ['name' => 'served_substituted', 'label' => 'Served (Substituted)', 'x' => '10%', 'y' => '60%', 'w' => '30px', 'h' => '30px', 'type' => 'checkbox', 'class' => 'bg-transparent flex items-center justify-center font-bold text-xl'],
-                ...$footerFields,
+                ['name' => 'case_no',         'label' => 'No', 'placeholder' => 'e.g. 2024-001', 'x' => '65%', 'y' => '18.5%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'For',             'label' => 'For',               'placeholder' => 'Nature of Dispute / Case', 'x' => '65%', 'y' => '22.8%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'complainant',     'label' => 'Complainant/s',     'placeholder' => 'Full legal name of the complainant(s)', 'x' => '8.5%', 'y' => '18%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'respondent',      'label' => 'Respondent/s',      'placeholder' => 'Full legal name of the respondent(s)', 'x' => '8.5%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'hearing_date',    'label' => 'Hearing Date',      'placeholder' => 'e.g. February 28, 2026 at 9:00 AM', 'x' => '20%', 'y' => '40%', 'w' => '60%', 'h' => 'auto'],
+                ['name' => 'location',        'label' => 'Location',          'placeholder' => 'Location', 'x' => '20%', 'y' => '44%', 'w' => '60%', 'h' => 'auto'],
+                ['name' => 'made_this_month', 'label' => 'Month',             'placeholder' => 'e.g. February', 'x' => '50%', 'y' => '80%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'made_this_day',   'label' => 'Day',               'placeholder' => 'e.g. 28th', 'x' => '28.5%', 'y' => '80%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'year',            'label' => 'Year',              'placeholder' => 'e.g. 2026', 'x' => '67%', 'y' => '80.5%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
             ],
 
-            // KP Form 16 - Amicable Settlement
+            // KP Form 16 - Amicable Settlement (10 Text Boxes)
             'amicable_settlement' => [
-                ['name' => 'complainant', 'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant',        'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'respondent',  'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',         'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',     'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',           'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
-                ['name' => 'agreement',   'label' => 'Terms of Settlement', 'x' => '10%', 'y' => '40%', 'w' => '80%', 'h' => '30%', 'type' => 'textarea'],
-                ...$footerFields,
+                ['name' => 'case_no',         'label' => 'Barangay Case No.',       'placeholder' => 'e.g. 2024-001', 'x' => '65%', 'y' => '18.5%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'For',             'label' => 'For:',                    'placeholder' => 'Nature of Dispute / Case', 'x' => '65%', 'y' => '22.8%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'complainant',     'label' => 'Complainant/s',           'placeholder' => 'Full legal name of the complainant(s)', 'x' => '8.5%', 'y' => '18%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'respondent',      'label' => 'Respondent/s',            'placeholder' => 'Full legal name of the respondent(s)', 'x' => '8.5%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'agreement',       'label' => 'Agreement',               'placeholder' => 'Terms of settlement agreement...', 'x' => '8.5%', 'y' => '40%', 'w' => '83%', 'h' => '25%', 'type' => 'textarea'],
+                ['name' => 'made_this_month', 'label' => 'Month',                   'placeholder' => 'e.g. February', 'x' => '50%', 'y' => '72%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'made_this_day',   'label' => 'Day',                     'placeholder' => 'e.g. 28th', 'x' => '28.5%', 'y' => '72%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'year',            'label' => 'Year',                    'placeholder' => 'e.g. 2026', 'x' => '67%', 'y' => '72.5%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'complainant_sig', 'label' => 'Complainant/s',           'placeholder' => 'Complainant name for signature', 'x' => '15%', 'y' => '82%', 'w' => '32%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'respondent_sig',  'label' => 'Respondent/s',            'placeholder' => 'Respondent name for signature', 'x' => '55%', 'y' => '82%', 'w' => '32%', 'h' => 'auto', 'class' => 'text-center'],
             ],
 
             // KP Form 15 - Arbitration Award
@@ -89,90 +102,143 @@ class FormLayouts
                 ...$footerFields,
             ],
 
-            // Notice of Hearing - Conciliation
+            // KP Form 8 - Notice of Hearing (Conciliation) (14 Text Boxes)
             'hearing_conciliation' => [
-                ['name' => 'complainant',   'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant',      'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'respondent',    'label' => 'Respondent / To',  'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',       'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',         'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
-                ['name' => 'hearing_date',  'label' => 'Hearing Date & Time', 'x' => '25%', 'y' => '40%', 'w' => '50%', 'h' => 'auto'],
-                ...$footerFields,
+                ['name' => 'complainant',     'label' => 'Complainant/s',          'placeholder' => 'Full legal name of complainant(s)', 'x' => '8.5%', 'y' => '18%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'respondent',      'label' => 'Respondent/s',           'placeholder' => 'Full legal name of respondent(s)', 'x' => '8.5%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'hearing_month',   'label' => 'Month (Hearing)',        'placeholder' => 'e.g. February', 'x' => '30%', 'y' => '45%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'hearing_day',     'label' => 'Day (Hearing)',          'placeholder' => 'e.g. 28th', 'x' => '55%', 'y' => '45%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'hearing_year',    'label' => 'Year (Hearing)',         'placeholder' => 'e.g. 2026', 'x' => '75%', 'y' => '45%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'hearing_time',    'label' => 'Military time',          'placeholder' => 'e.g. 09:00 / 14:30', 'x' => '35%', 'y' => '50%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'made_this_month', 'label' => 'Month',                  'placeholder' => 'e.g. February', 'x' => '50%', 'y' => '65%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'made_this_day',   'label' => 'Day',                    'placeholder' => 'e.g. 28th', 'x' => '28.5%', 'y' => '65%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'year',            'label' => 'Year',                   'placeholder' => 'e.g. 2026', 'x' => '67%', 'y' => '65.5%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'officer_month',   'label' => 'Month (Officer)',        'placeholder' => 'e.g. February', 'x' => '50%', 'y' => '75%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'officer_day',     'label' => 'Day (Officer)',          'placeholder' => 'e.g. 28th', 'x' => '28.5%', 'y' => '75%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'officer_year',    'label' => 'Year (Officer)',         'placeholder' => 'e.g. 2026', 'x' => '67%', 'y' => '75.5%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'complainant_sig', 'label' => 'Complainant/s',          'placeholder' => 'Complainant name for signature', 'x' => '15%', 'y' => '85%', 'w' => '32%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'respondent_sig',  'label' => 'Respondent/s',           'placeholder' => 'Respondent name for signature', 'x' => '55%', 'y' => '85%', 'w' => '32%', 'h' => 'auto', 'class' => 'text-center'],
             ],
 
-            // Notice of Hearing - Mediation
+            // KP Form 8 - Notice of Hearing (Mediation) (14 Text Boxes)
             'hearing_mediation' => [
-                ['name' => 'complainant',  'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant',        'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'respondent',   'label' => 'Respondent / To',    'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',      'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',           'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
-                ['name' => 'hearing_date', 'label' => 'Hearing Date & Time', 'x' => '25%', 'y' => '40%', 'w' => '50%', 'h' => 'auto'],
-                ...$footerFields,
+                ['name' => 'complainant',     'label' => 'Complainant/s',          'placeholder' => 'Full legal name of complainant(s)', 'x' => '8.5%', 'y' => '18%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'respondent',      'label' => 'Respondent/s',           'placeholder' => 'Full legal name of respondent(s)', 'x' => '8.5%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'hearing_day',     'label' => 'Day (Hearing)',          'placeholder' => 'e.g. 28th', 'x' => '28.5%', 'y' => '45%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'hearing_month',   'label' => 'Month (Hearing)',        'placeholder' => 'e.g. February', 'x' => '50%', 'y' => '45%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'hearing_year',    'label' => 'Year (Hearing)',         'placeholder' => 'e.g. 2026', 'x' => '75%', 'y' => '45%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'hearing_time',    'label' => 'Military Time',          'placeholder' => 'e.g. 09:00 / 14:30', 'x' => '35%', 'y' => '50%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'made_this_day',   'label' => 'Day',                    'placeholder' => 'e.g. 28th', 'x' => '28.5%', 'y' => '65%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'made_this_month', 'label' => 'Month',                  'placeholder' => 'e.g. February', 'x' => '50%', 'y' => '65%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'year',            'label' => 'Year',                   'placeholder' => 'e.g. 2026', 'x' => '67%', 'y' => '65.5%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'officer_day',     'label' => 'Day (Officer)',          'placeholder' => 'e.g. 28th', 'x' => '28.5%', 'y' => '75%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'officer_month',   'label' => 'Month (Officer)',        'placeholder' => 'e.g. February', 'x' => '50%', 'y' => '75%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'officer_year',    'label' => 'Year (Officer)',         'placeholder' => 'e.g. 2026', 'x' => '67%', 'y' => '75.5%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'complainant_sig', 'label' => 'Complainant/s',          'placeholder' => 'Complainant name for signature', 'x' => '15%', 'y' => '85%', 'w' => '32%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'respondent_sig',  'label' => 'Respondent/s',           'placeholder' => 'Respondent name for signature', 'x' => '55%', 'y' => '85%', 'w' => '32%', 'h' => 'auto', 'class' => 'text-center'],
             ],
 
-            // Notice of Hearing - Failure to Appear
+            // KP Form 18/19 - Notice of Hearing (Failure to Appear) (19 Text Boxes)
             'hearing_failure_appear' => [
-                ['name' => 'complainant',  'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant',            'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'respondent',   'label' => 'Absent Party / To',      'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',      'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',               'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
-                ['name' => 'hearing_date', 'label' => 'Next Hearing Date & Time', 'x' => '25%', 'y' => '40%', 'w' => '50%', 'h' => 'auto'],
-                ...$footerFields,
+                ['name' => 'case_no',           'label' => 'Case No',                'placeholder' => 'e.g. 2024-001', 'x' => '65%', 'y' => '18.5%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'For',               'label' => 'For',                    'placeholder' => 'Nature of Dispute / Case', 'x' => '65%', 'y' => '22.8%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'complainant',       'label' => 'Complainant/s',          'placeholder' => 'Full legal name of complainant(s)', 'x' => '8.5%', 'y' => '18%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'respondent',        'label' => 'Respondent/s',           'placeholder' => 'Full legal name of respondent(s)', 'x' => '8.5%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'to_complainant',    'label' => 'To Complainant/s',       'placeholder' => 'Addressed party name', 'x' => '8.5%', 'y' => '33%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'failure_day',       'label' => 'Day (Failure)',          'placeholder' => 'e.g. 28th', 'x' => '28.5%', 'y' => '42%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'failure_month',     'label' => 'Month (Failure)',        'placeholder' => 'e.g. February', 'x' => '50%', 'y' => '42%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'failure_year',      'label' => 'Year (Failure)',         'placeholder' => 'e.g. 2026', 'x' => '75%', 'y' => '42%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'hearing_time',      'label' => 'Military time',          'placeholder' => 'e.g. 09:00 / 14:30', 'x' => '35%', 'y' => '47%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'next_hearing_date', 'label' => 'Hearing date',           'placeholder' => 'e.g. February 28', 'x' => '25%', 'y' => '52%', 'w' => '35%', 'h' => 'auto'],
+                ['name' => 'next_hearing_year', 'label' => 'Year (Next Hearing)',    'placeholder' => 'e.g. 2026', 'x' => '65%', 'y' => '52%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'made_this_day',     'label' => 'Day',                    'placeholder' => 'e.g. 28th', 'x' => '28.5%', 'y' => '65%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'made_this_month',   'label' => 'Month',                  'placeholder' => 'e.g. February', 'x' => '50%', 'y' => '65%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'year',              'label' => 'Year',                   'placeholder' => 'e.g. 2026', 'x' => '67%', 'y' => '65.5%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'officer_day',       'label' => 'Day (Officer)',          'placeholder' => 'e.g. 28th', 'x' => '28.5%', 'y' => '75%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'officer_month',     'label' => 'Month (Officer)',        'placeholder' => 'e.g. February', 'x' => '50%', 'y' => '75%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'officer_year',      'label' => 'Year (Officer)',         'placeholder' => 'e.g. 2026', 'x' => '67%', 'y' => '75.5%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'complainant_sig',   'label' => 'Complainant/s',          'placeholder' => 'Complainant name for signature', 'x' => '15%', 'y' => '85%', 'w' => '32%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'respondent_sig',    'label' => 'Respondent/s',           'placeholder' => 'Respondent name for signature', 'x' => '55%', 'y' => '85%', 'w' => '32%', 'h' => 'auto', 'class' => 'text-center'],
             ],
 
-            // Notice of Hearing - Failure to Appear (Counterclaim)
+            // KP Form 19 - Notice of Hearing (Failure to Appear - Counterclaim) (19 Text Boxes)
             'hearing_failure_appear_counterclaim' => [
-                ['name' => 'complainant',  'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant',            'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'respondent',   'label' => 'Respondent / To',        'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',      'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',               'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
-                ['name' => 'hearing_date', 'label' => 'Next Hearing Date & Time', 'x' => '25%', 'y' => '40%', 'w' => '50%', 'h' => 'auto'],
-                ...$footerFields,
+                ['name' => 'case_no',           'label' => 'Case No',                'placeholder' => 'e.g. 2024-001', 'x' => '65%', 'y' => '18.5%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'For',               'label' => 'For',                    'placeholder' => 'Nature of Dispute / Case', 'x' => '65%', 'y' => '22.8%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'complainant',       'label' => 'Complainant/s',          'placeholder' => 'Full legal name of complainant(s)', 'x' => '8.5%', 'y' => '18%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'respondent',        'label' => 'Respondent/s',           'placeholder' => 'Full legal name of respondent(s)', 'x' => '8.5%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'to_respondent',     'label' => 'To Respondent/s',        'placeholder' => 'Addressed party name', 'x' => '8.5%', 'y' => '33%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'failure_day',       'label' => 'Day (Failure)',          'placeholder' => 'e.g. 28th', 'x' => '28.5%', 'y' => '42%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'failure_month',     'label' => 'Month (Failure)',        'placeholder' => 'e.g. February', 'x' => '50%', 'y' => '42%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'failure_year',      'label' => 'Year (Failure)',         'placeholder' => 'e.g. 2026', 'x' => '75%', 'y' => '42%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'hearing_time',      'label' => 'Military Time',          'placeholder' => 'e.g. 09:00 / 14:30', 'x' => '35%', 'y' => '47%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'next_hearing_date', 'label' => 'Hearing Date',           'placeholder' => 'e.g. February 28', 'x' => '25%', 'y' => '52%', 'w' => '35%', 'h' => 'auto'],
+                ['name' => 'next_hearing_year', 'label' => 'Year (Next Hearing)',    'placeholder' => 'e.g. 2026', 'x' => '65%', 'y' => '52%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'made_this_day',     'label' => 'Day',                    'placeholder' => 'e.g. 28th', 'x' => '28.5%', 'y' => '65%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'made_this_month',   'label' => 'Month',                  'placeholder' => 'e.g. February', 'x' => '50%', 'y' => '65%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'year',              'label' => 'Year',                   'placeholder' => 'e.g. 2026', 'x' => '67%', 'y' => '65.5%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'officer_day',       'label' => 'Day (Officer)',          'placeholder' => 'e.g. 28th', 'x' => '28.5%', 'y' => '75%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'officer_month',     'label' => 'Month (Officer)',        'placeholder' => 'e.g. February', 'x' => '50%', 'y' => '75%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'officer_year',      'label' => 'Year (Officer)',         'placeholder' => 'e.g. 2026', 'x' => '67%', 'y' => '75.5%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'complainant_sig',   'label' => 'Complainant/s',          'placeholder' => 'Complainant name for signature', 'x' => '15%', 'y' => '85%', 'w' => '32%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'respondent_sig',    'label' => 'Respondent/s',           'placeholder' => 'Respondent name for signature', 'x' => '55%', 'y' => '85%', 'w' => '32%', 'h' => 'auto', 'class' => 'text-center'],
+            ],
+
+            // KP Form 20 - Certificate to File Action (Court) (4 Text Boxes)
+            'cert_file_action_court' => [
+                ['name' => 'case_no',         'label' => 'Case No',       'placeholder' => 'e.g. 2024-001', 'x' => '65%', 'y' => '18.5%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'For',             'label' => 'For',           'placeholder' => 'Nature of Dispute / Case', 'x' => '65%', 'y' => '22.8%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'complainant',     'label' => 'Complainant/s', 'placeholder' => 'Full legal name of complainant(s)', 'x' => '8.5%', 'y' => '18%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'respondent',      'label' => 'Respondent/s',  'placeholder' => 'Full legal name of respondent(s)', 'x' => '8.5%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
             ],
 
             // Certificate to File Action
             'cert_file_action' => [
-                ['name' => 'complainant', 'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant', 'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'respondent',  'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',  'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',     'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',    'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
-                ['name' => 'cert_body',   'label' => 'Certification Text', 'x' => '10%', 'y' => '35%', 'w' => '80%', 'h' => '35%', 'type' => 'textarea',
-                    'default' => 'This is to certify that the above-captioned case was not settled before this Lupong Tagapamayapa and is hereby certified for filing with the appropriate government office or court.'],
-                ...$footerFields,
+                ['name' => 'case_no',         'label' => 'Case No',       'placeholder' => 'e.g. 2024-001', 'x' => '65%', 'y' => '18.5%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'For',             'label' => 'For',           'placeholder' => 'Nature of Dispute / Case', 'x' => '65%', 'y' => '22.8%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'complainant',     'label' => 'Complainant/s', 'placeholder' => 'Full legal name of complainant(s)', 'x' => '8.5%', 'y' => '18%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'respondent',      'label' => 'Respondent/s',  'placeholder' => 'Full legal name of respondent(s)', 'x' => '8.5%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
             ],
 
-            // Certificate to File Action (Court)
-            'cert_file_action_court' => [
-                ['name' => 'complainant', 'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant', 'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'respondent',  'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',  'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',     'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',    'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
-                ['name' => 'cert_body',   'label' => 'Certification Text', 'x' => '10%', 'y' => '35%', 'w' => '80%', 'h' => '35%', 'type' => 'textarea',
-                    'default' => 'This is to certify that the above-captioned case was not settled before this Lupong Tagapamayapa and is hereby certified for filing with the appropriate court.'],
-                ...$footerFields,
-            ],
-
-            // Certificate to Bar Action
+            // KP Form 21 - Certificate to Bar Action (9 Text Boxes)
             'cert_bar_action' => [
-                ['name' => 'complainant', 'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant', 'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'respondent',  'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',  'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',     'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',    'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
-                ['name' => 'cert_body',   'label' => 'Certification Text', 'x' => '10%', 'y' => '35%', 'w' => '80%', 'h' => '35%', 'type' => 'textarea',
-                    'default' => 'This is to certify that the dispute between the parties has been settled and no further action may be filed by either party.'],
-                ...$footerFields,
+                ['name' => 'case_no',         'label' => 'Case No',       'placeholder' => 'e.g. 2024-001', 'x' => '65%', 'y' => '18.5%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'For',             'label' => 'For',           'placeholder' => 'Nature of Dispute / Case', 'x' => '65%', 'y' => '22.8%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'complainant',     'label' => 'Complainant/s', 'placeholder' => 'Full legal name of complainant(s)', 'x' => '8.5%', 'y' => '18%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'respondent',      'label' => 'Respondent/s',  'placeholder' => 'Full legal name of respondent(s)', 'x' => '8.5%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'hearing_date',    'label' => 'Hearing date',  'placeholder' => 'e.g. February 28, 2026', 'x' => '25%', 'y' => '42%', 'w' => '50%', 'h' => 'auto'],
+                ['name' => 'appear',          'label' => 'Appear',        'placeholder' => 'e.g. Complainant', 'x' => '25%', 'y' => '48%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'made_this_day',   'label' => 'Day',           'placeholder' => 'e.g. 28th', 'x' => '28.5%', 'y' => '72%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'made_this_month', 'label' => 'Month',         'placeholder' => 'e.g. February', 'x' => '50%', 'y' => '72%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'year',            'label' => 'Year',          'placeholder' => 'e.g. 2026', 'x' => '67%', 'y' => '72.5%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
             ],
 
-            // Certificate to Bar Counterclaim
+            // KP Form 21 - Certificate to Bar Counterclaim (10 Text Boxes)
             'cert_bar_counterclaim' => [
-                ['name' => 'complainant', 'label' => 'Complainant (Full Name)', 'placeholder' => 'Full legal name of the complainant', 'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'respondent',  'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',  'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',     'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',    'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
-                ['name' => 'cert_body',   'label' => 'Certification Text', 'x' => '10%', 'y' => '35%', 'w' => '80%', 'h' => '35%', 'type' => 'textarea',
-                    'default' => 'This is to certify that no counterclaim may be filed in connection with the above-captioned settled case.'],
-                ...$footerFields,
+                ['name' => 'case_no',          'label' => 'Case No',        'placeholder' => 'e.g. 2024-001', 'x' => '65%', 'y' => '18.5%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'For',              'label' => 'For',            'placeholder' => 'Nature of Dispute / Case', 'x' => '65%', 'y' => '22.8%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'complainant',      'label' => 'Complainant/s',  'placeholder' => 'Full legal name of complainant(s)', 'x' => '8.5%', 'y' => '18%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'respondent',       'label' => 'Respondent/s',   'placeholder' => 'Full legal name of respondent(s)', 'x' => '8.5%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'complainant_body', 'label' => 'Complainant/s',  'placeholder' => 'Complainant name in body', 'x' => '25%', 'y' => '40%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'hearing_date',     'label' => 'Hearing Date',   'placeholder' => 'e.g. February 28, 2026', 'x' => '25%', 'y' => '46%', 'w' => '50%', 'h' => 'auto'],
+                ['name' => 'respondent_body',  'label' => 'Respondent/s',   'placeholder' => 'Respondent name in body', 'x' => '25%', 'y' => '52%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'made_this_day',    'label' => 'Day',            'placeholder' => 'e.g. 28th', 'x' => '28.5%', 'y' => '72%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'made_this_month',  'label' => 'Month',          'placeholder' => 'e.g. February', 'x' => '50%', 'y' => '72%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'year',             'label' => 'Year',           'placeholder' => 'e.g. 2026', 'x' => '67%', 'y' => '72.5%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
             ],
 
-            // Motion for Execution
+            // KP Form 23 - Motion for Execution (10 Text Boxes)
             'motion_execution' => [
-                ['name' => 'complainant',  'label' => 'Complainant / Movant', 'x' => '10%', 'y' => '22%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'respondent',   'label' => 'Respondent / Addressee', 'placeholder' => 'Full legal name of the respondent',           'x' => '10%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
-                ['name' => 'case_no',      'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',             'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
-                ['name' => 'body_text',    'label' => 'Motion Content',       'x' => '10%', 'y' => '38%', 'w' => '80%', 'h' => '30%', 'type' => 'textarea',
-                    'default' => 'Movant respectfully prays that a writ of execution be issued to enforce the amicable settlement/arbitration award.'],
-                ...$footerFields,
+                ['name' => 'case_no',                     'label' => 'Case No',                     'placeholder' => 'e.g. 2024-001', 'x' => '65%', 'y' => '18.5%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'For',                         'label' => 'For',                         'placeholder' => 'Nature of Dispute / Case', 'x' => '65%', 'y' => '22.8%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'province',                    'label' => 'Province',                    'placeholder' => 'Metro Manila', 'x' => '43%', 'y' => '10%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'city',                        'label' => 'City',                        'placeholder' => 'Pasay City', 'x' => '10%', 'y' => '12%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'barangay',                    'label' => 'Barangay',                    'placeholder' => '183 Villamor', 'x' => '40%', 'y' => '12%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'complainant',                 'label' => 'Complainant/s',               'placeholder' => 'Full legal name of complainant(s)', 'x' => '8.5%', 'y' => '18%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'respondent',                  'label' => 'Respondent/s',                'placeholder' => 'Full legal name of respondent(s)', 'x' => '8.5%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'hearing_date',                'label' => 'Hearing Date',                'placeholder' => 'e.g. February 28, 2026', 'x' => '25%', 'y' => '45%', 'w' => '50%', 'h' => 'auto'],
+                ['name' => 'made_this_date',              'label' => 'Date',                        'placeholder' => 'e.g. February 28, 2026', 'x' => '25%', 'y' => '65%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'complainant_respondent_sig', 'label' => 'Complainant/s&Respondent/s', 'placeholder' => 'Complainant/s & Respondent/s', 'x' => '20%', 'y' => '80%', 'w' => '60%', 'h' => 'auto', 'class' => 'text-center'],
             ],
 
             // Notice of Hearing - Execution
@@ -204,25 +270,39 @@ class FormLayouts
                 ...$footerFields,
             ],
 
-            // Officers Return
+            // KP Form 10 - Officer's Return (19 Text Boxes)
             'officers_return' => [
-                ['name' => 'respondent',    'label' => 'Person Served / To',    'x' => '10%', 'y' => '22%', 'w' => '50%', 'h' => 'auto'],
-                ['name' => 'case_no',       'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',              'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
-                ['name' => 'served_personal',   'label' => 'Served Personally',    'x' => '10%', 'y' => '40%', 'w' => '30px', 'h' => '30px', 'type' => 'checkbox', 'class' => 'bg-transparent flex items-center justify-center font-bold text-xl'],
-                ['name' => 'served_substituted', 'label' => 'Served via Substitution', 'x' => '10%', 'y' => '46%', 'w' => '30px', 'h' => '30px', 'type' => 'checkbox', 'class' => 'bg-transparent flex items-center justify-center font-bold text-xl'],
-                ['name' => 'body_text',     'label' => 'Return Details',        'x' => '10%', 'y' => '55%', 'w' => '80%', 'h' => '20%', 'type' => 'textarea',
-                    'default' => 'I hereby certify that I served the above notice/summons on the person named above.'],
-                ...$footerFields,
+                ['name' => 'case_no',              'label' => 'Case No',                 'placeholder' => 'e.g. 2024-001', 'x' => '65%', 'y' => '18.5%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'respondent',           'label' => 'Respondent',              'placeholder' => 'Full legal name of respondent', 'x' => '8.5%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'made_this_day',        'label' => 'Day',                     'placeholder' => 'e.g. 28th', 'x' => '28.5%', 'y' => '35%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'made_this_month',      'label' => 'Month',                   'placeholder' => 'e.g. February', 'x' => '50%', 'y' => '35%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'year',                 'label' => 'Year',                    'placeholder' => 'e.g. 2026', 'x' => '67%', 'y' => '35.5%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'respondent_name',      'label' => 'Respondent/s',            'placeholder' => 'Respondent name in body', 'x' => '25%', 'y' => '42%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'days',                 'label' => 'Days',                    'placeholder' => 'e.g. 5 days', 'x' => '25%', 'y' => '48%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'months',               'label' => 'Months',                  'placeholder' => 'e.g. 2 months', 'x' => '45%', 'y' => '48%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'years',                'label' => 'Years',                   'placeholder' => 'e.g. 2026', 'x' => '65%', 'y' => '48%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'answer_1',             'label' => 'Answer',                  'placeholder' => 'Answer 1 details...', 'x' => '20%', 'y' => '54%', 'w' => '60%', 'h' => 'auto'],
+                ['name' => 'answer_2',             'label' => 'Answer',                  'placeholder' => 'Answer 2 details...', 'x' => '20%', 'y' => '59%', 'w' => '60%', 'h' => 'auto'],
+                ['name' => 'answer_3',             'label' => 'Answer',                  'placeholder' => 'Answer 3 details...', 'x' => '20%', 'y' => '64%', 'w' => '60%', 'h' => 'auto'],
+                ['name' => 'answer_4',             'label' => 'Answer',                  'placeholder' => 'Answer 4 details...', 'x' => '20%', 'y' => '69%', 'w' => '60%', 'h' => 'auto'],
+                ['name' => 'business_name',        'label' => 'Business Name',           'placeholder' => 'Business Name', 'x' => '20%', 'y' => '74%', 'w' => '50%', 'h' => 'auto'],
+                ['name' => 'officer',              'label' => 'Officer',                 'placeholder' => 'Officer Name', 'x' => '20%', 'y' => '79%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'representative_name', 'label' => 'Representative Name',     'placeholder' => 'Representative Name', 'x' => '20%', 'y' => '84%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'made_this_date',       'label' => 'Date',                    'placeholder' => 'e.g. February 28, 2026', 'x' => '65%', 'y' => '84%', 'w' => '25%', 'h' => 'auto'],
+                ['name' => 'representative_sig',  'label' => 'Representative Signature','placeholder' => 'Signature Name', 'x' => '20%', 'y' => '89%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'time',                 'label' => 'Time',                    'placeholder' => 'e.g. 09:00 AM', 'x' => '65%', 'y' => '89%', 'w' => '25%', 'h' => 'auto'],
             ],
 
-            // Letter of Demand
+            // KP Form - Letter of Demand (8 Text Boxes)
             'letter_of_demand' => [
-                ['name' => 'respondent',    'label' => 'Addressee (Debtor/Obligor)', 'x' => '10%', 'y' => '22%', 'w' => '50%', 'h' => 'auto'],
-                ['name' => 'complainant',   'label' => 'Sender (Creditor/Obligee)',  'x' => '10%', 'y' => '28%', 'w' => '50%', 'h' => 'auto'],
-                ['name' => 'case_no',       'label' => 'Case Number', 'placeholder' => 'e.g. 2024-001',                  'x' => '75%', 'y' => '22.5%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-right'],
-                ['name' => 'body_text',     'label' => 'Demand Details',            'x' => '10%', 'y' => '38%', 'w' => '80%', 'h' => '30%', 'type' => 'textarea',
-                    'default' => 'You are hereby formally demanded to fulfill your obligation within _____ days from receipt of this letter.'],
-                ...$footerFields,
+                ['name' => 'case_no',         'label' => 'Case No',       'placeholder' => 'e.g. 2024-001', 'x' => '65%', 'y' => '18.5%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'For',             'label' => 'For',           'placeholder' => 'Nature of Dispute / Case', 'x' => '65%', 'y' => '22.8%', 'w' => '25%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'complainant',     'label' => 'Complainant/s', 'placeholder' => 'Full legal name of complainant(s)', 'x' => '8.5%', 'y' => '18%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'respondent',      'label' => 'Respondent/s',  'placeholder' => 'Full legal name of respondent(s)', 'x' => '8.5%', 'y' => '27%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'dear',            'label' => 'Dear',          'placeholder' => 'e.g. Mr. / Ms. Respondent Name', 'x' => '8.5%', 'y' => '34%', 'w' => '40%', 'h' => 'auto'],
+                ['name' => 'made_this_day',   'label' => 'Day',           'placeholder' => 'e.g. 28th', 'x' => '28.5%', 'y' => '72%', 'w' => '15%', 'h' => 'auto', 'class' => 'text-center'],
+                ['name' => 'made_this_month', 'label' => 'Month',         'placeholder' => 'e.g. February', 'x' => '50%', 'y' => '72%', 'w' => '20%', 'h' => 'auto', 'class' => 'text-left'],
+                ['name' => 'year',            'label' => 'Year',          'placeholder' => 'e.g. 2026', 'x' => '67%', 'y' => '72.5%', 'w' => '10%', 'h' => 'auto', 'class' => 'text-left'],
             ],
 
             // Katunayan ng Pagkakasundo (Tagalog Certificate of Agreement)
@@ -266,5 +346,23 @@ class FormLayouts
         }
 
         return $layout;
+    }
+
+    public static function saveLayoutToFile($type, $fields)
+    {
+        try {
+            $filePath = app_path('Config/FormLayouts.php');
+            if (!file_exists($filePath)) {
+                return;
+            }
+
+            // Keep FormLayout database record updated as the live single source of truth
+            \App\Models\FormLayout::updateOrCreate(
+                ['document_type' => $type],
+                ['layout_json' => $fields]
+            );
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error saving layout to file: ' . $e->getMessage());
+        }
     }
 }
