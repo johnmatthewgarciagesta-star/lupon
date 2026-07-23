@@ -11,8 +11,8 @@ class CaseController extends Controller
 {
     public function index(Request $request)
     {
-        // Auto-archive cases older than 31 days (soft-delete so they remain restorable)
-        LuponCase::where('date_filed', '<=', now()->subDays(31))->whereNull('deleted_at')->delete();
+        // Auto-archive disabled to keep all cases visible on the main cases page
+        // LuponCase::where('date_filed', '<=', now()->subDays(31))->whereNull('deleted_at')->delete();
 
         $query = LuponCase::query();
 
