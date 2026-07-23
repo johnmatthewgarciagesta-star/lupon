@@ -260,19 +260,118 @@
 
 <body>
 
-    <!-- Document Header Info -->
-    <div class="fixed top-6 left-6 z-50 flex items-center gap-3 print:hidden transition-all duration-300 hover:-translate-y-1">
-        <div class="bg-blue-600 text-white p-2.5 rounded-xl flex items-center justify-center shadow-lg">
-            <span class="material-icons-outlined">description</span>
+    <!-- Document Header Info & Floating Google Docs Toolbar (Matching Screenshot) -->
+    <div class="fixed top-3 left-4 right-4 z-50 flex items-center justify-between pointer-events-none print:hidden">
+        <!-- Left Document Info Badge -->
+        <div class="bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-2xl shadow-md border border-gray-200/80 flex items-center gap-3 pointer-events-auto">
+            <div class="bg-blue-600 text-white p-2 rounded-xl flex items-center justify-center shadow-sm">
+                <span class="material-icons-outlined text-base">description</span>
+            </div>
+            <div class="flex flex-col justify-center">
+                <h1 class="text-xs font-bold text-gray-800 leading-tight">{{ ucwords(str_replace('_', ' ', $type)) }}</h1>
+                @if(isset($case) && $case)
+                    <p class="text-[11px] text-blue-600 font-semibold opacity-90" title="{{ $case->title }}">Case No: {{ $case->case_number }}</p>
+                @else
+                    <p class="text-[11px] text-gray-500 font-medium">Standalone Document</p>
+                @endif
+            </div>
         </div>
-        <div class="bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-xl shadow-lg border border-gray-100 cursor-default flex flex-col justify-center">
-            <h1 class="text-sm font-bold text-gray-800 leading-tight">{{ ucwords(str_replace('_', ' ', $type)) }}</h1>
-            @if(isset($case) && $case)
-                <p class="text-xs text-blue-600 font-semibold mt-0.5 opacity-90" title="{{ $case->title }}">Case No: {{ $case->case_number }}</p>
-            @else
-                <p class="text-xs text-gray-500 font-medium mt-0.5">Standalone Document</p>
-            @endif
+
+        <!-- Middle Top Toolbar Pill (Google Docs Style) -->
+        <div class="bg-[#EDF2FA]/95 backdrop-blur-md px-4 py-1.5 rounded-full shadow-lg border border-gray-300/80 flex items-center gap-2 pointer-events-auto flex-wrap">
+            <!-- Undo / Redo -->
+            <button type="button" onclick="document.execCommand('undo')" title="Undo" class="p-1 hover:bg-gray-200/80 rounded text-gray-700 text-xs font-medium flex items-center gap-1">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+                <span>Undo</span>
+            </button>
+            <button type="button" onclick="document.execCommand('redo')" title="Redo" class="p-1 hover:bg-gray-200/80 rounded text-gray-700 text-xs font-medium flex items-center gap-1">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>
+                <span>Redo</span>
+            </button>
+
+            <span class="w-px h-4 bg-gray-300"></span>
+
+            <!-- Align -->
+            <span class="text-[11px] font-semibold text-gray-500">Align:</span>
+            <button type="button" onclick="execCmd('justifyLeft')" title="Left Align" class="p-1 hover:bg-gray-200/80 rounded text-gray-700">
+                <span class="material-icons-outlined text-sm">format_align_left</span>
+            </button>
+            <button type="button" onclick="execCmd('justifyCenter')" title="Center Align" class="p-1 hover:bg-gray-200/80 rounded text-gray-700">
+                <span class="material-icons-outlined text-sm">format_align_center</span>
+            </button>
+            <button type="button" onclick="execCmd('justifyRight')" title="Right Align" class="p-1 hover:bg-gray-200/80 rounded text-gray-700">
+                <span class="material-icons-outlined text-sm">format_align_right</span>
+            </button>
+            <button type="button" onclick="execCmd('justifyFull')" title="Justify" class="p-1 hover:bg-gray-200/80 rounded text-gray-700">
+                <span class="material-icons-outlined text-sm">format_align_justify</span>
+            </button>
+
+            <span class="w-px h-4 bg-gray-300"></span>
+
+            <!-- ✨ Auto-Align AI -->
+            <button type="button" onclick="triggerAIAlign()" id="aiAlignBtn" title="Auto-Align Fields with Gemini AI" class="bg-[#0B57D0] hover:bg-blue-700 text-white text-[11px] font-semibold px-3 py-1 rounded-full flex items-center gap-1 shadow-sm transition-all">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                <span>Auto-Align AI</span>
+            </button>
+
+            <span class="w-px h-4 bg-gray-300"></span>
+
+            <!-- Zoom -->
+            <select id="zoom-select" onchange="setZoom(this.value)" class="bg-transparent border border-gray-300 text-[11px] font-semibold rounded px-1.5 py-0.5 cursor-pointer outline-none text-gray-700">
+                <option value="50">50%</option>
+                <option value="75">75%</option>
+                <option value="90">90%</option>
+                <option value="100" selected>100%</option>
+                <option value="125">125%</option>
+                <option value="150">150%</option>
+            </select>
+
+            <!-- Text Block -->
+            <select onchange="execCmd('formatBlock', this.value)" class="bg-transparent border border-gray-300 text-[11px] font-semibold rounded px-1.5 py-0.5 cursor-pointer outline-none text-gray-700">
+                <option value="p" selected>Normal text</option>
+                <option value="h1">Heading 1</option>
+                <option value="h2">Heading 2</option>
+            </select>
+
+            <!-- Font Family -->
+            <select id="font-family-select" onchange="applyFontFamily(this.value)" class="bg-transparent border border-gray-300 text-[11px] font-semibold rounded px-1.5 py-0.5 cursor-pointer outline-none text-gray-700">
+                <option value="Arial" selected>Arial</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Courier New">Courier New</option>
+                <option value="Arial Black">Arial Black</option>
+                <option value="Comic Sans MS">Comic Sans MS</option>
+                <option value="Garamond">Garamond</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Tahoma">Tahoma</option>
+                <option value="Verdana">Verdana</option>
+            </select>
+
+            <!-- Font Size Stepper -->
+            <div class="flex items-center border border-gray-300 rounded px-1 py-0.5 gap-0.5 bg-white/60">
+                <button type="button" onclick="decreaseFontSize()" class="w-3.5 h-3.5 flex items-center justify-center hover:bg-gray-200 rounded text-xs font-bold text-gray-700">−</button>
+                <input type="text" id="font-size-num" value="11" onchange="setNumericFontSize(this.value)" class="w-5 text-center bg-transparent text-[11px] font-semibold border-none outline-none text-gray-800">
+                <button type="button" onclick="increaseFontSize()" class="w-3.5 h-3.5 flex items-center justify-center hover:bg-gray-200 rounded text-xs font-bold text-gray-700">+</button>
+            </div>
+
+            <!-- Size Preset -->
+            <select id="font-size-preset" onchange="applyPresetFontSize(this.value)" class="bg-transparent border border-gray-300 text-[11px] font-semibold rounded px-1.5 py-0.5 cursor-pointer outline-none text-gray-700">
+                <option value="small">Small</option>
+                <option value="normal" selected>Normal</option>
+                <option value="large">Large</option>
+                <option value="huge">Huge</option>
+            </select>
+
+            <span class="w-px h-4 bg-gray-300"></span>
+
+            <!-- B I U -->
+            <div class="flex items-center gap-0.5">
+                <button type="button" onclick="execCmd('bold')" class="px-1.5 py-0.5 hover:bg-gray-200/80 rounded font-bold text-xs text-gray-800" title="Bold">B</button>
+                <button type="button" onclick="execCmd('italic')" class="px-1.5 py-0.5 hover:bg-gray-200/80 rounded italic font-serif text-xs text-gray-800" title="Italic">I</button>
+                <button type="button" onclick="execCmd('underline')" class="px-1.5 py-0.5 hover:bg-gray-200/80 rounded underline text-xs text-gray-800" title="Underline">U</button>
+            </div>
         </div>
+
+        <div></div>
     </div>
 
     <!-- Floating Controls Group -->
@@ -536,6 +635,96 @@
 
     <!-- Scripts -->
     <script>
+        // --- Toolbar Formatting Helpers ---
+        function execCmd(command, value = null) {
+            document.execCommand(command, false, value);
+        }
+
+        function applyFontFamily(font) {
+            document.execCommand('fontName', false, font);
+        }
+
+        function increaseFontSize() {
+            const numInput = document.getElementById('font-size-num');
+            let val = parseInt(numInput.value) || 11;
+            val += 1;
+            numInput.value = val;
+            setNumericFontSize(val);
+        }
+
+        function decreaseFontSize() {
+            const numInput = document.getElementById('font-size-num');
+            let val = parseInt(numInput.value) || 11;
+            if (val > 6) val -= 1;
+            numInput.value = val;
+            setNumericFontSize(val);
+        }
+
+        function setNumericFontSize(val) {
+            const pt = parseInt(val) || 11;
+            document.execCommand('fontSize', false, '3');
+            const sel = window.getSelection();
+            if (sel.rangeCount > 0) {
+                const range = sel.getRangeAt(0);
+                const fontEls = range.commonAncestorContainer.parentElement ? range.commonAncestorContainer.parentElement.querySelectorAll('font[size="3"]') : [];
+                fontEls.forEach(el => {
+                    el.removeAttribute('size');
+                    el.style.fontSize = pt + 'pt';
+                });
+            }
+        }
+
+        function applyPresetFontSize(preset) {
+            let pt = 11;
+            if (preset === 'small') pt = 9;
+            if (preset === 'normal') pt = 11;
+            if (preset === 'large') pt = 14;
+            if (preset === 'huge') pt = 18;
+            const numInput = document.getElementById('font-size-num');
+            if (numInput) numInput.value = pt;
+            setNumericFontSize(pt);
+        }
+
+        function setZoom(zoomPercent) {
+            const canvas = document.getElementById('page-canvas');
+            if (canvas) {
+                canvas.style.transform = `scale(${zoomPercent / 100})`;
+                canvas.style.transformOrigin = 'top center';
+            }
+        }
+
+        function triggerAIAlign() {
+            const btn = document.getElementById('aiAlignBtn');
+            if (!btn) return;
+            const orig = btn.innerHTML;
+            btn.innerHTML = '✨ Aligning...';
+            btn.disabled = true;
+
+            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            fetch('/api/ai/align-layout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': token
+                },
+                body: JSON.stringify({ type: '{{ $type }}' })
+            })
+            .then(r => r.json())
+            .then(data => {
+                btn.innerHTML = '✨ Aligned!';
+                if (data.success && data.layout) {
+                    // Update field positions live if returned
+                    window.location.reload();
+                } else {
+                    setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 1500);
+                }
+            })
+            .catch(() => {
+                btn.innerHTML = orig;
+                btn.disabled = false;
+            });
+        }
 
 
         const isReadonly = {{ ($readonly ?? false) ? 'true' : 'false' }};
