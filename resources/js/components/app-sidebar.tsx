@@ -3,6 +3,7 @@ import {
     LayoutGrid,
     Briefcase,
     FileText,
+    Folder,
     BarChart3,
     ClipboardList,
     Users,
@@ -31,7 +32,6 @@ import AppLogo from './app-logo';
 import { SharedData } from '@/types';
 
 const mainNavItems: NavItem[] = [
-
     {
         title: 'Dashboard',
         href: '/dashboard',
@@ -44,10 +44,21 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Documents',
-        href: '/documents',
+        href: '/documents/folders',
         icon: FileText,
+        items: [
+            {
+                title: 'Documents Folder',
+                href: '/documents/folders',
+                icon: Folder,
+            },
+            {
+                title: 'Documents',
+                href: '/documents/templates',
+                icon: FileText,
+            },
+        ],
     },
-
     {
         title: 'Reports',
         href: '/system-reports',
@@ -70,12 +81,16 @@ export function AppSidebar() {
     const isCollapsed = state === 'collapsed';
     const { auth } = usePage<SharedData>().props;
     const userRoles = auth.roles || [];
+    const isAdmin = auth.user?.role === 'Administrator' || userRoles.includes('Administrator');
     const isEncoder = userRoles.includes('Encoder') || userRoles.includes('Data Encoder');
 
     const filteredNavItems = mainNavItems.filter((item) => {
-        if (isEncoder) {
-            // Data Encoders should not see Audit Trail or Users
-            return !['Audit Trail', 'Users'].includes(item.title);
+        if (isEncoder || isAdmin) {
+            // Both Data Encoders and Admins see Documents Folder & Documents, but not Audit/Users for Encoders
+            if (isEncoder && ['Audit Trail', 'Users'].includes(item.title)) {
+                return false;
+            }
+            return true;
         }
         return true;
     });

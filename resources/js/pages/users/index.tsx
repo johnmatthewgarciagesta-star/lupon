@@ -127,7 +127,7 @@ export default function PersonnelPage({ users, filters, stats }: Props) {
     const form = useForm({
         name: '',
         email: '',
-        role: 'Staff',
+        role: 'Data Encoder',
         status: 'Active',
         duty_group: '',
         password: '',
@@ -322,10 +322,12 @@ export default function PersonnelPage({ users, filters, stats }: Props) {
                                     <div className="space-y-2">
                                         <Label htmlFor="name">Full Name</Label>
                                         <Input id="name" value={form.data.name} onChange={e => form.setData('name', e.target.value)} required />
+                                        {form.errors.name && <p className="text-xs text-red-500 mt-1">{form.errors.name}</p>}
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="email">Email Address</Label>
                                         <Input id="email" type="email" value={form.data.email} onChange={e => form.setData('email', e.target.value)} required />
+                                        {form.errors.email && <p className="text-xs text-red-500 mt-1">{form.errors.email}</p>}
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
@@ -340,6 +342,7 @@ export default function PersonnelPage({ users, filters, stats }: Props) {
                                                     ))}
                                                 </SelectContent>
                                             </Select>
+                                            {form.errors.role && <p className="text-xs text-red-500 mt-1">{form.errors.role}</p>}
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="status">Status</Label>
@@ -352,6 +355,7 @@ export default function PersonnelPage({ users, filters, stats }: Props) {
                                                     <SelectItem value="Inactive">Inactive</SelectItem>
                                                 </SelectContent>
                                             </Select>
+                                            {form.errors.status && <p className="text-xs text-red-500 mt-1">{form.errors.status}</p>}
                                         </div>
                                     </div>
 
@@ -368,12 +372,14 @@ export default function PersonnelPage({ users, filters, stats }: Props) {
                                                     ))}
                                                 </SelectContent>
                                             </Select>
+                                            {form.errors.duty_group && <p className="text-xs text-red-500 mt-1">{form.errors.duty_group}</p>}
                                         </div>
                                     )}
 
                                     <div className="space-y-2">
                                         <Label htmlFor="password">Password</Label>
                                         <Input id="password" type="password" value={form.data.password} onChange={e => form.setData('password', e.target.value)} required />
+                                        {form.errors.password && <p className="text-xs text-red-500 mt-1">{form.errors.password}</p>}
                                     </div>
                                     <DialogFooter>
                                         <Button type="submit" disabled={form.processing}>Create Personnel</Button>

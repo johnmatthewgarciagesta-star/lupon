@@ -14,7 +14,48 @@ use Spatie\Browsershot\Browsershot;
 
 class DocumentController extends Controller
 {
-    public function index(Request $request)
+    public function folders(Request $request)
+    {
+        try {
+            $caseFolders = \App\Models\LuponCase::with(['documents.creator', 'creator'])
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($case) {
+                    $folderName = $case->folder_name ?: ('case-' . str_pad($case->id, 3, '0', STR_PAD_LEFT));
+                    return [
+                        'id' => $case->id,
+                        'case_number' => $case->case_number,
+                        'folder_name' => $folderName,
+                        'complainant' => $case->complainant,
+                        'respondent' => $case->respondent,
+                        'nature_of_case' => $case->nature_of_case,
+                        'status' => $case->status,
+                        'date_filed' => $case->date_filed,
+                        'documents' => $case->documents->map(function ($doc) {
+                            return [
+                                'id' => $doc->id,
+                                'type' => $doc->type,
+                                'file_path' => $doc->file_path,
+                                'status' => $doc->status,
+                                'created_at' => $doc->created_at ? $doc->created_at->format('M d, Y H:i') : null,
+                                'creator' => $doc->creator ? ['name' => $doc->creator->name] : null,
+                            ];
+                        })->values(),
+                    ];
+                });
+
+            return \Inertia\Inertia::render('documents/folders', [
+                'caseFolders' => $caseFolders,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Documents folders view failed: ' . $e->getMessage());
+            return \Inertia\Inertia::render('documents/folders', [
+                'caseFolders' => [],
+            ]);
+        }
+    }
+
+    public function templates(Request $request)
     {
         try {
             $query = \App\Models\Document::with(['case', 'creator'])
@@ -34,10 +75,6 @@ class DocumentController extends Controller
                 });
             }
 
-            if ($request->filled('type') && $request->type !== 'all') {
-                $query->where('type', $request->type);
-            }
-
             $documents = $query->latest()->limit(15)->get()->map(function ($doc) {
                 return [
                     'id' => $doc->id,
@@ -50,20 +87,13 @@ class DocumentController extends Controller
                 ];
             });
 
-            // Document Statistics...
-            $allDocs = \App\Models\Document::selectRaw('type, count(*) as count')
-                ->groupBy('type')
-                ->pluck('count', 'type')
-                ->toArray();
-
-            // Fetch hidden templates
             $hiddenTemplates = \App\Models\FormLayout::where('is_hidden', true)
                 ->pluck('document_type')
                 ->toArray();
 
             $customCount = \App\Models\Document::where('type', 'custom_form')->count();
-            $standardCount = 14; // Matches TEMPLATES array in index.tsx
-            
+            $standardCount = 14;
+
             $stats = [
                 'total' => ($standardCount - count($hiddenTemplates)) + $customCount,
                 'summons' => \App\Models\Document::whereNotNull('case_id')
@@ -75,7 +105,6 @@ class DocumentController extends Controller
                 'recent' => \App\Models\Document::whereNotNull('case_id')->count(),
             ];
 
-            // Fetch custom-built forms to show in the "Templates" grid
             $customTemplates = \App\Models\Document::where('type', 'custom_form')
                 ->orderBy('created_at', 'desc')
                 ->get()
@@ -92,34 +121,121 @@ class DocumentController extends Controller
                     ];
                 });
 
-            // Fetch hidden templates
-            $hiddenTemplates = \App\Models\FormLayout::where('is_hidden', true)
-                ->pluck('document_type')
-                ->toArray();
-
-            return \Inertia\Inertia::render('documents/index', [
+            return \Inertia\Inertia::render('documents/templates', [
                 'documents' => $documents,
                 'stats' => $stats,
                 'customTemplates' => $customTemplates,
                 'hiddenTemplates' => $hiddenTemplates,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Documents listing failed: ' . $e->getMessage());
-            
-            return \Inertia\Inertia::render('documents/index', [
+            \Log::error('Documents templates view failed: ' . $e->getMessage());
+            return \Inertia\Inertia::render('documents/templates', [
                 'documents' => [],
-                'stats' => [
-                    'total' => 0,
-                    'summons' => 0,
-                    'amicable_settlement' => 0,
-                    'certificates' => 0,
-                    'notices' => 0,
-                    'others' => 0,
-                ],
+                'stats' => ['total' => 0, 'summons' => 0, 'settlements' => 0, 'recent' => 0],
                 'customTemplates' => [],
                 'hiddenTemplates' => [],
             ]);
         }
+    }
+
+    public function index(Request $request)
+    {
+        return redirect()->route('documents.folders');
+    }
+
+    public function createFolder(Request $request)
+    {
+        $request->validate([
+            'folder_name' => 'required|string|max:255',
+            'case_number' => 'nullable|string|max:255',
+            'complainant' => 'nullable|string|max:255',
+            'respondent' => 'nullable|string|max:255',
+            'nature_of_case' => 'nullable|string|max:255',
+        ]);
+
+        $folderName = trim($request->folder_name);
+        
+        $case = \App\Models\LuponCase::where('folder_name', $folderName)->first();
+
+        if (!$case) {
+            $caseNo = $request->case_number ?: ('KP-' . date('Y') . '-' . rand(100, 999));
+            $case = \App\Models\LuponCase::create([
+                'folder_name' => $folderName,
+                'case_number' => $caseNo,
+                'title' => ($request->complainant ?: 'Complainant') . ' vs. ' . ($request->respondent ?: 'Respondent'),
+                'nature_of_case' => $request->nature_of_case ?: 'Amicable Settlement / Civil',
+                'complainant' => $request->complainant ?: 'Complainant',
+                'respondent' => $request->respondent ?: 'Respondent',
+                'status' => 'Pending',
+                'date_filed' => now()->format('Y-m-d'),
+                'created_by' => auth()->id(),
+            ]);
+        } else {
+            if ($request->filled('complainant')) $case->complainant = $request->complainant;
+            if ($request->filled('respondent')) $case->respondent = $request->respondent;
+            if ($request->filled('nature_of_case')) $case->nature_of_case = $request->nature_of_case;
+            $case->save();
+        }
+
+        AuditService::log('CREATE_CASE_FOLDER', 'Document Management', "Created case folder {$folderName}", $case->id);
+
+        return redirect()->back()->with('success', "Case folder {$folderName} created successfully.");
+    }
+
+    public function uploadToFolder(Request $request)
+    {
+        $request->validate([
+            'case_id' => 'required|exists:cases,id',
+            'file' => 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
+            'document_type' => 'nullable|string',
+        ]);
+
+        $case = \App\Models\LuponCase::findOrFail($request->case_id);
+        $file = $request->file('file');
+        $path = $file->store('case_documents', 'public');
+
+        $docType = $request->input('document_type', $file->getClientOriginalName());
+
+        $document = \App\Models\Document::create([
+            'case_id' => $case->id,
+            'folder_name' => $case->folder_name ?: ('case-' . str_pad($case->id, 3, '0', STR_PAD_LEFT)),
+            'type' => $docType,
+            'file_path' => '/storage/' . $path,
+            'status' => 'Uploaded',
+            'issued_at' => now(),
+            'created_by' => auth()->id(),
+            'content' => [
+                'original_name' => $file->getClientOriginalName(),
+                'mime' => $file->getClientMimeType(),
+                'size' => $file->getSize(),
+            ],
+        ]);
+
+        AuditService::log('UPLOAD_DOCUMENT_TO_FOLDER', 'Document Management', "Uploaded document {$docType} into folder {$case->folder_name}", $case->id);
+
+        return redirect()->back()->with('success', "Document uploaded into folder {$case->folder_name}.");
+    }
+
+    public function destroyFolder($id)
+    {
+        $case = \App\Models\LuponCase::find($id);
+        if (!$case) {
+            return redirect()->back()->with('error', 'Folder not found.');
+        }
+
+        $folderName = $case->folder_name ?: ('case-' . str_pad($case->id, 3, '0', STR_PAD_LEFT));
+
+        // Purge or unlink document records associated with this folder
+        \App\Models\Document::where('case_id', $case->id)
+            ->orWhere('folder_name', $folderName)
+            ->delete();
+
+        // Delete case record
+        $case->delete();
+
+        AuditService::log('DELETE_CASE_FOLDER', 'Document Management', "Deleted case folder {$folderName} and purged attached documents", $case->id);
+
+        return redirect()->back()->with('success', "Folder {$folderName} deleted successfully.");
     }
 
     public function create($type)
@@ -127,6 +243,17 @@ class DocumentController extends Controller
         // Optional: pre-link to a case when opened via ?case_id=X
         $caseId = request('case_id');
         $case = $caseId ? \App\Models\LuponCase::find($caseId) : null;
+
+        // Fetch case folders for "Select Target Folder" dropdown
+        $caseFolders = \App\Models\LuponCase::orderBy('created_at', 'desc')->get()->map(function ($c) {
+            return [
+                'id' => $c->id,
+                'folder_name' => $c->folder_name ?: ('case-' . str_pad($c->id, 3, '0', STR_PAD_LEFT)),
+                'complainant' => $c->complainant,
+                'respondent' => $c->respondent,
+                'case_number' => $c->case_number,
+            ];
+        });
 
         // Get Layout from DB or Config
         $savedLayout = FormLayout::where('document_type', $type)->first();
@@ -162,7 +289,7 @@ class DocumentController extends Controller
 
         $imageBase64 = $this->generateBackgroundImage($type);
 
-        return view('documents.form-fill', compact('type', 'imageBase64', 'fields', 'case'));
+        return view('documents.form-fill', compact('type', 'imageBase64', 'fields', 'case', 'caseFolders'));
     }
 
     /**
@@ -418,8 +545,24 @@ class DocumentController extends Controller
                     }
                 }
 
+                $folderName = $request->input('folder_name');
+                if ($folderName) {
+                    $targetCase = \App\Models\LuponCase::where('folder_name', $folderName)->first();
+                    if ($targetCase) {
+                        $caseId = $targetCase->id;
+                    }
+                } elseif ($caseId) {
+                    $targetCase = \App\Models\LuponCase::find($caseId);
+                    if ($targetCase && $targetCase->folder_name) {
+                        $folderName = $targetCase->folder_name;
+                    } elseif ($caseId) {
+                        $folderName = 'case-' . str_pad($caseId, 3, '0', STR_PAD_LEFT);
+                    }
+                }
+
                 \App\Models\Document::create([
                     'case_id' => $caseId,
+                    'folder_name' => $folderName,
                     'type' => $type,
                     'content' => $contentToSave,
                     'status' => 'Issued',
@@ -975,9 +1118,10 @@ class DocumentController extends Controller
                                          "  ]" .
                                          "}";
 
+                    $geminiModel = env('GEMINI_MODEL', 'gemini-3.6-flash');
                     $response = \Illuminate\Support\Facades\Http::withHeaders([
                         'Content-Type' => 'application/json'
-                    ])->timeout(30)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}", [
+                    ])->timeout(30)->post("https://generativelanguage.googleapis.com/v1beta/models/{$geminiModel}:generateContent?key={$apiKey}", [
                         'contents' => [
                             [
                                 'parts' => [
@@ -1309,23 +1453,24 @@ class DocumentController extends Controller
                 $base64Image = base64_encode($imageBinary);
             }
 
-             // Construct the prompt for Gemini 2.5 Flash
+             // Construct the prompt for Gemini AI scanning (translates output into Tagalog/Filipino)
             $promptInstruction = "Analyze this scanned legal document from the Barangay Lupon Tagapamayapa. " .
-                                 "Identify and extract the following details precisely. Return your output " .
-                                 "strictly as a flat JSON object matching this schema: " .
+                                 "Identify and extract the following details precisely. IMPORTANT: Translate all narrative summaries, details, and nature of case into Tagalog/Filipino language. " .
+                                 "Return your output strictly as a flat JSON object matching this schema: " .
                                  "{" .
                                  "  \"complainant\": \"Name of the complainant(s) or null\"," .
                                  "  \"respondent\": \"Name of the respondent(s) or null\"," .
                                  "  \"case_no\": \"The formal case number or null\"," .
-                                 "  \"nature_of_case\": \"The issue/reason (e.g. Slander, Boundary dispute, Debt). For an Affidavit of Withdrawal, set this field to exactly 'Affidavit of Withdrawal'\"," .
-                                 "  \"summary\": \"A short, objective summary of the narrative/statement written on the page.\"," .
+                                 "  \"nature_of_case\": \"The issue/reason translated in Tagalog (e.g. Paninirang-puri, Pag-aaway sa lupa, Utang, Pambubugbog). For an Affidavit of Withdrawal, set this field to exactly 'Affidavit of Withdrawal'\"," .
+                                 "  \"summary\": \"A short, objective summary of the narrative/statement written on the page, translated into clear Tagalog/Filipino.\"," .
                                  "  \"document_type\": \"Must be either 'complaint' (if it is a complaint form, statement of dispute, or complaint narrative) or 'affidavit_withdrawal' (if it is an affidavit of withdrawal, request for dismissal, or withdrawal statement)\"" .
                                  "}";
 
             // Send POST request to Google AI Studio
-            $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'Content-Type' => 'application/json'
-            ])->timeout(45)->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}", [
+             $geminiModel = env('GEMINI_MODEL', 'gemini-3.6-flash');
+             $response = \Illuminate\Support\Facades\Http::withHeaders([
+                 'Content-Type' => 'application/json'
+             ])->timeout(45)->post("https://generativelanguage.googleapis.com/v1beta/models/{$geminiModel}:generateContent?key={$apiKey}", [
                 'contents' => [
                     [
                         'parts' => [

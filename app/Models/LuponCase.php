@@ -16,7 +16,7 @@ class LuponCase extends Model
     // Ang paggamit natin ng Laravel Eloquent ORM ay automatic na gumagamit ng "PDO Parameter Binding".
     // Ibig sabihin, ang lahat ng input tulad ng 'title' o 'complainant' ay itinuturing lamang na text 
     // at hindi tatakbo bilang malicious code sa ating database kahit subukan itong i-hack.
-    protected $fillable = ['case_number', 'title', 'nature_of_case', 'complainant', 'respondent', 'created_by', 'status', 'date_filed', 'complaint_narrative', 'admin_notes', 'document_data'];
+    protected $fillable = ['case_number', 'folder_name', 'title', 'nature_of_case', 'complainant', 'respondent', 'created_by', 'status', 'date_filed', 'complaint_narrative', 'admin_notes', 'document_data'];
 
     protected $casts = [
         'document_data' => 'array',

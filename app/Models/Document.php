@@ -11,6 +11,7 @@ class Document extends Model
 
     protected $fillable = [
         'case_id',
+        'folder_name',
         'type',
         'content',
         'file_path',

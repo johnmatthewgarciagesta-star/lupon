@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import {
     FileText,
     Download,
@@ -165,6 +165,7 @@ export default function Reports({ stats }: { stats: any }) {
             label: 'Cases This Month',
             description: 'New cases filed this month',
             icon: FileText,
+            url: '/cases',
         },
         {
             title: 'Pending Cases',
@@ -172,6 +173,7 @@ export default function Reports({ stats }: { stats: any }) {
             label: 'Pending',
             description: 'Cases currently active',
             icon: Clock,
+            url: '/cases?status=Pending',
         },
         {
             title: 'Resolved Cases',
@@ -179,6 +181,7 @@ export default function Reports({ stats }: { stats: any }) {
             label: 'Resolved',
             description: 'Cases settled or dismissed',
             icon: CheckCircle,
+            url: '/cases?status=Resolved',
         },
         {
             title: 'Total Cases',
@@ -186,6 +189,7 @@ export default function Reports({ stats }: { stats: any }) {
             label: 'Total',
             description: 'All cases in the system',
             icon: Users,
+            url: '/cases',
         },
     ];
 
@@ -207,7 +211,11 @@ export default function Reports({ stats }: { stats: any }) {
                 {/* Quick Info Cards */}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     {quickReports.map((report) => (
-                        <Card key={report.title}>
+                        <Card 
+                            key={report.title}
+                            className="cursor-pointer hover:bg-secondary/50 dark:hover:bg-secondary/80 transition-colors"
+                            onClick={() => router.visit(report.url)}
+                        >
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">
                                     {report.title}
@@ -321,7 +329,7 @@ export default function Reports({ stats }: { stats: any }) {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle>Recent Cases</CardTitle>
-                        <Button variant="link" className="text-xs h-auto p-0 text-muted-foreground">View All &gt;</Button>
+                        <Button variant="link" className="text-xs h-auto p-0 text-muted-foreground" onClick={() => router.visit('/cases')}>View All &gt;</Button>
                     </CardHeader>
                     <CardContent>
                         <div className="overflow-x-auto">

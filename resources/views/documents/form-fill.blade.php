@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
     <style>
         :root {
             --brand: #2563eb;
@@ -1052,7 +1053,18 @@
             <div class="header-subtitle">Lupon ng Tagapamayapa</div>
             <div class="header-title">{{ ucwords(str_replace('_', ' ', $type)) }}</div>
         </div>
-        <div class="header-actions">
+        <div class="header-actions" style="display: flex; align-items: center; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.07); padding: 4px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);">
+                <label for="header_target_folder" style="font-size: 11px; font-weight: 700; color: #fbbc04; white-space: nowrap; text-transform: uppercase;">Target Folder:</label>
+                <select id="header_target_folder" onchange="document.getElementById('hidden_target_folder').value = this.value;" style="background: #1e293b; color: #fff; border: 1px solid #475569; border-radius: 6px; padding: 4px 8px; font-size: 12px; font-weight: 600; outline: none; cursor: pointer;">
+                    <option value="">📁 Unassigned / Standalone</option>
+                    @foreach($caseFolders ?? [] as $f)
+                        <option value="{{ $f['folder_name'] }}" {{ (isset($case) && ($case->folder_name == $f['folder_name'] || 'case-'.sprintf('%03d', $case->id) == $f['folder_name'])) ? 'selected' : '' }}>
+                            📁 {{ $f['folder_name'] }} ({{ $f['complainant'] }} vs {{ $f['respondent'] }})
+                        </option>
+                    @endforeach
+                </select>
+            </div>
             <button class="btn-header btn-header-amber" onclick="openCalibration()" title="Open Word Editor">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -1109,6 +1121,7 @@
         <input type="hidden" name="type" value="{{ $type }}">
         <input type="hidden" name="action" value="preview">
         <input type="hidden" name="layout_overrides" id="layout-overrides" value="">
+        <input type="hidden" name="folder_name" id="hidden_target_folder" value="{{ isset($case) ? ($case->folder_name ?? ('case-'.sprintf('%03d', $case->id))) : '' }}">
         @if($case)
             <input type="hidden" name="case_id" value="{{ $case->id }}">
         @endif
@@ -1691,30 +1704,98 @@
         </button>
     </div>
     
-    {{-- Formatting toolbar --}}
-    <div style="height: 40px; background: #EDF2FA; border-bottom: 1px solid #c7c7c7; border-radius: 0 0 24px 24px; display:flex; align-items:center; padding: 0 24px; gap:16px; margin: 0 16px 16px 16px;">
-         <button onclick="undoCalibration()" title="Undo action & position" style="background:transparent; border:none; cursor:pointer; color:#444746; display:flex; align-items:center; justify-content:center; padding:4px; border-radius:4px;" onmouseover="this.style.background='#E1E5EA'" onmouseout="this.style.background='transparent'">
-             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+    {{-- Rich Word Editor Formatting Toolbar --}}
+    <div style="height: 44px; background: #EDF2FA; border-bottom: 1px solid #c7c7c7; border-radius: 0 0 24px 24px; display:flex; align-items:center; padding: 0 20px; gap:8px; margin: 0 16px 16px 16px; flex-wrap: wrap;">
+         <!-- History Operations -->
+         <button type="button" onclick="undoCalibration(); document.execCommand('undo');" title="Undo" style="background:transparent; border:none; cursor:pointer; color:#444746; display:flex; align-items:center; gap:3px; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:600;" onmouseover="this.style.background='#E1E5EA'" onmouseout="this.style.background='transparent'">
+             <span class="material-icons-outlined" style="font-size:16px;">undo</span>
+             <span>Undo</span>
          </button>
-         <button type="button" onclick="triggerAIAlign()" id="aiAlignBtn" title="Auto-Align Fields with Gemini AI" style="background:#0B57D0; border:none; cursor:pointer; color:#fff; display:flex; align-items:center; gap:6px; padding:6px 14px; border-radius:18px; font-size:12px; font-weight:600; transition:all 0.2s;">
-             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:2px;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-             <span>Auto-Align with AI</span>
+         <button type="button" onclick="document.execCommand('redo');" title="Redo" style="background:transparent; border:none; cursor:pointer; color:#444746; display:flex; align-items:center; gap:3px; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:600;" onmouseover="this.style.background='#E1E5EA'" onmouseout="this.style.background='transparent'">
+             <span class="material-icons-outlined" style="font-size:16px;">redo</span>
+             <span>Redo</span>
          </button>
-         <span style="font-size:13px; color:#444746; font-weight:bold; display:flex; align-items:center; gap:4px;">100% <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></span>
-         <span style="width:1px; height:20px; background:#c7c7c7;"></span>
-         <button onmousedown="event.preventDefault();" onclick="document.execCommand('formatBlock', false, 'p')" title="Normal text" style="background:transparent;border:none;cursor:pointer;font-size:13px;color:#444746;display:flex;align-items:center;gap:4px;">Normal text</button>
-         <span style="width:1px; height:20px; background:#c7c7c7;"></span>
-         <span style="font-size:13px; color:#444746; display:flex; align-items:center; gap:4px; cursor:default;">Arial</span>
-         <span style="width:1px; height:20px; background:#c7c7c7;"></span>
-         <span style="font-size:13px; color:#444746; display:flex; align-items:center; gap:10px;">
-             <button onmousedown="event.preventDefault();" onclick="changeFontSize(-1)" style="background:transparent;border:none;cursor:pointer;font-size:16px;line-height:1;">-</button>
-             <span id="toolbarFontSize" style="border:1px solid #c7c7c7; padding:2px 6px; border-radius:4px;">11</span>
-             <button onmousedown="event.preventDefault();" onclick="changeFontSize(1)" style="background:transparent;border:none;cursor:pointer;font-size:16px;line-height:1;">+</button>
-         </span>
-         <span style="width:1px; height:20px; background:#c7c7c7;"></span>
-         <button onmousedown="event.preventDefault();" onclick="document.execCommand('bold', false, null)" style="background:transparent;border:none;cursor:pointer;color:#1f1f1f;font-weight:bold;font-size:14px;" title="Bold">B</button>
-         <button onmousedown="event.preventDefault();" onclick="document.execCommand('italic', false, null)" style="background:transparent;border:none;cursor:pointer;color:#1f1f1f;font-style:italic;font-family:serif;font-size:15px;" title="Italic">I</button>
-         <button onmousedown="event.preventDefault();" onclick="document.execCommand('underline', false, null)" style="background:transparent;border:none;cursor:pointer;color:#1f1f1f;text-decoration:underline;font-size:14px;" title="Underline">U</button>
+
+         <span style="width:1px; height:20px; background:#c7c7c7; margin:0 2px;"></span>
+
+         <!-- Alignment Controls -->
+         <span style="font-size:11px; font-weight:600; color:#5f6368;">Align:</span>
+         <button type="button" onclick="execCmd('justifyLeft')" title="Align Left" style="background:transparent; border:none; cursor:pointer; color:#444746; padding:4px; border-radius:4px;" onmouseover="this.style.background='#E1E5EA'" onmouseout="this.style.background='transparent'">
+             <span class="material-icons-outlined" style="font-size:16px;">format_align_left</span>
+         </button>
+         <button type="button" onclick="execCmd('justifyCenter')" title="Align Center" style="background:transparent; border:none; cursor:pointer; color:#444746; padding:4px; border-radius:4px;" onmouseover="this.style.background='#E1E5EA'" onmouseout="this.style.background='transparent'">
+             <span class="material-icons-outlined" style="font-size:16px;">format_align_center</span>
+         </button>
+         <button type="button" onclick="execCmd('justifyRight')" title="Align Right" style="background:transparent; border:none; cursor:pointer; color:#444746; padding:4px; border-radius:4px;" onmouseover="this.style.background='#E1E5EA'" onmouseout="this.style.background='transparent'">
+             <span class="material-icons-outlined" style="font-size:16px;">format_align_right</span>
+         </button>
+         <button type="button" onclick="execCmd('justifyFull')" title="Align Justify" style="background:transparent; border:none; cursor:pointer; color:#444746; padding:4px; border-radius:4px;" onmouseover="this.style.background='#E1E5EA'" onmouseout="this.style.background='transparent'">
+             <span class="material-icons-outlined" style="font-size:16px;">format_align_justify</span>
+         </button>
+
+         <span style="width:1px; height:20px; background:#c7c7c7; margin:0 2px;"></span>
+
+         <!-- ✨ Auto-Align AI -->
+         <button type="button" onclick="triggerAIAlign()" id="aiAlignBtn" title="Auto-Align Fields with Gemini AI" style="background:#0B57D0; border:none; cursor:pointer; color:#fff; display:flex; align-items:center; gap:5px; padding:5px 12px; border-radius:18px; font-size:11px; font-weight:700; transition:all 0.2s;">
+             <span class="material-icons-outlined" style="font-size:14px;">auto_fix_high</span>
+             <span>Auto-Align AI</span>
+         </button>
+
+         <span style="width:1px; height:20px; background:#c7c7c7; margin:0 2px;"></span>
+
+         <!-- Zoom Level Dropdown -->
+         <select id="zoom-select" onchange="setZoom(this.value)" style="background:transparent; border:1px solid #c7c7c7; font-size:11px; font-weight:600; border-radius:4px; padding:2px 6px; cursor:pointer; color:#444746; outline:none;">
+             <option value="50">50%</option>
+             <option value="75">75%</option>
+             <option value="90">90%</option>
+             <option value="100" selected>100%</option>
+             <option value="125">125%</option>
+             <option value="150">150%</option>
+         </select>
+
+         <!-- Text Styles Dropdown -->
+         <select onchange="execCmd('formatBlock', this.value)" style="background:transparent; border:1px solid #c7c7c7; font-size:11px; font-weight:600; border-radius:4px; padding:2px 6px; cursor:pointer; color:#444746; outline:none;">
+             <option value="p" selected>Normal text</option>
+             <option value="h1">Heading 1</option>
+             <option value="h2">Heading 2</option>
+         </select>
+
+         <!-- Font Family Dropdown -->
+         <select id="font-family-select" onchange="applyFontFamily(this.value)" style="background:transparent; border:1px solid #c7c7c7; font-size:11px; font-weight:600; border-radius:4px; padding:2px 6px; cursor:pointer; color:#444746; outline:none;">
+             <option value="Arial" selected>Arial</option>
+             <option value="Times New Roman">Times New Roman</option>
+             <option value="Courier New">Courier New</option>
+             <option value="Arial Black">Arial Black</option>
+             <option value="Comic Sans MS">Comic Sans MS</option>
+             <option value="Garamond">Garamond</option>
+             <option value="Georgia">Georgia</option>
+             <option value="Tahoma">Tahoma</option>
+             <option value="Verdana">Verdana</option>
+         </select>
+
+         <!-- Font Size Controls (−, +) -->
+         <div style="display:flex; align-items:center; border:1px solid #c7c7c7; border-radius:4px; padding:2px 4px; gap:4px; background:rgba(255,255,255,0.7);">
+             <button type="button" onmousedown="event.preventDefault();" onclick="decreaseFontSize()" style="background:transparent; border:none; cursor:pointer; font-size:14px; font-weight:bold; color:#444746; width:16px; height:16px; display:flex; align-items:center; justify-content:center;">−</button>
+             <span id="toolbarFontSize" style="font-size:11px; font-weight:600; min-width:18px; text-align:center; color:#1f1f1f;">11</span>
+             <button type="button" onmousedown="event.preventDefault();" onclick="increaseFontSize()" style="background:transparent; border:none; cursor:pointer; font-size:14px; font-weight:bold; color:#444746; width:16px; height:16px; display:flex; align-items:center; justify-content:center;">+</button>
+         </div>
+
+         <!-- Font Size Presets Dropdown -->
+         <select id="font-size-preset" onchange="applyPresetFontSize(this.value)" style="background:transparent; border:1px solid #c7c7c7; font-size:11px; font-weight:600; border-radius:4px; padding:2px 6px; cursor:pointer; color:#444746; outline:none;">
+             <option value="small">Small</option>
+             <option value="normal" selected>Normal</option>
+             <option value="large">Large</option>
+             <option value="huge">Huge</option>
+         </select>
+
+         <span style="width:1px; height:20px; background:#c7c7c7; margin:0 2px;"></span>
+
+         <!-- Text Styling Toggles: Bold, Italic, Underline -->
+         <div style="display:flex; align-items:center; gap:2px;">
+             <button type="button" onmousedown="event.preventDefault();" onclick="execCmd('bold')" style="background:transparent; border:none; cursor:pointer; color:#1f1f1f; font-weight:bold; font-size:13px; padding:2px 6px; border-radius:3px;" onmouseover="this.style.background='#E1E5EA'" onmouseout="this.style.background='transparent'" title="Bold">B</button>
+             <button type="button" onmousedown="event.preventDefault();" onclick="execCmd('italic')" style="background:transparent; border:none; cursor:pointer; color:#1f1f1f; font-style:italic; font-family:serif; font-size:14px; padding:2px 6px; border-radius:3px;" onmouseover="this.style.background='#E1E5EA'" onmouseout="this.style.background='transparent'" title="Italic">I</button>
+             <button type="button" onmousedown="event.preventDefault();" onclick="execCmd('underline')" style="background:transparent; border:none; cursor:pointer; color:#1f1f1f; text-decoration:underline; font-size:13px; padding:2px 6px; border-radius:3px;" onmouseover="this.style.background='#E1E5EA'" onmouseout="this.style.background='transparent'" title="Underline">U</button>
+         </div>
     </div>
 
     {{-- Draggable A4 paper --}}
@@ -1747,6 +1828,70 @@
 let calibPositions = {};
 let calibHistory = []; // Tracks undo state
 let currentFontSize = 11; // Editor Base default font size
+
+function execCmd(command, value = null) {
+    document.execCommand(command, false, value);
+}
+
+function applyFontFamily(fontName) {
+    document.execCommand('fontName', false, fontName);
+    const sel = window.getSelection();
+    if (sel && sel.anchorNode) {
+        const parent = sel.anchorNode.parentElement;
+        if (parent && parent.classList.contains('calib-field-text')) {
+            parent.style.fontFamily = fontName;
+        }
+    }
+}
+
+function setZoom(val) {
+    const paper = document.getElementById('calibPaper');
+    if (paper) {
+        paper.style.transform = `scale(${val / 100})`;
+        paper.style.transformOrigin = 'top center';
+    }
+}
+
+function increaseFontSize() {
+    changeFontSize(1);
+}
+
+function decreaseFontSize() {
+    changeFontSize(-1);
+}
+
+function setNumericFontSize(size) {
+    let pt = parseInt(size, 10);
+    if (isNaN(pt)) return;
+    currentFontSize = Math.max(8, Math.min(72, pt));
+    document.getElementById('toolbarFontSize').innerText = currentFontSize;
+    applyFontSizePt(currentFontSize);
+}
+
+function applyPresetFontSize(preset) {
+    let map = { small: 9, normal: 11, large: 16, huge: 22 };
+    let size = map[preset] || 11;
+    setNumericFontSize(size);
+}
+
+function applyFontSizePt(ptSize) {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+        document.execCommand("fontSize", false, "7");
+        const fontElements = document.getElementsByTagName("font");
+        for (let i = 0; i < fontElements.length; i++) {
+            if (fontElements[i].size == "7") {
+                fontElements[i].removeAttribute("size");
+                fontElements[i].style.fontSize = ptSize + "pt";
+            }
+        }
+    } else {
+        const active = document.activeElement;
+        if (active && active.classList.contains('calib-field-text')) {
+            active.style.fontSize = ptSize + "pt";
+        }
+    }
+}
 
 function changeFontSize(delta) {
     currentFontSize += delta;

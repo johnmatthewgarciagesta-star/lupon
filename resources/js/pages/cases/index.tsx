@@ -15,6 +15,13 @@ import {
     ChevronUp,
     ChevronDown,
     ArrowUpDown,
+    Sparkles,
+    Calendar,
+    Folder,
+    FileText,
+    Paperclip,
+    Upload,
+    FilePlus
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
@@ -29,8 +36,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from '@/components/ui/dialog';
 import AppLayout from '@/layouts/app-layout';
-// import { debounce } from 'lodash'; // Using helper or manual debounce
 
 // Helper for debounce if not available
 function debounce(func: Function, wait: number) {
@@ -41,9 +54,19 @@ function debounce(func: Function, wait: number) {
     };
 }
 
+interface DocumentItem {
+    id: number;
+    type: string;
+    file_path?: string;
+    status?: string;
+    created_at?: string;
+    creator?: { name: string };
+}
+
 interface Case {
     id: number;
     case_number: string;
+    folder_name?: string;
     nature_of_case: string;
     description: string;
     status: string;
@@ -53,6 +76,8 @@ interface Case {
     created_by?: number;
     creator?: { name: string };
     deleted_at?: string | null;
+    documents_count?: number;
+    documents?: DocumentItem[];
 }
 
 interface PaginationProps {
@@ -76,6 +101,8 @@ interface Props {
         status: string;
         nature: string;
         date?: string;
+        month?: string;
+        filter?: string;
         sort_by?: string;
         sort_order?: string;
     };
@@ -92,23 +119,30 @@ export default function CaseManagement({ cases, filters }: Props) {
         },
     ];
 
+    const currentMonthNum = String(new Date().getMonth() + 1);
+    const initialMonth = filters.month || (filters.filter === 'new_cases' ? 'latest' : 'all');
+
     const [search, setSearch] = useState(filters.search || '');
     const [status, setStatus] = useState(filters.status || 'all');
     const [nature, setNature] = useState(filters.nature || 'all');
     const [date, setDate] = useState(filters.date || '');
-    const [sortField, setSortField] = useState(filters.sort_by || 'created_at');
+    const [month, setMonth] = useState(initialMonth);
+    const [sortField, setSortField] = useState(filters.sort_by || (initialMonth !== 'all' ? 'date_filed' : 'created_at'));
     const [sortOrder, setSortOrder] = useState(filters.sort_order || 'desc');
+
+    // Case Drawer state
+    const [selectedCaseForDrawer, setSelectedCaseForDrawer] = useState<Case | null>(null);
 
     // Debounced search
     const updateSearch = useCallback(
         debounce((value: string) => {
             router.get(
                 '/cases',
-                { search: value, status, nature, date, sort_by: sortField, sort_order: sortOrder },
+                { search: value, status, nature, date, month, sort_by: sortField, sort_order: sortOrder },
                 { preserveState: true, replace: true }
             );
         }, 300),
-        [status, nature, date, sortField, sortOrder]
+        [status, nature, date, month, sortField, sortOrder]
     );
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -120,6 +154,7 @@ export default function CaseManagement({ cases, filters }: Props) {
         if (key === 'status') setStatus(value);
         if (key === 'nature') setNature(value);
         if (key === 'date') setDate(value);
+        if (key === 'month') setMonth(value);
 
         router.get(
             '/cases',
@@ -128,6 +163,7 @@ export default function CaseManagement({ cases, filters }: Props) {
                 status: key === 'status' ? value : status,
                 nature: key === 'nature' ? value : nature,
                 date: key === 'date' ? value : date,
+                month: key === 'month' ? value : month,
                 sort_by: sortField,
                 sort_order: sortOrder,
             },
@@ -147,6 +183,7 @@ export default function CaseManagement({ cases, filters }: Props) {
                 status,
                 nature,
                 date,
+                month,
                 sort_by: field,
                 sort_order: newOrder,
             },
@@ -159,20 +196,8 @@ export default function CaseManagement({ cases, filters }: Props) {
         setStatus('all');
         setNature('all');
         setDate('');
+        setMonth('all');
         router.get('/cases', {}, { preserveState: true, replace: true });
-    };
-
-    const getStatusVariant = (status: string) => {
-        switch (status) {
-            case 'Resolved':
-                return 'secondary';
-            case 'Pending':
-                return 'outline';
-            case 'Mediation':
-                return 'secondary';
-            default:
-                return 'default';
-        }
     };
 
     const getBadgeStyles = (status: string) => {
@@ -185,17 +210,12 @@ export default function CaseManagement({ cases, filters }: Props) {
             case 'mediation':
                 return 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800';
             case 'certified':
+            case 'escalated':
                 return 'bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800';
             case 'dismissed':
                 return 'bg-red-100 text-red-700 border-red-200 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800';
             default:
                 return 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700';
-        }
-    };
-
-    const restoreCase = (caseItem: Case) => {
-        if (confirm('Are you sure you want to restore this case?')) {
-            alert("Restore functionality coming in Phase 2 (Audit Trail)");
         }
     };
 
@@ -209,32 +229,57 @@ export default function CaseManagement({ cases, filters }: Props) {
                     <div>
                         <h2 className="text-2xl font-bold tracking-tight">Case Management</h2>
                         <p className="text-muted-foreground">
-                            View and manage all Lupon Tagapamayapa cases
+                            View and manage all Lupon Tagapamayapa cases and document folders
                         </p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-
                     </div>
                 </div>
 
                 {/* Filters */}
                 <Card className="rounded-lg border bg-card text-card-foreground shadow-sm">
                     <CardContent className="p-6 space-y-4">
-                        <div className="grid gap-4 md:grid-cols-4">
+                        <div className="grid gap-4 grid-cols-1 md:grid-cols-5">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    Search Cases
+                                    Search Cases / Folders
                                 </label>
                                 <div className="relative">
                                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                     <Input
-                                        placeholder="Search by case number, name, or type..."
+                                        placeholder="Search Case No., folder name (case-026)..."
                                         className="pl-8"
                                         value={search}
                                         onChange={handleSearchChange}
                                     />
                                 </div>
                             </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    Filter by Month
+                                </label>
+                                <Select value={month} onValueChange={(val) => handleFilterChange('month', val)}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select Month" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Months (All Time)</SelectItem>
+                                        <SelectItem value="latest">Latest Month ({new Date().toLocaleString('default', { month: 'long', year: 'numeric' })})</SelectItem>
+                                        <SelectItem value="1">January 2026</SelectItem>
+                                        <SelectItem value="2">February 2026</SelectItem>
+                                        <SelectItem value="3">March 2026</SelectItem>
+                                        <SelectItem value="4">April 2026</SelectItem>
+                                        <SelectItem value="5">May 2026</SelectItem>
+                                        <SelectItem value="6">June 2026</SelectItem>
+                                        <SelectItem value="7">July 2026</SelectItem>
+                                        <SelectItem value="8">August 2026</SelectItem>
+                                        <SelectItem value="9">September 2026</SelectItem>
+                                        <SelectItem value="10">October 2026</SelectItem>
+                                        <SelectItem value="11">November 2026</SelectItem>
+                                        <SelectItem value="12">December 2026</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
                             <div className="space-y-2">
                                 <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                     Status
@@ -246,8 +291,9 @@ export default function CaseManagement({ cases, filters }: Props) {
                                     <SelectContent>
                                         <SelectItem value="all">All Status</SelectItem>
                                         <SelectItem value="Pending">Pending</SelectItem>
-                                        <SelectItem value="Resolved">Resolved</SelectItem>
+                                        <SelectItem value="Resolved">Resolved / Settled</SelectItem>
                                         <SelectItem value="Mediation">Mediation</SelectItem>
+                                        <SelectItem value="Escalated">Escalated (Referred to Court)</SelectItem>
                                         <SelectItem value="Dismissed">Dismissed</SelectItem>
                                         <SelectItem value="Certified">Certified</SelectItem>
                                     </SelectContent>
@@ -293,10 +339,6 @@ export default function CaseManagement({ cases, filters }: Props) {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            {/* <Button variant="outline" size="sm" className="h-8">
-                                <Filter className="mr-2 h-3 w-3" />
-                                More Filters
-                            </Button> */}
                             <Button variant="ghost" size="sm" className="h-8 text-muted-foreground" onClick={clearFilters}>
                                 <X className="mr-2 h-3 w-3" />
                                 Clear Filters
@@ -337,10 +379,11 @@ export default function CaseManagement({ cases, filters }: Props) {
                                             )}
                                         </div>
                                     </th>
+                                    <th className="py-3 px-4 font-medium">Folder ID</th>
+                                    <th className="py-3 px-4 font-medium">Complainant vs. Respondent</th>
                                     <th className="py-3 px-4 font-medium">Case Type</th>
-                                    <th className="py-3 px-4 font-medium">Complainant</th>
-                                    <th className="py-3 px-4 font-medium">Respondent</th>
                                     <th className="py-3 px-4 font-medium">Date Filed</th>
+                                    <th className="py-3 px-4 font-medium text-center">Documents</th>
                                     <th className="py-3 px-4 font-medium">Status</th>
                                     <th className="py-3 px-4 font-medium text-right">Actions</th>
                                 </tr>
@@ -348,69 +391,91 @@ export default function CaseManagement({ cases, filters }: Props) {
                             <tbody className="divide-y">
                                 {cases.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                                        <td colSpan={9} className="p-8 text-center text-muted-foreground">
                                             No cases found.
                                         </td>
                                     </tr>
                                 ) : (
-                                    cases.data.map((item, index) => (
-                                        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50 border-b">
-                                            <td className="py-3 px-4 text-center text-muted-foreground font-medium">
-                                                {cases.from + index}
-                                            </td>
-                                            <td className="py-3 px-4 font-medium text-[#1c2434] dark:text-white">
-                                                <div className="flex items-center gap-2">
+                                    cases.data.map((item, index) => {
+                                        const folderName = item.folder_name || `case-${String(item.id).padStart(3, '0')}`;
+                                        const docCount = item.documents_count || (item.documents ? item.documents.length : 0);
+                                        return (
+                                            <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50 border-b">
+                                                <td className="py-3 px-4 text-center text-muted-foreground font-medium">
+                                                    {cases.from + index}
+                                                </td>
+                                                <td className="py-3 px-4 font-medium text-[#1c2434] dark:text-white whitespace-nowrap">
                                                     {item.case_number}
-                                                </div>
-                                            </td>
-                                            {/* OWASP TOP 10 PROTECTION EXPLANATION: */}
-                                            {/* 4. Cross-Site Scripting / XSS (OWASP #3) - Pinipigilan nito ang pag-inject ng malisyosong JavaScript code galing sa mga hacker. */}
-                                            {/* Sa paggamit natin ng React (JSX), ang mga variables sa loob ng curly braces tulad ng {item.nature_of_case} at {item.complainant} */}
-                                            {/* ay awtomatikong naco-convert bilang ordinaryong text kaya hindi ito tatakbo bilang mapanganib na code sa ating browser. */}
-                                            <td className="py-3 px-4 text-muted-foreground truncate max-w-[200px]" title={item.nature_of_case}>
-                                                {item.nature_of_case}
-                                            </td>
-                                            <td className="py-3 px-4 text-muted-foreground">{item.complainant}</td>
-                                            <td className="py-3 px-4 text-muted-foreground">{item.respondent}</td>
-                                            <td className="py-3 px-4 text-muted-foreground">
-                                                {new Date(item.date_filed).toLocaleDateString()}
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                <Badge variant="outline" className={`font-normal rounded-full ${getBadgeStyles(item.status)}`}>
-                                                    {item.status}
-                                                </Badge>
-                                            </td>
-                                            <td>
-                                                <div className="flex items-center gap-2">
-                                                    <Button variant="ghost" size="icon" title="View Details" onClick={() => window.open(`/documents/view-case/${item.id}`, '_blank')}>
-                                                        <Eye className="h-4 w-4" />
+                                                </td>
+                                                <td className="py-3 px-4 whitespace-nowrap">
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="sm" 
+                                                        className="h-7 text-xs font-semibold bg-amber-50 text-[#dd8b11] border-amber-300 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-400 gap-1.5"
+                                                        onClick={() => setSelectedCaseForDrawer(item)}
+                                                    >
+                                                        <Folder className="h-3.5 w-3.5" />
+                                                        📁 {folderName}
                                                     </Button>
-                                                    {!isAdmin && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            title="Archive Case"
-                                                            className="text-amber-500 hover:text-amber-700 hover:bg-amber-50"
-                                                            onClick={() => {
-                                                                if (confirm(`Archive case ${item.case_number}? It will be moved to the archive.`)) {
-                                                                    router.post(`/cases/${item.id}/archive`, {}, { preserveState: false });
-                                                                }
-                                                            }}
-                                                        >
-                                                            <Archive className="h-4 w-4" />
+                                                </td>
+                                                <td className="py-3 px-4 text-muted-foreground max-w-[220px]">
+                                                    <div className="font-semibold text-foreground truncate">{item.complainant}</div>
+                                                    <div className="text-xs text-muted-foreground/70">vs. {item.respondent}</div>
+                                                </td>
+                                                <td className="py-3 px-4 text-muted-foreground truncate max-w-[180px]" title={item.nature_of_case}>
+                                                    {item.nature_of_case}
+                                                </td>
+                                                <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">
+                                                    {new Date(item.date_filed).toLocaleDateString()}
+                                                </td>
+                                                <td className="py-3 px-4 text-center">
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        className="h-7 text-xs font-semibold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 gap-1"
+                                                        onClick={() => setSelectedCaseForDrawer(item)}
+                                                    >
+                                                        <FileText className="h-3.5 w-3.5 text-[#dd8b11]" />
+                                                        {docCount} File{docCount !== 1 ? 's' : ''}
+                                                    </Button>
+                                                </td>
+                                                <td className="py-3 px-4 whitespace-nowrap">
+                                                    <Badge variant="outline" className={`font-normal rounded-full ${getBadgeStyles(item.status)}`}>
+                                                        {item.status}
+                                                    </Badge>
+                                                </td>
+                                                <td>
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <Button variant="ghost" size="icon" title="View Case Details" onClick={() => window.open(`/documents/view-case/${item.id}`, '_blank')}>
+                                                            <Eye className="h-4 w-4" />
                                                         </Button>
-                                                    )}
-                                                    {item.creator && (
-                                                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800" title={`Encoded by: ${item.creator.name}`}>
-                                                            <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                                                                {item.creator.name.charAt(0).toUpperCase()}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
+                                                        {!isAdmin && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                title="Archive Case"
+                                                                className="text-amber-500 hover:text-amber-700 hover:bg-amber-50"
+                                                                onClick={() => {
+                                                                    if (confirm(`Archive case ${item.case_number}? It will be moved to the archive.`)) {
+                                                                        router.post(`/cases/${item.id}/archive`, {}, { preserveState: false });
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <Archive className="h-4 w-4" />
+                                                            </Button>
+                                                        )}
+                                                        {item.creator && (
+                                                            <div className="flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800" title={`Encoded by: ${item.creator.name}`}>
+                                                                <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                                                                    {item.creator.name.charAt(0).toUpperCase()}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 )}
                             </tbody>
                         </table>
@@ -429,13 +494,111 @@ export default function CaseManagement({ cases, filters }: Props) {
                                     size="sm"
                                     className={`h-8 min-w-[32px] px-2 ${link.active ? 'bg-[#1c2434] text-white' : ''}`}
                                     disabled={!link.url}
-                                    onClick={() => link.url && router.visit(link.url, { data: { search, status, nature, date, sort_by: sortField, sort_order: sortOrder }, preserveState: true })}
+                                    onClick={() => link.url && router.visit(link.url, { data: { search, status, nature, date, month, sort_by: sortField, sort_order: sortOrder }, preserveState: true })}
                                     dangerouslySetInnerHTML={{ __html: link.label }}
                                 />
                             ))}
                         </div>
                     </div>
                 </div>
+
+                {/* Case Document Folder Drawer / Modal */}
+                <Dialog open={Boolean(selectedCaseForDrawer)} onOpenChange={(open) => !open && setSelectedCaseForDrawer(null)}>
+                    <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto p-6">
+                        {selectedCaseForDrawer && (
+                            <>
+                                <DialogHeader className="border-b pb-3">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
+                                                <Folder className="h-6 w-6 text-[#dd8b11]" />
+                                                📁 {selectedCaseForDrawer.folder_name || `case-${String(selectedCaseForDrawer.id).padStart(3, '0')}`}
+                                            </DialogTitle>
+                                            <DialogDescription className="text-xs mt-1">
+                                                Case Document Folder for <strong className="text-foreground">{selectedCaseForDrawer.complainant} vs. {selectedCaseForDrawer.respondent}</strong> ({selectedCaseForDrawer.case_number})
+                                            </DialogDescription>
+                                        </div>
+                                        <Badge variant="outline" className="bg-amber-500/10 text-[#dd8b11] border-amber-300 font-bold text-xs px-3 py-1">
+                                            {selectedCaseForDrawer.documents?.length || 0} Documents
+                                        </Badge>
+                                    </div>
+                                </DialogHeader>
+
+                                {/* Action Buttons Toolbar */}
+                                <div className="flex items-center justify-between gap-3 bg-muted/40 p-3 rounded-lg border mt-3">
+                                    <div className="text-xs font-semibold text-muted-foreground">
+                                        Folder Actions:
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            className="h-8 text-xs font-semibold border-amber-400 text-[#dd8b11] hover:bg-amber-50"
+                                            onClick={() => window.open(`/documents/new?case_id=${selectedCaseForDrawer.id}`, '_blank')}
+                                        >
+                                            <FilePlus className="mr-1.5 h-3.5 w-3.5" />
+                                            Generate KP Form
+                                        </Button>
+                                        <Button 
+                                            variant="default" 
+                                            size="sm" 
+                                            className="h-8 text-xs font-semibold bg-[#1c2434] text-white hover:bg-[#1c2434]/90"
+                                            onClick={() => router.visit('/documents')}
+                                        >
+                                            <Upload className="mr-1.5 h-3.5 w-3.5" />
+                                            Upload File
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {/* Documents List Tree */}
+                                <div className="mt-4 space-y-2">
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Folder Contents:</h4>
+                                    
+                                    {!selectedCaseForDrawer.documents || selectedCaseForDrawer.documents.length === 0 ? (
+                                        <div className="p-8 text-center border-2 border-dashed rounded-lg bg-muted/20 text-muted-foreground">
+                                            <Folder className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                                            <p className="text-sm font-medium">No documents inside this case folder yet.</p>
+                                            <p className="text-xs text-muted-foreground/70 mt-0.5">Click "Generate KP Form" or "Upload File" to add documents.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="divide-y border rounded-lg overflow-hidden bg-card">
+                                            {selectedCaseForDrawer.documents.map((doc) => (
+                                                <div key={doc.id} className="p-3 flex items-center justify-between hover:bg-muted/40 transition-colors">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 rounded-lg bg-amber-500/10 text-[#dd8b11]">
+                                                            <FileText className="h-4 w-4" />
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-sm font-bold text-foreground capitalize">
+                                                                📄 {doc.type.replace(/_/g, ' ')}
+                                                            </div>
+                                                            <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
+                                                                <span>Added: {doc.created_at || 'Recently'}</span>
+                                                                {doc.creator && <span>• By: {doc.creator.name}</span>}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="sm" 
+                                                            className="h-8 text-xs font-semibold"
+                                                            onClick={() => window.open(doc.file_path || `/documents/view/${doc.id}`, '_blank')}
+                                                        >
+                                                            <Eye className="mr-1.5 h-3.5 w-3.5" />
+                                                            Open File
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        )}
+                    </DialogContent>
+                </Dialog>
             </div>
         </AppLayout>
     );

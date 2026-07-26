@@ -27,7 +27,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('cases/archive', [App\Http\Controllers\CaseController::class, 'archives'])->name('cases.archive');
 
         // Views for Documents
-        Route::get('documents', [App\Http\Controllers\DocumentController::class, 'index'])->name('documents.index');
+        Route::get('documents', function () { return redirect()->route('documents.folders'); })->name('documents.index');
+        Route::get('documents/folders', [App\Http\Controllers\DocumentController::class, 'folders'])->name('documents.folders');
+        Route::get('documents/templates', [App\Http\Controllers\DocumentController::class, 'templates'])->name('documents.templates');
         Route::get('documents/view/{id}', [App\Http\Controllers\DocumentController::class, 'show'])->name('documents.show');
         Route::get('documents/view-case/{id}', [App\Http\Controllers\DocumentController::class, 'viewCase'])->name('documents.view');
 
@@ -38,6 +40,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('reports/generate', [App\Http\Controllers\ReportController::class, 'generate'])->name('reports.generate');
 
         Route::get('ltia', [App\Http\Controllers\LTIAController::class, 'index'])->name('ltia.index');
+        Route::post('ltia/deadline', [App\Http\Controllers\LTIAController::class, 'updateDeadline'])->name('ltia.update-deadline');
+        Route::post('ltia/phases/{id}', [App\Http\Controllers\LTIAController::class, 'updatePhase'])->name('ltia.update-phase');
+        Route::post('ltia/events', [App\Http\Controllers\LTIAController::class, 'storeEvent'])->name('ltia.store-event');
+        Route::post('ltia/events/{id}', [App\Http\Controllers\LTIAController::class, 'updateEvent'])->name('ltia.update-event');
+        Route::delete('ltia/events/{id}', [App\Http\Controllers\LTIAController::class, 'destroyEvent'])->name('ltia.destroy-event');
 
         // Case Lookup API
         Route::get('/api/cases/lookup', [App\Http\Controllers\CaseController::class, 'lookup'])->name('api.cases.lookup');
@@ -66,6 +73,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('documents/upload', [App\Http\Controllers\DocumentController::class, 'upload'])->name('documents.upload');
         Route::post('documents/store-scanned', [App\Http\Controllers\DocumentController::class, 'storeScanned'])->name('documents.store-scanned');
         Route::post('documents/create-form', [App\Http\Controllers\DocumentController::class, 'storeForm'])->name('documents.store-form');
+        Route::post('documents/create-folder', [App\Http\Controllers\DocumentController::class, 'createFolder'])->name('documents.create-folder');
+        Route::post('documents/upload-to-folder', [App\Http\Controllers\DocumentController::class, 'uploadToFolder'])->name('documents.upload-to-folder');
+        Route::delete('documents/folders/{id}', [App\Http\Controllers\DocumentController::class, 'destroyFolder'])->name('documents.destroy-folder');
     });
 
     // Admin Only Routes (Users and Audit Trail)

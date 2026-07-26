@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import {
     Settings,
     Bell,
@@ -9,7 +9,8 @@ import {
     Database,
     HardDrive,
     Save,
-    RefreshCw
+    RefreshCw,
+    Calendar
 } from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
@@ -28,7 +29,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import AppLayout from '@/layouts/app-layout';
 
-export default function SettingsPage() {
+export default function SettingsPage({ initialDeadline }: { initialDeadline?: string }) {
     const breadcrumbs = [
         {
             title: 'Settings',
@@ -37,6 +38,33 @@ export default function SettingsPage() {
     ];
 
     const [activeTab, setActiveTab] = useState('general');
+    const [deadlineDate, setDeadlineDate] = useState(initialDeadline || '');
+    const [isSavingDeadline, setIsSavingDeadline] = useState(false);
+    const [deadlineMsg, setDeadlineMsg] = useState<string | null>(null);
+
+    const handleSaveDeadline = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!deadlineDate) return;
+        setIsSavingDeadline(true);
+        setDeadlineMsg(null);
+
+        router.post(
+            '/ltia/deadline',
+            { deadline_date: deadlineDate },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setIsSavingDeadline(false);
+                    setDeadlineMsg('System deadline updated successfully!');
+                    setTimeout(() => setDeadlineMsg(null), 4000);
+                },
+                onError: (errors) => {
+                    setIsSavingDeadline(false);
+                    setDeadlineMsg(errors.deadline_date || 'Failed to save deadline.');
+                },
+            }
+        );
+    };
 
     const scrollToSection = (id: string) => {
         setActiveTab(id);
@@ -89,6 +117,7 @@ export default function SettingsPage() {
                     <div className="md:w-64 flex-shrink-0">
                         <div className="sticky top-6 space-y-1">
                             <NavItem id="general" label="General" icon={Settings} />
+                            <NavItem id="deadline" label="Deadline Configuration" icon={Calendar} />
                             <NavItem id="notifications" label="Notifications" icon={Bell} />
                             <NavItem id="security" label="Security" icon={Shield} />
                             <NavItem id="backup" label="Backup & Restore" icon={RotateCcw} />
@@ -157,6 +186,54 @@ export default function SettingsPage() {
                                         </div>
                                         <Switch defaultChecked />
                                     </div>
+                                </CardContent>
+                            </Card>
+                        </section>
+
+                        {/* Deadline Configuration */}
+                        <section id="deadline" className="scroll-mt-6">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <Calendar className="h-5 w-5 text-[#dd8b11]" />
+                                        LTIA & System Deadline Configuration
+                                    </CardTitle>
+                                    <CardDescription>
+                                        Manage the system submission deadline date. Modifying this date automatically adjusts all dependent LTIA application milestone stages.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-6">
+                                    <form onSubmit={handleSaveDeadline} className="space-y-4">
+                                        {deadlineMsg && (
+                                            <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-900 dark:text-emerald-300 rounded-lg text-sm font-medium">
+                                                {deadlineMsg}
+                                            </div>
+                                        )}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="settings-deadline-input" className="text-sm font-semibold">
+                                                Primary System Deadline (Interactive Datepicker)
+                                            </Label>
+                                            <Input
+                                                id="settings-deadline-input"
+                                                type="date"
+                                                value={deadlineDate}
+                                                onChange={(e) => setDeadlineDate(e.target.value)}
+                                                className="w-full h-10 font-medium"
+                                                required
+                                            />
+                                            <p className="text-xs text-muted-foreground">
+                                                Select a date to set the deadline. The system timeline and milestone progress will automatically update.
+                                            </p>
+                                        </div>
+                                        <Button
+                                            type="submit"
+                                            disabled={isSavingDeadline}
+                                            className="bg-[#1c2434] hover:bg-[#2c3a4f] text-white"
+                                        >
+                                            <Save className="mr-2 h-4 w-4" />
+                                            {isSavingDeadline ? 'Saving...' : 'Save & Synchronize System Deadline'}
+                                        </Button>
+                                    </form>
                                 </CardContent>
                             </Card>
                         </section>

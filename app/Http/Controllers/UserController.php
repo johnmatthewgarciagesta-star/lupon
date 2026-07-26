@@ -94,6 +94,8 @@ class UserController extends Controller
             'duty_group' => $validated['duty_group'],
         ]);
 
+        // Ensure Spatie role exists before assigning
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => $validated['role']]);
         $user->assignRole($validated['role']);
 
         AuditService::log('CREATE', 'Users', "Created new user: {$validated['name']} ({$validated['role']})", $validated['email']);
@@ -128,6 +130,8 @@ class UserController extends Controller
 
         $user->save();
 
+        // Ensure Spatie role exists before syncing
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => $validated['role']]);
         $user->syncRoles([$validated['role']]);
 
         AuditService::log('UPDATE', 'Users', "Updated user details: {$user->name}", $user->id);

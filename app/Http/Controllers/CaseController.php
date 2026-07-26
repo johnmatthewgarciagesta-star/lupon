@@ -14,26 +14,41 @@ class CaseController extends Controller
         // Auto-archive disabled to keep all cases visible on the main cases page
         // LuponCase::where('date_filed', '<=', now()->subDays(31))->whereNull('deleted_at')->delete();
 
-        $query = LuponCase::query();
+        $query = LuponCase::with(['documents.creator', 'creator']);
 
         // Search
         if ($request->filled('search')) {
             $search = $request->input('search');
+            $cleanSearch = trim($search, '/ ');
+            
+            // Extract numeric ID if pattern matches "case-026" or "case-26" or "26"
+            $numericId = null;
+            if (preg_match('/^case-(\d+)$/i', $cleanSearch, $matches)) {
+                $numericId = (int) $matches[1];
+            } elseif (is_numeric($cleanSearch)) {
+                $numericId = (int) $cleanSearch;
+            }
             
             // Try parsing string as date for formats like MM/DD/YYYY to match SQL "Y-m-d"
             $dateParsed = null;
-            if (strtotime($search) !== false) {
+            if (strtotime($cleanSearch) !== false) {
                 try {
-                    $dateParsed = \Carbon\Carbon::parse($search)->format('Y-m-d');
+                    $dateParsed = \Carbon\Carbon::parse($cleanSearch)->format('Y-m-d');
                 } catch (\Exception $e) {}
             }
 
-            $query->where(function ($q) use ($search, $dateParsed) {
-                $q->where('case_number', 'like', "%{$search}%")
-                    ->orWhere('title', 'like', "%{$search}%")
-                    ->orWhere('complainant', 'like', "%{$search}%")
-                    ->orWhere('respondent', 'like', "%{$search}%")
-                    ->orWhere('date_filed', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search, $cleanSearch, $numericId, $dateParsed) {
+                $q->where('case_number', 'like', "%{$cleanSearch}%")
+                    ->orWhere('folder_name', 'like', "%{$cleanSearch}%")
+                    ->orWhere('title', 'like', "%{$cleanSearch}%")
+                    ->orWhere('complainant', 'like', "%{$cleanSearch}%")
+                    ->orWhere('respondent', 'like', "%{$cleanSearch}%")
+                    ->orWhere('date_filed', 'like', "%{$cleanSearch}%");
+
+                if ($numericId !== null) {
+                    $q->orWhere('id', $numericId)
+                      ->orWhere('case_number', 'like', "%{$numericId}%");
+                }
 
                 if ($dateParsed) {
                     $q->orWhereDate('date_filed', $dateParsed);
@@ -43,7 +58,11 @@ class CaseController extends Controller
 
         // Filter by Status
         if ($request->filled('status') && $request->status !== 'all') {
-            $query->where('status', $request->status);
+            if ($request->status === 'Escalated') {
+                $query->whereIn('status', ['Escalated', 'Certified', 'Dismissed']);
+            } else {
+                $query->where('status', $request->status);
+            }
         }
 
         // Filter by Date
@@ -56,24 +75,73 @@ class CaseController extends Controller
             $query->where('nature_of_case', 'like', "%{$request->nature}%");
         }
 
+        // Filter by Month or New Cases trigger
+        if ($request->filled('month') || $request->input('filter') === 'new_cases') {
+            $monthVal = $request->input('month', 'latest');
+            $targetYear = \Carbon\Carbon::now()->year;
+
+            if ($monthVal === 'latest' || $request->input('filter') === 'new_cases') {
+                $targetMonth = \Carbon\Carbon::now()->month;
+            } elseif (is_numeric($monthVal)) {
+                $targetMonth = (int) $monthVal;
+            } else {
+                $targetMonth = \Carbon\Carbon::now()->month;
+            }
+
+            $query->whereMonth('date_filed', $targetMonth)
+                  ->whereYear('date_filed', $targetYear);
+        }
+
         // Sort
-        $sortField = $request->input('sort_by', 'created_at');
+        $defaultSort = ($request->filled('month') || $request->input('filter') === 'new_cases') ? 'date_filed' : 'created_at';
+        $sortField = $request->input('sort_by', $defaultSort);
         $sortOrder = $request->input('sort_order', 'desc');
         
         // Ensure valid sort field
         $allowedFields = ['case_number', 'title', 'nature_of_case', 'complainant', 'respondent', 'status', 'date_filed', 'created_at'];
         if (!in_array($sortField, $allowedFields)) {
-            $sortField = 'created_at';
+            $sortField = $defaultSort;
         }
         if (!in_array($sortOrder, ['asc', 'desc'])) {
             $sortOrder = 'desc';
         }
 
-        $cases = $query->orderBy($sortField, $sortOrder)->paginate(10)->withQueryString();
+        $paginated = $query->orderBy($sortField, $sortOrder)
+            ->orderBy('created_at', 'desc')
+            ->paginate(10)
+            ->withQueryString();
+
+        $paginated->through(function ($case) {
+            $folderName = $case->folder_name ?: ('case-' . str_pad($case->id, 3, '0', STR_PAD_LEFT));
+            return [
+                'id' => $case->id,
+                'case_number' => $case->case_number,
+                'folder_name' => $folderName,
+                'title' => $case->title,
+                'nature_of_case' => $case->nature_of_case,
+                'complainant' => $case->complainant,
+                'respondent' => $case->respondent,
+                'status' => $case->status,
+                'date_filed' => $case->date_filed,
+                'created_by' => $case->created_by,
+                'creator' => $case->creator ? ['name' => $case->creator->name] : null,
+                'documents_count' => $case->documents->count(),
+                'documents' => $case->documents->map(function ($doc) {
+                    return [
+                        'id' => $doc->id,
+                        'type' => $doc->type,
+                        'file_path' => $doc->file_path,
+                        'status' => $doc->status,
+                        'created_at' => $doc->created_at ? $doc->created_at->format('M d, Y H:i') : null,
+                        'creator' => $doc->creator ? ['name' => $doc->creator->name] : null,
+                    ];
+                })->values(),
+            ];
+        });
 
         return \Inertia\Inertia::render('cases/index', [
-            'cases' => $cases,
-            'filters' => $request->only(['search', 'status', 'nature', 'date', 'sort_by', 'sort_order']),
+            'cases' => $paginated,
+            'filters' => $request->only(['search', 'status', 'nature', 'date', 'month', 'filter', 'sort_by', 'sort_order']),
         ]);
     }
 

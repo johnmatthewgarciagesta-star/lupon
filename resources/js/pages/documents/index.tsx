@@ -4,7 +4,8 @@ import {
     FileText, Bell, FileCheck, FileMinus, Search, Download, Eye, Plus,
     Scale, AlertTriangle, Gavel, Handshake, Calendar, BadgeCheck, X,
     FileSignature, ClipboardCheck, UserPlus, Send, History, Trash2,
-    ClipboardList, Briefcase, ShieldAlert, BadgeInfo, Edit, Upload, Loader2
+    ClipboardList, Briefcase, ShieldAlert, BadgeInfo, Edit, Upload, Loader2,
+    Folder, FolderPlus, FilePlus
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, any> = {
@@ -91,6 +92,25 @@ interface Template {
     content?: any;
 }
 
+interface CaseFolder {
+    id: number;
+    case_number: string;
+    folder_name: string;
+    complainant: string;
+    respondent: string;
+    nature_of_case: string;
+    status: string;
+    date_filed: string;
+    documents: Array<{
+        id: number;
+        type: string;
+        file_path?: string;
+        status?: string;
+        created_at?: string;
+        creator?: { name: string };
+    }>;
+}
+
 interface DocumentsProps {
     documents: Document[];
     stats: {
@@ -100,19 +120,76 @@ interface DocumentsProps {
         recent: number;
     };
     customTemplates: any[];
-
     hiddenTemplates: string[];
+    caseFolders?: CaseFolder[];
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-export default function Documents({ documents, stats, customTemplates, hiddenTemplates }: DocumentsProps) {
+export default function Documents({ documents, stats, customTemplates, hiddenTemplates, caseFolders = [] }: DocumentsProps) {
     const { auth } = usePage<SharedData>().props;
-    const canEdit = auth.user.role !== 'Administrator';
+    const canEdit = true; // Enabled for both Data Encoders & Admins
 
     // Search filters templates
     const [search, setSearch] = useState('');
     // Filter for recent docs table only
     const [docFilter, setDocFilter] = useState('all');
+
+    // ─── Case Folder Management States ────────────────────────────────────────
+    const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
+    const [newFolderName, setNewFolderName] = useState('');
+    const [newFolderCaseNo, setNewFolderCaseNo] = useState('');
+    const [newFolderComplainant, setNewFolderComplainant] = useState('');
+    const [newFolderRespondent, setNewFolderRespondent] = useState('');
+    const [newFolderNature, setNewFolderNature] = useState('');
+    const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+
+    const [uploadFolderTarget, setUploadFolderTarget] = useState<CaseFolder | null>(null);
+    const [folderUploadFile, setFolderUploadFile] = useState<File | null>(null);
+    const [folderDocType, setFolderDocType] = useState('Evidence File / Document');
+    const [isUploadingToFolder, setIsUploadingToFolder] = useState(false);
+
+    const handleCreateFolderSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newFolderName.trim()) return;
+        setIsCreatingFolder(true);
+        router.post('/documents/create-folder', {
+            folder_name: newFolderName,
+            case_number: newFolderCaseNo,
+            complainant: newFolderComplainant,
+            respondent: newFolderRespondent,
+            nature_of_case: newFolderNature,
+        }, {
+            onSuccess: () => {
+                setIsCreateFolderModalOpen(false);
+                setNewFolderName('');
+                setNewFolderCaseNo('');
+                setNewFolderComplainant('');
+                setNewFolderRespondent('');
+                setNewFolderNature('');
+                setIsCreatingFolder(false);
+            },
+            onError: () => setIsCreatingFolder(false)
+        });
+    };
+
+    const handleFolderUploadSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!uploadFolderTarget || !folderUploadFile) return;
+        setIsUploadingToFolder(true);
+        const formData = new FormData();
+        formData.append('case_id', String(uploadFolderTarget.id));
+        formData.append('file', folderUploadFile);
+        formData.append('document_type', folderDocType);
+
+        router.post('/documents/upload-to-folder', formData, {
+            onSuccess: () => {
+                setUploadFolderTarget(null);
+                setFolderUploadFile(null);
+                setIsUploadingToFolder(false);
+            },
+            onError: () => setIsUploadingToFolder(false)
+        });
+    };
 
     // ─── Scanned Ingestion States ─────────────────────────────────────────────
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -346,9 +423,16 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                 </button>
                             )}
                         </div>
-                        {/* Upload Scan (AI) & Add Document buttons */}
+                        {/* Upload Scan (AI), Create Folder & Add Document buttons */}
                         {canEdit && (
                             <div className="flex items-center gap-2">
+                                <Button
+                                    onClick={() => setIsCreateFolderModalOpen(true)}
+                                    className="h-9 bg-amber-600 hover:bg-amber-700 text-white font-semibold"
+                                >
+                                    <FolderPlus className="mr-2 h-4 w-4" />
+                                    Create Case Folder
+                                </Button>
                                 <Button
                                     onClick={() => setIsUploadModalOpen(true)}
                                     className="h-9 bg-slate-800 hover:bg-slate-700 text-white"
@@ -370,12 +454,52 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                 {/* ── Stats ── */}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     {[
-                        { label: 'Total Documents', value: stats.total, sub: 'Total generated forms', icon: <FileText className="h-4 w-4 text-muted-foreground" /> },
-                        { label: 'Summons Issued', value: stats.summons, sub: 'Official summons generated', icon: <Bell className="h-4 w-4 text-muted-foreground" /> },
-                        { label: 'Settlements', value: stats.settlements, sub: 'Agreements & awards', icon: <FileCheck className="h-4 w-4 text-muted-foreground" /> },
-                        { label: 'Recent Documents', value: stats.recent, sub: 'Latest system activity', icon: <History className="h-4 w-4 text-muted-foreground" /> },
+                        { 
+                            label: 'Total Documents', 
+                            value: stats.total, 
+                            sub: 'Total generated forms', 
+                            icon: <FileText className="h-4 w-4 text-muted-foreground" />,
+                            action: () => {
+                                setDocFilter('all');
+                                document.getElementById('recent-documents-section')?.scrollIntoView({ behavior: 'smooth' });
+                            }
+                        },
+                        { 
+                            label: 'Summons Issued', 
+                            value: stats.summons, 
+                            sub: 'Official summons generated', 
+                            icon: <Bell className="h-4 w-4 text-muted-foreground" />,
+                            action: () => {
+                                setDocFilter('summons');
+                                document.getElementById('recent-documents-section')?.scrollIntoView({ behavior: 'smooth' });
+                            }
+                        },
+                        { 
+                            label: 'Settlements', 
+                            value: stats.settlements, 
+                            sub: 'Agreements & awards', 
+                            icon: <FileCheck className="h-4 w-4 text-muted-foreground" />,
+                            action: () => {
+                                setDocFilter('amicable_settlement');
+                                document.getElementById('recent-documents-section')?.scrollIntoView({ behavior: 'smooth' });
+                            }
+                        },
+                        { 
+                            label: 'Recent Documents', 
+                            value: stats.recent, 
+                            sub: 'Latest system activity', 
+                            icon: <History className="h-4 w-4 text-muted-foreground" />,
+                            action: () => {
+                                setDocFilter('all');
+                                document.getElementById('recent-documents-section')?.scrollIntoView({ behavior: 'smooth' });
+                            }
+                        },
                     ].map(s => (
-                        <Card key={s.label}>
+                        <Card 
+                            key={s.label}
+                            className="cursor-pointer hover:bg-secondary/50 dark:hover:bg-secondary/80 transition-colors"
+                            onClick={s.action}
+                        >
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">{s.label}</CardTitle>
                                 {s.icon}
@@ -386,6 +510,110 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                             </CardContent>
                         </Card>
                     ))}
+                </div>
+
+                {/* ── Case Document Folders Management Section ── */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-lg font-bold tracking-tight flex items-center gap-2 text-foreground">
+                                <Folder className="h-5 w-5 text-[#dd8b11]" />
+                                Case Document Folders Management
+                            </h3>
+                            <p className="text-xs text-muted-foreground">
+                                Dedicated case folders (`case-026`, `case-027`) storing generated KP forms and uploaded files
+                            </p>
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 border-amber-400 text-[#dd8b11] hover:bg-amber-50 font-semibold text-xs"
+                            onClick={() => setIsCreateFolderModalOpen(true)}
+                        >
+                            <FolderPlus className="mr-1.5 h-3.5 w-3.5" />
+                            New Case Folder
+                        </Button>
+                    </div>
+
+                    {caseFolders.length === 0 ? (
+                        <Card className="p-8 text-center border-2 border-dashed bg-muted/20">
+                            <Folder className="h-10 w-10 mx-auto mb-2 text-muted-foreground/40" />
+                            <p className="text-sm font-semibold">No case document folders created yet.</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Click "Create Case Folder" to build a dedicated case folder repository (e.g., case-026).</p>
+                        </Card>
+                    ) : (
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {caseFolders.map((folder) => (
+                                <Card key={folder.id} className="border shadow-sm hover:shadow-md transition-shadow">
+                                    <CardHeader className="p-4 pb-2 border-b bg-muted/20 flex flex-row items-center justify-between">
+                                        <div>
+                                            <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
+                                                📁 {folder.folder_name}
+                                            </CardTitle>
+                                            <p className="text-xs text-muted-foreground mt-0.5 font-medium truncate max-w-[220px]">
+                                                {folder.complainant} vs. {folder.respondent}
+                                            </p>
+                                        </div>
+                                        <Badge variant="outline" className="bg-amber-50 text-[#dd8b11] border-amber-300 font-semibold text-[11px] px-2 py-0.5">
+                                            {folder.case_number}
+                                        </Badge>
+                                    </CardHeader>
+                                    <CardContent className="p-4 space-y-3">
+                                        <div className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
+                                            <span>Folder Contents ({folder.documents.length}):</span>
+                                            <span className="text-[10px] text-muted-foreground font-normal">{folder.status}</span>
+                                        </div>
+
+                                        {folder.documents.length === 0 ? (
+                                            <div className="py-4 text-center text-xs text-muted-foreground/60 bg-muted/10 rounded border border-dashed">
+                                                No files inside this folder yet.
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
+                                                {folder.documents.map((doc) => (
+                                                    <div key={doc.id} className="text-xs p-2 rounded bg-background border flex items-center justify-between hover:bg-muted/40 transition-colors">
+                                                        <div className="flex items-center gap-2 truncate pr-2">
+                                                            <FileText className="h-3.5 w-3.5 text-[#dd8b11] flex-shrink-0" />
+                                                            <span className="truncate font-medium">📄 {doc.type.replace(/_/g, ' ')}</span>
+                                                        </div>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                                            onClick={() => window.open(doc.file_path || `/documents/view/${doc.id}`, '_blank')}
+                                                        >
+                                                            <Eye className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        <div className="flex items-center gap-2 pt-2 border-t">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-7 text-xs font-semibold w-1/2 border-amber-300 text-[#dd8b11] hover:bg-amber-50"
+                                                onClick={() => window.open(`/documents/new?case_id=${folder.id}`, '_blank')}
+                                            >
+                                                <FilePlus className="mr-1 h-3 w-3" />
+                                                Generate Form
+                                            </Button>
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                className="h-7 text-xs font-semibold w-1/2 bg-slate-800 text-white hover:bg-slate-700"
+                                                onClick={() => setUploadFolderTarget(folder)}
+                                            >
+                                                <Upload className="mr-1 h-3 w-3" />
+                                                Upload File
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* ── Document Templates ── */}
@@ -424,11 +652,9 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                             key={template.isCustom ? `custom-${template.id}` : template.type}
                                             onClick={() => {
                                                 if (!canEdit) {
-                                                    // Administrator role: redirect to Case Management with the specific filter
                                                     const natureFilter = template.isCustom ? template.title : template.description;
                                                     router.visit(`/cases?nature=${encodeURIComponent(natureFilter)}`);
                                                 } else {
-                                                    // Encoder role: open fill-out form (or view if non-editable) in new tab
                                                     if (template.isEditable === false || (template.isCustom && (template as any).content?.is_view_only)) {
                                                         const pdfUrl = template.isCustom 
                                                             ? `/storage/${(template as any).file_path}`
@@ -439,23 +665,25 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                                     }
                                                 }
                                             }}
-                                            className="flex items-start space-x-4 p-4 rounded-lg border bg-card hover:border-[#dd8b11]/30 hover:bg-[#dd8b11]/5 dark:hover:bg-[#dd8b11]/10 transition-all group cursor-pointer relative shadow-sm hover:shadow-md"
+                                            className="flex flex-col justify-between p-4 rounded-lg border bg-card hover:border-[#dd8b11]/30 hover:bg-[#dd8b11]/5 dark:hover:bg-[#dd8b11]/10 transition-all group cursor-pointer relative shadow-sm hover:shadow-md"
                                         >
-                                            <div className="p-2 bg-[#dd8b11] rounded-lg mt-1 flex-shrink-0 group-hover:bg-[#cb7d0f] transition-colors">
-                                                <template.icon className="h-4 w-4 text-white dark:text-black stroke-[2]" />
-                                            </div>
-                                            <div className="flex-1 space-y-1 pr-6">
-                                                <div className="flex items-center gap-2">
-                                                    <p className="text-sm font-semibold leading-none group-hover:text-[#dd8b11] transition-colors">{template.title}</p>
-                                                    {(template.isEditable === false || (template.isCustom && (template as any).content?.is_view_only)) && (
-                                                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground whitespace-nowrap">View Only</span>
-                                                    )}
+                                            <div className="flex items-start space-x-3">
+                                                <div className="p-2 bg-[#dd8b11] rounded-lg mt-0.5 shrink-0 group-hover:bg-[#cb7d0f] transition-colors">
+                                                    <template.icon className="h-4 w-4 text-white dark:text-black stroke-[2]" />
                                                 </div>
-                                                <p className="text-xs text-muted-foreground line-clamp-2">{template.description}</p>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <p className="text-sm font-bold leading-tight group-hover:text-[#dd8b11] transition-colors truncate">{template.title}</p>
+                                                        {(template.isEditable === false || (template.isCustom && (template as any).content?.is_view_only)) && (
+                                                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground whitespace-nowrap shrink-0">View Only</span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{template.description}</p>
+                                                </div>
                                             </div>
 
                                             {canEdit && (
-                                                <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                                <div className="flex items-center justify-between pt-3 mt-3 border-t border-border/50">
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -468,39 +696,41 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                                                 window.open(fillHref, '_blank');
                                                             }
                                                         }}
-                                                        className="inline-flex items-center justify-center rounded bg-[#dd8b11] text-white px-2.5 py-1 text-[10px] font-semibold tracking-wide hover:bg-[#c47c0f] transition-colors uppercase mr-1"
+                                                        className="inline-flex items-center justify-center rounded bg-[#dd8b11] text-white px-3 py-1 text-[11px] font-bold tracking-wide hover:bg-[#c47c0f] transition-colors uppercase shadow-xs"
                                                         title={template.isEditable === false || (template.isCustom && (template as any).content?.is_view_only) ? "View Template" : "Fill Out Form"}
                                                     >
-                                                        {template.isEditable === false || (template.isCustom && (template as any).content?.is_view_only) ? "View" : "Fill Out"}
+                                                        {template.isEditable === false || (template.isCustom && (template as any).content?.is_view_only) ? "View Form" : "Fill Out Form"}
                                                     </button>
-                                                    {!(template.isEditable === false || (template.isCustom && (template as any).content?.is_view_only)) && (
-                                                        <a
-                                                            href={editHref}
-                                                            onClick={e => e.stopPropagation()}
-                                                            className="inline-flex items-center justify-center rounded-full h-7 w-7 text-muted-foreground hover:bg-muted hover:text-primary transition-colors"
-                                                            title="Word Editor"
-                                                        >
-                                                            <Edit className="h-3.5 w-3.5" />
-                                                        </a>
-                                                    )}
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            const msg = template.isCustom
-                                                                ? 'Are you sure you want to delete this custom template?'
-                                                                : 'Are you sure you want to remove this standard template from the list?';
+                                                    <div className="flex items-center gap-1">
+                                                        {!(template.isEditable === false || (template.isCustom && (template as any).content?.is_view_only)) && (
+                                                            <a
+                                                                href={editHref}
+                                                                onClick={e => e.stopPropagation()}
+                                                                className="inline-flex items-center justify-center rounded-md h-7 w-7 text-muted-foreground hover:bg-amber-100 hover:text-[#dd8b11] dark:hover:bg-amber-950/40 transition-colors"
+                                                                title="Word Editor"
+                                                            >
+                                                                <Edit className="h-3.5 w-3.5" />
+                                                            </a>
+                                                        )}
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const msg = template.isCustom
+                                                                    ? 'Are you sure you want to delete this custom template?'
+                                                                    : 'Are you sure you want to remove this standard template from the list?';
 
-                                                            if (confirm(msg)) {
-                                                                const url = `/documents/delete/${template.id || 0}`;
-                                                                const data = !template.isCustom ? { document_type: template.type } : {};
-                                                                router.post(url, data);
-                                                            }
-                                                        }}
-                                                        className="inline-flex items-center justify-center rounded-full h-7 w-7 text-muted-foreground hover:bg-red-50 hover:text-red-500 transition-colors"
-                                                        title="Delete Template"
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </button>
+                                                                if (confirm(msg)) {
+                                                                    const url = `/documents/delete/${template.id || 0}`;
+                                                                    const data = !template.isCustom ? { document_type: template.type } : {};
+                                                                    router.post(url, data);
+                                                                }
+                                                            }}
+                                                            className="inline-flex items-center justify-center rounded-md h-7 w-7 text-muted-foreground hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950/40 transition-colors"
+                                                            title="Delete Template"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
@@ -512,7 +742,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                 </Card>
 
                 {/* ── Recent Documents ── */}
-                <Card>
+                <Card id="recent-documents-section">
                     <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-3">
                         <div>
                             <CardTitle>Recent Documents</CardTitle>
@@ -860,6 +1090,158 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                 </Button>
                             </DialogFooter>
                         </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Create Case Folder Modal */}
+            <Dialog open={isCreateFolderModalOpen} onOpenChange={setIsCreateFolderModalOpen}>
+                <DialogContent className="sm:max-w-md p-6">
+                    <DialogHeader>
+                        <DialogTitle className="text-lg font-bold flex items-center gap-2 text-foreground">
+                            <FolderPlus className="h-5 w-5 text-[#dd8b11]" />
+                            Create Case Document Folder
+                        </DialogTitle>
+                        <DialogDescription className="text-xs">
+                            Define a dedicated folder repository (e.g. <strong className="text-foreground">case-026</strong>) to store all related KP forms and uploaded files.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <form onSubmit={handleCreateFolderSubmit} className="space-y-4 mt-2">
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold">Folder Name / ID (e.g., case-026)</Label>
+                            <Input
+                                placeholder="e.g., case-026"
+                                value={newFolderName}
+                                onChange={(e) => setNewFolderName(e.target.value)}
+                                className="h-9 text-xs"
+                                required
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold">Case Number (Optional)</Label>
+                            <Input
+                                placeholder="e.g., KP-2026-0026"
+                                value={newFolderCaseNo}
+                                onChange={(e) => setNewFolderCaseNo(e.target.value)}
+                                className="h-9 text-xs"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-semibold">Complainant Name</Label>
+                                <Input
+                                    placeholder="Juan Dela Cruz"
+                                    value={newFolderComplainant}
+                                    onChange={(e) => setNewFolderComplainant(e.target.value)}
+                                    className="h-9 text-xs"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-semibold">Respondent Name</Label>
+                                <Input
+                                    placeholder="Pedro Santos"
+                                    value={newFolderRespondent}
+                                    onChange={(e) => setNewFolderRespondent(e.target.value)}
+                                    className="h-9 text-xs"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold">Nature of Dispute / Case Type</Label>
+                            <Input
+                                placeholder="e.g., Boundary Dispute / Amicable Settlement"
+                                value={newFolderNature}
+                                onChange={(e) => setNewFolderNature(e.target.value)}
+                                className="h-9 text-xs"
+                            />
+                        </div>
+
+                        <DialogFooter className="pt-2 flex gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsCreateFolderModalOpen(false)}
+                                disabled={isCreatingFolder}
+                                className="h-9 text-xs"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={isCreatingFolder || !newFolderName.trim()}
+                                className="h-9 text-xs bg-amber-600 hover:bg-amber-700 text-white font-semibold flex items-center"
+                            >
+                                {isCreatingFolder && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                                Create Folder Repository
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Direct Upload File to Case Folder Modal */}
+            <Dialog open={Boolean(uploadFolderTarget)} onOpenChange={(open) => !open && setUploadFolderTarget(null)}>
+                <DialogContent className="sm:max-w-md p-6">
+                    {uploadFolderTarget && (
+                        <>
+                            <DialogHeader>
+                                <DialogTitle className="text-lg font-bold flex items-center gap-2 text-foreground">
+                                    <Upload className="h-5 w-5 text-[#dd8b11]" />
+                                    Upload File to 📁 {uploadFolderTarget.folder_name}
+                                </DialogTitle>
+                                <DialogDescription className="text-xs">
+                                    Upload evidence files, PDFs, or scanned documents into case folder <strong className="text-foreground">{uploadFolderTarget.folder_name}</strong> ({uploadFolderTarget.case_number}).
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <form onSubmit={handleFolderUploadSubmit} className="space-y-4 mt-2">
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-semibold">Document Title / Type</Label>
+                                    <Input
+                                        placeholder="e.g., Evidence Photo / Scanned Agreement"
+                                        value={folderDocType}
+                                        onChange={(e) => setFolderDocType(e.target.value)}
+                                        className="h-9 text-xs"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-semibold">Select File (PDF, DOCX, JPG, PNG)</Label>
+                                    <Input
+                                        type="file"
+                                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                        onChange={(e) => setFolderUploadFile(e.target.files?.[0] || null)}
+                                        className="h-9 text-xs cursor-pointer"
+                                        required
+                                    />
+                                </div>
+
+                                <DialogFooter className="pt-2 flex gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setUploadFolderTarget(null)}
+                                        disabled={isUploadingToFolder}
+                                        className="h-9 text-xs"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        disabled={isUploadingToFolder || !folderUploadFile}
+                                        className="h-9 text-xs bg-slate-800 hover:bg-slate-700 text-white font-semibold flex items-center"
+                                    >
+                                        {isUploadingToFolder && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                                        Upload Document to Folder
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </>
                     )}
                 </DialogContent>
             </Dialog>
