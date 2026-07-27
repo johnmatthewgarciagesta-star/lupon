@@ -44,7 +44,8 @@ interface FoldersProps {
 
 export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
     const { auth } = usePage<SharedData>().props;
-    const canEdit = true; // Enabled for Data Encoders & Admins
+    const isAdmin = auth?.user?.role === 'Administrator' || auth?.user?.role === 'Admin' || auth?.roles?.includes('Administrator') || auth?.roles?.includes('Admin');
+    const canEdit = !isAdmin;
 
     // Search filter for folders
     const [search, setSearch] = useState('');
@@ -183,13 +184,15 @@ export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
                         </div>
 
                         {/* Create Case Folder Trigger */}
-                        <Button
-                            onClick={() => setIsCreateFolderModalOpen(true)}
-                            className="h-9 bg-amber-600 hover:bg-amber-700 text-white font-semibold shadow-sm"
-                        >
-                            <FolderPlus className="mr-2 h-4 w-4" />
-                            + Create Case Folder
-                        </Button>
+                        {canEdit && (
+                            <Button
+                                onClick={() => setIsCreateFolderModalOpen(true)}
+                                className="h-9 bg-amber-600 hover:bg-amber-700 text-white font-semibold shadow-sm"
+                            >
+                                <FolderPlus className="mr-2 h-4 w-4" />
+                                + Create Case Folder
+                            </Button>
+                        )}
                     </div>
                 </div>
 
@@ -281,26 +284,28 @@ export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
                                             </div>
                                         )}
 
-                                        <div className="flex items-center gap-2 pt-2 border-t">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="h-7 text-xs font-semibold w-1/2 border-amber-300 text-[#dd8b11] hover:bg-amber-50"
-                                                onClick={() => window.open(`/documents/new?case_id=${folder.id}`, '_blank')}
-                                            >
-                                                <FilePlus className="mr-1 h-3 w-3" />
-                                                Generate Form
-                                            </Button>
-                                            <Button
-                                                variant="secondary"
-                                                size="sm"
-                                                className="h-7 text-xs font-semibold w-1/2 bg-slate-800 text-white hover:bg-slate-700"
-                                                onClick={() => setUploadFolderTarget(folder)}
-                                            >
-                                                <Upload className="mr-1 h-3 w-3" />
-                                                Upload File
-                                            </Button>
-                                        </div>
+                                        {canEdit && (
+                                            <div className="flex items-center gap-2 pt-2 border-t">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-7 text-xs font-semibold w-1/2 border-amber-300 text-[#dd8b11] hover:bg-amber-50"
+                                                    onClick={() => window.open(`/documents/new?case_id=${folder.id}`, '_blank')}
+                                                >
+                                                    <FilePlus className="mr-1 h-3 w-3" />
+                                                    Generate Form
+                                                </Button>
+                                                <Button
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    className="h-7 text-xs font-semibold w-1/2 bg-slate-800 text-white hover:bg-slate-700"
+                                                    onClick={() => setUploadFolderTarget(folder)}
+                                                >
+                                                    <Upload className="mr-1 h-3 w-3" />
+                                                    Upload File
+                                                </Button>
+                                            </div>
+                                        )}
                                     </CardContent>
                                 </Card>
                             ))}

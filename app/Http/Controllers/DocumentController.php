@@ -14,6 +14,13 @@ use Spatie\Browsershot\Browsershot;
 
 class DocumentController extends Controller
 {
+    private function isAdmin()
+    {
+        $user = auth()->user();
+        if (!$user) return false;
+        return $user->hasRole('Administrator') || $user->hasRole('Admin') || strcasecmp($user->role ?? '', 'Administrator') === 0 || strcasecmp($user->role ?? '', 'Admin') === 0;
+    }
+
     public function folders(Request $request)
     {
         try {
@@ -145,6 +152,10 @@ class DocumentController extends Controller
 
     public function createFolder(Request $request)
     {
+        if ($this->isAdmin()) {
+            return redirect()->back()->with('error', 'Administrators are in View-Only mode.');
+        }
+
         $request->validate([
             'folder_name' => 'required|string|max:255',
             'case_number' => 'nullable|string|max:255',
@@ -184,6 +195,10 @@ class DocumentController extends Controller
 
     public function uploadToFolder(Request $request)
     {
+        if ($this->isAdmin()) {
+            return redirect()->back()->with('error', 'Administrators are in View-Only mode.');
+        }
+
         $request->validate([
             'case_id' => 'required|exists:cases,id',
             'file' => 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
@@ -218,6 +233,9 @@ class DocumentController extends Controller
 
     public function destroyFolder($id)
     {
+        if ($this->isAdmin()) {
+            return redirect()->back()->with('error', 'Administrators are in View-Only mode.');
+        }
         $case = \App\Models\LuponCase::find($id);
         if (!$case) {
             return redirect()->back()->with('error', 'Folder not found.');
@@ -240,6 +258,10 @@ class DocumentController extends Controller
 
     public function create($type)
     {
+        if ($this->isAdmin()) {
+            return redirect()->route('documents.templates')->with('error', 'Administrators are in View-Only mode and cannot open or fill document forms.');
+        }
+
         // Optional: pre-link to a case when opened via ?case_id=X
         $caseId = request('case_id');
         $case = $caseId ? \App\Models\LuponCase::find($caseId) : null;
@@ -301,6 +323,10 @@ class DocumentController extends Controller
      */
     public function fillCustom($id)
     {
+        if ($this->isAdmin()) {
+            return redirect()->route('documents.templates')->with('error', 'Administrators are in View-Only mode and cannot open document forms.');
+        }
+
         $template = \App\Models\Document::findOrFail($id);
         $type = 'custom_'.$id;
         $caseId = request('case_id');
@@ -1389,6 +1415,21 @@ class DocumentController extends Controller
         $file = $request->file('file');
         $fileName = $file ? $file->getClientOriginalName() : ($request->has('file') ? 'Invalid File' : 'No File');
 
+        if ($this->isAdmin()) {
+            $fileSize = $file ? round($file->getSize() / 1024, 2) : 0;
+            $mimeType = $file ? $file->getMimeType() : 'unknown';
+            AuditService::log(
+                'UPLOAD_FAILED',
+                'Documents',
+                "Failed scanned document upload: {$fileName} (Size: {$fileSize} KB, Type: {$mimeType}). Reason: Unauthorized attempt by Administrator (View-Only Mode).",
+                null
+            );
+            return response()->json([
+                'success' => false,
+                'message' => 'Administrators are in View-Only mode and cannot upload scan documents.'
+            ], 403);
+        }
+
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'file' => 'required|file|max:15360|mimes:png,jpg,jpeg,pdf',
         ]);
@@ -1466,33 +1507,57 @@ class DocumentController extends Controller
                                  "  \"document_type\": \"Must be either 'complaint' (if it is a complaint form, statement of dispute, or complaint narrative) or 'affidavit_withdrawal' (if it is an affidavit of withdrawal, request for dismissal, or withdrawal statement)\"" .
                                  "}";
 
-            // Send POST request to Google AI Studio
-             $geminiModel = env('GEMINI_MODEL', 'gemini-3.6-flash');
-             $response = \Illuminate\Support\Facades\Http::withHeaders([
-                 'Content-Type' => 'application/json'
-             ])->timeout(45)->post("https://generativelanguage.googleapis.com/v1beta/models/{$geminiModel}:generateContent?key={$apiKey}", [
-                'contents' => [
-                    [
-                        'parts' => [
-                            ['text' => $promptInstruction],
-                            [
-                                'inlineData' => [
-                                    'mimeType' => $mimeType,
-                                    'data' => $base64Image
+            // Send POST request to Google AI Studio with automatic fallback across verified models
+            $modelsToTry = array_unique(array_filter([
+                env('GEMINI_MODEL', 'gemini-2.0-flash'),
+                'gemini-2.0-flash',
+                'gemini-2.0-flash-lite',
+                'gemini-flash-latest',
+            ]));
+
+            $response = null;
+            $lastErrorMsg = '';
+
+            foreach ($modelsToTry as $geminiModel) {
+                $res = \Illuminate\Support\Facades\Http::withHeaders([
+                    'Content-Type' => 'application/json'
+                ])->timeout(45)->post("https://generativelanguage.googleapis.com/v1beta/models/{$geminiModel}:generateContent?key={$apiKey}", [
+                    'contents' => [
+                        [
+                            'parts' => [
+                                ['text' => $promptInstruction],
+                                [
+                                    'inlineData' => [
+                                        'mimeType' => $mimeType,
+                                        'data' => $base64Image
+                                    ]
                                 ]
                             ]
                         ]
+                    ],
+                    'generationConfig' => [
+                        'responseMimeType' => 'application/json'
                     ]
-                ],
-                'generationConfig' => [
-                    'responseMimeType' => 'application/json'
-                ]
-            ]);
+                ]);
 
-            if ($response->failed()) {
-                // Cleanup temp file
+                if ($res->successful()) {
+                    $response = $res;
+                    break;
+                }
+
+                $errBody = $res->json();
+                $statusCode = $res->status();
+                if ($statusCode === 429) {
+                    $retryDelay = $errBody['error']['details'][2]['retryDelay'] ?? 'a few seconds';
+                    $lastErrorMsg = "Gemini API rate limit / quota exceeded for model {$geminiModel}. Please wait {$retryDelay} before retrying.";
+                } else {
+                    $lastErrorMsg = $errBody['error']['message'] ?? $res->body();
+                }
+            }
+
+            if (!$response || $response->failed()) {
                 Storage::disk('public')->delete($tempPath);
-                throw new \Exception("Gemini API request failed: " . $response->body());
+                throw new \Exception($lastErrorMsg ?: "Gemini API request failed.");
             }
 
             $rawTextResponse = $response->json('candidates.0.content.parts.0.text');
@@ -1539,9 +1604,19 @@ class DocumentController extends Controller
     // ── Save confirmed scanned document and link to Case ──────────────────────
     public function storeScanned(Request $request)
     {
-        $request->validate([
+        if ($this->isAdmin()) {
+            AuditService::log(
+                'SAVE_SCANNED_FAILED',
+                'Documents',
+                "Failed saving scanned document. Reason: Unauthorized attempt by Administrator (View-Only Mode).",
+                null
+            );
+            return response()->json(['error' => 'Administrators are in View-Only mode.'], 403);
+        }
+
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'temp_file' => 'required|string',
-            'type' => 'required|string', // e.g. complaint, summons, amicable_settlement, etc.
+            'type' => 'required|string',
             'complainant' => 'required|string',
             'respondent' => 'required|string',
             'case_no' => 'nullable|string',
@@ -1549,6 +1624,20 @@ class DocumentController extends Controller
             'summary' => 'nullable|string',
             'case_id' => 'nullable|integer',
         ]);
+
+        if ($validator->fails()) {
+            $errors = implode(', ', $validator->errors()->all());
+            AuditService::log(
+                'SAVE_SCANNED_FAILED',
+                'Documents',
+                "Failed saving scanned document. Validation errors: {$errors}",
+                null
+            );
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation errors: ' . $errors
+            ], 422);
+        }
 
         $rawTemp = $request->input('temp_file');
         $tempPath = str_replace('\\', '/', $rawTemp);

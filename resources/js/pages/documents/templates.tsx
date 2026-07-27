@@ -101,12 +101,12 @@ interface DocumentsProps {
         recent: number;
     };
     customTemplates: any[];
-    hiddenTemplates: string[];
 }
 
 export default function DocumentsTemplates({ documents, stats, customTemplates, hiddenTemplates }: DocumentsProps) {
     const { auth } = usePage<SharedData>().props;
-    const canEdit = true;
+    const isAdmin = auth?.user?.role === 'Administrator' || auth?.user?.role === 'Admin' || auth?.roles?.includes('Administrator') || auth?.roles?.includes('Admin');
+    const canEdit = !isAdmin;
 
     // Search filters templates
     const [search, setSearch] = useState('');
@@ -186,7 +186,7 @@ export default function DocumentsTemplates({ documents, stats, customTemplates, 
             };
 
             const token = getXsrfToken();
-            const res = await fetch('/documents/store-scanned', {
+            const res = await fetch('/documents/upload', {
                 method: 'POST',
                 headers: {
                     'X-XSRF-TOKEN': token,
@@ -195,18 +195,18 @@ export default function DocumentsTemplates({ documents, stats, customTemplates, 
                 body: formData,
             });
 
-            const data = await res.json();
+            const result = await res.json();
 
-            if (!res.ok) {
-                throw new Error(data.error || 'Failed to analyze document.');
+            if (!res.ok || !result.success) {
+                throw new Error(result.message || 'Failed to analyze document.');
             }
 
-            setTempFilePath(data.temp_path);
-            const ext = data.extracted || {};
+            setTempFilePath(result.temp_file);
+            const ext = result.data || {};
             setDocType(ext.document_type || 'complaint');
             setComplainant(ext.complainant || '');
             setRespondent(ext.respondent || '');
-            setCaseNo(ext.case_number || '');
+            setCaseNo(ext.case_no || '');
             setNatureOfCase(ext.nature_of_case || '');
             setSummary(ext.summary || '');
 
@@ -223,9 +223,9 @@ export default function DocumentsTemplates({ documents, stats, customTemplates, 
         if (!tempFilePath) return;
 
         setIsSaving(true);
-        router.post('/documents/create-form', {
-            temp_path: tempFilePath,
-            document_type: docType,
+        router.post('/documents/store-scanned', {
+            temp_file: tempFilePath,
+            type: docType,
             complainant,
             respondent,
             case_no: caseNo,

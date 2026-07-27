@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import {
     Upload, FileText, Plus, Trash2, GripVertical,
     Type, AlignLeft, CheckSquare, FileCheck, AlertCircle, Sparkles, RotateCcw,
@@ -46,6 +46,8 @@ const AVAILABLE_ICONS = [
 ];
 
 export default function NewDocument({ existingTemplate }: { existingTemplate?: DocumentData }) {
+    const { auth } = usePage<any>().props;
+    const isAdmin = auth?.user?.role === 'Administrator' || auth?.user?.role === 'Admin';
     const isEdit = !!existingTemplate;
 
     const breadcrumbs = [

@@ -127,7 +127,8 @@ interface DocumentsProps {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Documents({ documents, stats, customTemplates, hiddenTemplates, caseFolders = [] }: DocumentsProps) {
     const { auth } = usePage<SharedData>().props;
-    const canEdit = true; // Enabled for both Data Encoders & Admins
+    const isAdmin = auth?.user?.role === 'Administrator' || auth?.user?.role === 'Admin' || auth?.roles?.includes('Administrator') || auth?.roles?.includes('Admin');
+    const canEdit = !isAdmin;
 
     // Search filters templates
     const [search, setSearch] = useState('');

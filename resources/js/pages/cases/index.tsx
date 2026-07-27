@@ -110,7 +110,8 @@ interface Props {
 
 export default function CaseManagement({ cases, filters }: Props) {
     const { auth } = usePage<{ auth: { user: { role: string } } }>().props;
-    const isAdmin = auth?.user?.role === 'Administrator';
+    const isAdmin = auth?.user?.role === 'Administrator' || auth?.user?.role === 'Admin';
+    const canEdit = !isAdmin;
 
     const breadcrumbs = [
         {
@@ -525,31 +526,33 @@ export default function CaseManagement({ cases, filters }: Props) {
                                 </DialogHeader>
 
                                 {/* Action Buttons Toolbar */}
-                                <div className="flex items-center justify-between gap-3 bg-muted/40 p-3 rounded-lg border mt-3">
-                                    <div className="text-xs font-semibold text-muted-foreground">
-                                        Folder Actions:
+                                {canEdit && (
+                                    <div className="flex items-center justify-between gap-3 bg-muted/40 p-3 rounded-lg border mt-3">
+                                        <div className="text-xs font-semibold text-muted-foreground">
+                                            Folder Actions:
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                className="h-8 text-xs font-semibold border-amber-400 text-[#dd8b11] hover:bg-amber-50"
+                                                onClick={() => window.open(`/documents/new?case_id=${selectedCaseForDrawer.id}`, '_blank')}
+                                            >
+                                                <FilePlus className="mr-1.5 h-3.5 w-3.5" />
+                                                Generate KP Form
+                                            </Button>
+                                            <Button 
+                                                variant="default" 
+                                                size="sm" 
+                                                className="h-8 text-xs font-semibold bg-[#1c2434] text-white hover:bg-[#1c2434]/90"
+                                                onClick={() => router.visit('/documents')}
+                                            >
+                                                <Upload className="mr-1.5 h-3.5 w-3.5" />
+                                                Upload File
+                                            </Button>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <Button 
-                                            variant="outline" 
-                                            size="sm" 
-                                            className="h-8 text-xs font-semibold border-amber-400 text-[#dd8b11] hover:bg-amber-50"
-                                            onClick={() => window.open(`/documents/new?case_id=${selectedCaseForDrawer.id}`, '_blank')}
-                                        >
-                                            <FilePlus className="mr-1.5 h-3.5 w-3.5" />
-                                            Generate KP Form
-                                        </Button>
-                                        <Button 
-                                            variant="default" 
-                                            size="sm" 
-                                            className="h-8 text-xs font-semibold bg-[#1c2434] text-white hover:bg-[#1c2434]/90"
-                                            onClick={() => router.visit('/documents')}
-                                        >
-                                            <Upload className="mr-1.5 h-3.5 w-3.5" />
-                                            Upload File
-                                        </Button>
-                                    </div>
-                                </div>
+                                )}
 
                                 {/* Documents List Tree */}
                                 <div className="mt-4 space-y-2">
