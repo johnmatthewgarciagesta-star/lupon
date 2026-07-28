@@ -14,9 +14,11 @@ import {
     FileSpreadsheet,
     File as FileIcon,
     Search,
-    Loader2
+    Loader2,
+    Edit3
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { EditCaseStatusDialog } from '@/components/cases/edit-case-status-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -123,6 +125,7 @@ export default function Reports({ stats }: { stats: any }) {
     const [searchCaseNo, setSearchCaseNo] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [editingCaseForStatus, setEditingCaseForStatus] = useState<any>(null);
 
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
@@ -360,7 +363,16 @@ export default function Reports({ stats }: { stats: any }) {
                                                     </Badge>
                                                 </td>
                                                 <td className="py-4 text-muted-foreground">{item.date_filed}</td>
-                                                <td className="py-4 text-right">
+                                                <td className="py-4 text-right flex items-center justify-end gap-1">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        title="Update Case Status"
+                                                        className="h-8 w-8 text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-full"
+                                                        onClick={() => setEditingCaseForStatus(item)}
+                                                    >
+                                                        <Edit3 className="w-4 h-4" />
+                                                    </Button>
                                                     <a href={`/documents/view-case/${item.id}`} target="_blank" className="inline-flex items-center justify-center p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors" title="View Document">
                                                         <Eye className="w-4 h-4" />
                                                     </a>
@@ -379,6 +391,13 @@ export default function Reports({ stats }: { stats: any }) {
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Edit Case Status Modal */}
+                <EditCaseStatusDialog
+                    caseItem={editingCaseForStatus}
+                    open={Boolean(editingCaseForStatus)}
+                    onOpenChange={(open) => !open && setEditingCaseForStatus(null)}
+                />
             </div >
         </AppLayout >
     );

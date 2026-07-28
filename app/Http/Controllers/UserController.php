@@ -56,6 +56,21 @@ class UserController extends Controller
             ->pluck('count', 'role')
             ->toArray();
 
+        // Fetch Recent Audit Logs for Activity Feed
+        $recentActivities = \App\Models\AuditLog::with('user')
+            ->latest()
+            ->take(5)
+            ->get()
+            ->map(function ($log) {
+                return [
+                    'id' => $log->id,
+                    'user' => $log->user ? $log->user->name : 'System',
+                    'action' => $log->details ?: ($log->action . ' in ' . $log->module),
+                    'time' => $log->created_at ? $log->created_at->diffForHumans() : 'N/A',
+                    'module' => $log->module,
+                ];
+            });
+
         return Inertia::render('users/index', [
             'users' => $users->through(function ($user) {
                 $userArray = $user->toArray();
@@ -69,6 +84,7 @@ class UserController extends Controller
                 'inactive' => $inactiveUsers,
                 'byRole' => $usersByRole,
             ],
+            'recentActivities' => $recentActivities,
         ]);
     }
 

@@ -17,9 +17,11 @@ import {
     Filter,
     Calendar,
     Sparkles,
-    ArrowLeft
+    ArrowLeft,
+    Edit3
 } from 'lucide-react';
 import { useState } from 'react';
+import { EditCaseStatusDialog } from '@/components/cases/edit-case-status-dialog';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

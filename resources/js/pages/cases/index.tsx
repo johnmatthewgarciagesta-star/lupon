@@ -21,9 +21,11 @@ import {
     FileText,
     Paperclip,
     Upload,
-    FilePlus
+    FilePlus,
+    Edit3
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { EditCaseStatusDialog } from '@/components/cases/edit-case-status-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -131,8 +133,9 @@ export default function CaseManagement({ cases, filters }: Props) {
     const [sortField, setSortField] = useState(filters.sort_by || (initialMonth !== 'all' ? 'date_filed' : 'created_at'));
     const [sortOrder, setSortOrder] = useState(filters.sort_order || 'desc');
 
-    // Case Drawer state
+    // Case Drawer & Edit Status state
     const [selectedCaseForDrawer, setSelectedCaseForDrawer] = useState<Case | null>(null);
+    const [editingCaseForStatus, setEditingCaseForStatus] = useState<any>(null);
 
     // Debounced search
     const updateSearch = useCallback(
@@ -447,6 +450,15 @@ export default function CaseManagement({ cases, filters }: Props) {
                                                 </td>
                                                 <td>
                                                     <div className="flex items-center justify-end gap-2">
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            title="Update Case Status" 
+                                                            className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+                                                            onClick={() => setEditingCaseForStatus(item)}
+                                                        >
+                                                            <Edit3 className="h-4 w-4" />
+                                                        </Button>
                                                         <Button variant="ghost" size="icon" title="View Case Details" onClick={() => window.open(`/documents/view-case/${item.id}`, '_blank')}>
                                                             <Eye className="h-4 w-4" />
                                                         </Button>
@@ -602,6 +614,13 @@ export default function CaseManagement({ cases, filters }: Props) {
                         )}
                     </DialogContent>
                 </Dialog>
+
+                {/* Edit Case Status Modal */}
+                <EditCaseStatusDialog
+                    caseItem={editingCaseForStatus}
+                    open={Boolean(editingCaseForStatus)}
+                    onOpenChange={(open) => !open && setEditingCaseForStatus(null)}
+                />
             </div>
         </AppLayout>
     );

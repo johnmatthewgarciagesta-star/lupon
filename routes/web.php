@@ -78,12 +78,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('documents/folders/{id}', [App\Http\Controllers\DocumentController::class, 'destroyFolder'])->name('documents.destroy-folder');
     });
 
-    // Admin Only Routes (Users and Audit Trail)
-    Route::middleware('role:Administrator')->group(function () {
+    // Dynamic Permission-based & Admin Routes (Users, Audit, Roles & Permissions)
+    Route::middleware('role_or_permission:Administrator|view users|manage users|view_users|manage_users')->group(function () {
         Route::resource('users', App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit']);
-        Route::get('audit', [App\Http\Controllers\AuditController::class, 'index'])->name('audit.index');
+    });
 
-        // Role & Permission Management
+    Route::middleware('role_or_permission:Administrator|view audit trail|view_audit_trail')->group(function () {
+        Route::get('audit', [App\Http\Controllers\AuditController::class, 'index'])->name('audit.index');
+    });
+
+    Route::middleware('role_or_permission:Administrator|manage roles|manage_roles')->group(function () {
         Route::get('roles-permissions', [App\Http\Controllers\RolePermissionController::class, 'index'])->name('roles-permissions.index');
         Route::post('roles-permissions/{role}', [App\Http\Controllers\RolePermissionController::class, 'update'])->name('roles-permissions.update');
     });

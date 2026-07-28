@@ -15,8 +15,8 @@ class DashboardController extends Controller
             // 1. Key Metrics
             $allCases = LuponCase::withTrashed()->get();
             $totalCases = $allCases->count();
-            $pendingCases = $allCases->where('status', 'Pending')->count();
-            $resolvedCases = $allCases->whereIn('status', ['Resolved', 'Settled'])->count();
+            $pendingCases = $allCases->whereNotIn('status', ['Resolved', 'Settled', 'Dismissed'])->count();
+            $resolvedCases = $allCases->whereIn('status', ['Resolved', 'Settled', 'Dismissed'])->count();
 
             // Calculate new cases this month
             $currentYear = Carbon::now()->year;

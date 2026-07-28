@@ -81,16 +81,20 @@ export function AppSidebar() {
     const isCollapsed = state === 'collapsed';
     const { auth } = usePage<SharedData>().props;
     const userRoles = auth.roles || [];
-    const isAdmin = auth.user?.role === 'Administrator' || userRoles.includes('Administrator');
-    const isEncoder = userRoles.includes('Encoder') || userRoles.includes('Data Encoder');
+    const userPermissions = auth.permissions || [];
+
+    const isAdmin = auth.user?.role === 'Administrator' || auth.user?.role === 'Admin' || userRoles.includes('Administrator');
+
+    const canViewUsers = isAdmin || userPermissions.includes('view users') || userPermissions.includes('manage users') || userPermissions.includes('view_users') || userPermissions.includes('manage_users');
+
+    const canViewAudit = isAdmin || userPermissions.includes('view audit trail') || userPermissions.includes('view_audit_trail');
 
     const filteredNavItems = mainNavItems.filter((item) => {
-        if (isEncoder || isAdmin) {
-            // Both Data Encoders and Admins see Documents Folder & Documents, but not Audit/Users for Encoders
-            if (isEncoder && ['Audit Trail', 'Users'].includes(item.title)) {
-                return false;
-            }
-            return true;
+        if (item.title === 'Users' && !canViewUsers) {
+            return false;
+        }
+        if (item.title === 'Audit Trail' && !canViewAudit) {
+            return false;
         }
         return true;
     });

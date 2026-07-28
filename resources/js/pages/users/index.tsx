@@ -64,6 +64,14 @@ interface Stats {
     byRole: Record<string, number>;
 }
 
+interface RecentActivity {
+    id: number;
+    user: string;
+    action: string;
+    time: string;
+    module?: string;
+}
+
 interface Props {
     users: {
         data: User[];
@@ -81,9 +89,10 @@ interface Props {
         status?: string;
     };
     stats: Stats;
+    recentActivities?: RecentActivity[];
 }
 
-export default function PersonnelPage({ users, filters, stats }: Props) {
+export default function PersonnelPage({ users, filters, stats, recentActivities = [] }: Props) {
     const breadcrumbs = [
         {
             title: 'Personnel Management',
@@ -278,10 +287,12 @@ export default function PersonnelPage({ users, filters, stats }: Props) {
         },
     ];
 
-    // Placeholder Activity (Until Phase 2)
-    const activities = [
-        { user: 'System', action: 'Audit Trail not initialized', time: 'N/A', icon: Shield },
-    ];
+    const userPermissions = auth.permissions || [];
+    const isAdmin = auth.user?.role === 'Administrator' || auth.user?.role === 'Admin';
+    const canManagePermissions = isAdmin || userPermissions.includes('manage roles') || userPermissions.includes('manage_roles');
+    const canCreateUsers = isAdmin || userPermissions.includes('create users') || userPermissions.includes('manage users') || userPermissions.includes('create_users') || userPermissions.includes('manage_users');
+    const canEditUsers = isAdmin || userPermissions.includes('edit users') || userPermissions.includes('manage users') || userPermissions.includes('edit_users') || userPermissions.includes('manage_users');
+    const canDeleteUsers = isAdmin || userPermissions.includes('delete users') || userPermissions.includes('manage users') || userPermissions.includes('delete_users') || userPermissions.includes('manage_users');
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -296,7 +307,7 @@ export default function PersonnelPage({ users, filters, stats }: Props) {
                         </p>
                     </div>
                     <div className="flex items-center space-x-2">
-                        {auth.user?.role === 'Administrator' && (
+                        {canManagePermissions && (
                             <>
                                 <Button variant="outline" className="h-9" onClick={openPermissionsModal}>
                                     <Shield className="mr-2 h-4 w-4" />
@@ -304,13 +315,14 @@ export default function PersonnelPage({ users, filters, stats }: Props) {
                                 </Button>
                             </>
                         )}
-                        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                            <DialogTrigger asChild>
-                                <Button className="h-9 bg-[#1c2434] hover:bg-[#2c3a4f] text-white">
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Add Personnel
-                                </Button>
-                            </DialogTrigger>
+                        {canCreateUsers && (
+                            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                                <DialogTrigger asChild>
+                                    <Button className="h-9 bg-[#1c2434] hover:bg-[#2c3a4f] text-white">
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Add Personnel
+                                    </Button>
+                                </DialogTrigger>
                             <DialogContent className="sm:max-w-[425px]">
                                 <DialogHeader>
                                     <DialogTitle>Add New Personnel</DialogTitle>
@@ -387,6 +399,7 @@ export default function PersonnelPage({ users, filters, stats }: Props) {
                                 </form>
                             </DialogContent>
                         </Dialog>
+                        )}
                     </div>
                 </div>
 
@@ -552,33 +565,43 @@ export default function PersonnelPage({ users, filters, stats }: Props) {
                         </CardContent>
                     </Card>
 
-                    {/* Recent Activity (Placeholder) */}
+                    {/* Recent Audit Trail Activity */}
                     <Card>
                         <CardHeader>
                             <CardTitle>Recent Activity</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-8">
-                                {activities.map((activity, index) => (
-                                    <div key={index} className="flex">
+                            <div className="space-y-6">
+                                {recentActivities.map((activity, index) => (
+                                    <div key={activity.id || index} className="flex">
                                         <div className="mr-4 relative">
-                                            {index !== activities.length - 1 && (
-                                                <div className="absolute left-[15px] top-8 bottom-[-32px] w-[1px] bg-slate-200 dark:bg-slate-800"></div>
+                                            {index !== recentActivities.length - 1 && (
+                                                <div className="absolute left-[15px] top-8 bottom-[-24px] w-[1px] bg-slate-200 dark:bg-slate-800"></div>
                                             )}
-                                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800">
-                                                <activity.icon className="h-4 w-4 text-white dark:text-black stroke-[2.5]" />
+                                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                                                <Shield className="h-4 w-4 text-[#1c2434] dark:text-slate-200" />
                                             </div>
                                         </div>
                                         <div className="flex-1 space-y-1">
-                                            <p className="text-sm font-medium leading-none">
+                                            <p className="text-sm font-medium leading-snug">
                                                 <span className="font-bold">{activity.user}</span> {activity.action}
                                             </p>
-                                            <p className="text-sm text-muted-foreground">
-                                                {activity.time}
+                                            <p className="text-xs text-muted-foreground flex items-center gap-2">
+                                                <span>{activity.time}</span>
+                                                {activity.module && (
+                                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                                                        {activity.module}
+                                                    </Badge>
+                                                )}
                                             </p>
                                         </div>
                                     </div>
                                 ))}
+                                {recentActivities.length === 0 && (
+                                    <div className="text-sm text-muted-foreground text-center py-4">
+                                        No recent audit activity logged yet.
+                                    </div>
+                                )}
                             </div>
                         </CardContent>
                     </Card>

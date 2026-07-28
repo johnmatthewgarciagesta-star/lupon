@@ -65,7 +65,7 @@ class ReportController extends Controller
             'cases_this_month' => LuponCase::whereMonth('date_filed', Carbon::now()->month)
                 ->whereYear('date_filed', Carbon::now()->year)
                 ->count(),
-            'pending_cases' => LuponCase::where('status', 'Pending')->count(),
+            'pending_cases' => LuponCase::whereNotIn('status', ['Resolved', 'Settled', 'Dismissed'])->count(),
             'resolved_cases' => LuponCase::whereIn('status', ['Resolved', 'Settled', 'Dismissed'])->count(),
 
             // Group by Nature

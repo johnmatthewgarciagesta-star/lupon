@@ -527,7 +527,7 @@ export default function LTIAPage({ deadline, timeline, events }: LTIAProps) {
                                                     isSelected
                                                         ? 'bg-[#1c2434] text-white shadow-sm ring-2 ring-[#dd8b11]'
                                                         : item.isDeadline
-                                                        ? 'bg-amber-100 text-amber-900 border border-amber-300 font-bold dark:bg-amber-900/50 dark:text-amber-200'
+                                                        ? 'bg-red-100 text-red-900 border border-red-300 font-bold dark:bg-red-900/50 dark:text-red-200'
                                                         : item.isToday
                                                         ? 'bg-blue-100 text-blue-800 font-bold dark:bg-blue-900/40 dark:text-blue-300'
                                                         : item.hasPhase
@@ -546,7 +546,7 @@ export default function LTIAPage({ deadline, timeline, events }: LTIAProps) {
 
                                 <div className="mt-4 pt-3 border-t flex items-center justify-between text-[11px] text-muted-foreground">
                                     <div className="flex items-center gap-1.5">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-amber-400 border border-amber-500" />
+                                        <span className="w-2.5 h-2.5 rounded-full bg-red-500 border border-red-600" />
                                         <span>Bound Deadline</span>
                                     </div>
                                     <div className="flex items-center gap-1.5">
@@ -578,17 +578,17 @@ export default function LTIAPage({ deadline, timeline, events }: LTIAProps) {
                             </CardHeader>
                             <CardContent className="pt-4 space-y-3">
                                 {inspectedItems.isDeadline && (
-                                    <div className="p-3 rounded-lg border bg-amber-100/70 border-amber-300 dark:bg-amber-950/40 dark:border-amber-900 space-y-1">
+                                    <div className="p-3 rounded-lg border bg-red-100/70 border-red-300 dark:bg-red-950/40 dark:border-red-900 space-y-1">
                                         <div className="flex items-center justify-between">
-                                            <span className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-                                                <CalendarIcon className="h-4 w-4 text-[#dd8b11]" />
+                                            <span className="text-xs font-bold text-red-900 dark:text-red-200 flex items-center gap-1.5">
+                                                <CalendarIcon className="h-4 w-4 text-red-600" />
                                                 Primary System Bound Deadline
                                             </span>
-                                            <Badge variant="secondary" className="bg-amber-500 text-white text-[9px]">
+                                            <Badge variant="secondary" className="bg-red-500 text-white text-[9px]">
                                                 Target Deadline
                                             </Badge>
                                         </div>
-                                        <p className="text-xs text-amber-800 dark:text-amber-300">
+                                        <p className="text-xs text-red-800 dark:text-red-300">
                                             Official LTIA Application Submission Deadline: {deadline.formatted_date}
                                         </p>
                                     </div>
