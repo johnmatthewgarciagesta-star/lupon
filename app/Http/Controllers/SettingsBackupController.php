@@ -1,0 +1,152 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\AuditLog;
+use App\Models\Document;
+use App\Models\DocumentVersion;
+use App\Models\LuponCase;
+use App\Models\SystemSetting;
+use App\Models\User;
+use App\Services\AuditService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+class SettingsBackupController extends Controller
+{
+    private function isAdmin()
+    {
+        $user = auth()->user();
+        if (!$user) return false;
+        return $user->hasRole('Administrator') || $user->hasRole('Admin') || strcasecmp($user->role ?? '', 'Administrator') === 0 || strcasecmp($user->role ?? '', 'Admin') === 0;
+    }
+
+    public function index()
+    {
+        $initialDeadline = SystemSetting::get('ltia_deadline', '2026-09-08');
+        return \Inertia\Inertia::render('settings/index', [
+            'initialDeadline' => $initialDeadline,
+        ]);
+    }
+
+    /**
+     * Download full database backup as a JSON package.
+     */
+    public function downloadBackup()
+    {
+        try {
+            $backupData = [
+                'metadata' => [
+                    'system' => 'Lupon Tagapamayapa System',
+                    'version' => 'v2.5.1',
+                    'timestamp' => now()->toIso8601String(),
+                    'created_by' => auth()->user() ? auth()->user()->name : 'System Admin',
+                ],
+                'tables' => [
+                    'cases' => LuponCase::withTrashed()->get()->toArray(),
+                    'documents' => Document::withTrashed()->get()->toArray(),
+                    'document_versions' => DocumentVersion::all()->toArray(),
+                    'system_settings' => SystemSetting::all()->toArray(),
+                    'audit_logs' => AuditLog::latest()->limit(500)->get()->toArray(),
+                ],
+            ];
+
+            $fileName = 'lupon_database_backup_' . date('Y-m-d_H-i-s') . '.json';
+            $jsonContent = json_encode($backupData, JSON_PRETTY_PRINT);
+
+            AuditService::log(
+                'FULL_DATABASE_BACKUP_DOWNLOAD',
+                'System Backup & Restore',
+                "Generated full database backup file {$fileName}",
+                null
+            );
+
+            return response($jsonContent, 200, [
+                'Content-Type' => 'application/json',
+                'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Full database backup download failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to generate database backup: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Restore database records from an uploaded backup JSON file.
+     */
+    public function restoreBackup(Request $request)
+    {
+        if ($this->isAdmin()) {
+            return redirect()->back()->with('error', 'Administrators are in View-Only mode.');
+        }
+
+        $request->validate([
+            'backup_file' => 'required|file|mimes:json,txt|max:20480',
+        ]);
+
+        try {
+            $file = $request->file('backup_file');
+            $content = file_get_contents($file->getRealPath());
+            $data = json_decode($content, true);
+
+            if (!isset($data['tables'])) {
+                return redirect()->back()->with('error', 'Invalid database backup package format.');
+            }
+
+            DB::beginTransaction();
+
+            $tables = $data['tables'];
+
+            // Restore Cases
+            if (isset($tables['cases']) && is_array($tables['cases'])) {
+                foreach ($tables['cases'] as $caseRow) {
+                    $id = $caseRow['id'];
+                    unset($caseRow['id']);
+                    LuponCase::withTrashed()->updateOrCreate(['id' => $id], $caseRow);
+                }
+            }
+
+            // Restore Documents
+            if (isset($tables['documents']) && is_array($tables['documents'])) {
+                foreach ($tables['documents'] as $docRow) {
+                    $id = $docRow['id'];
+                    unset($docRow['id']);
+                    Document::withTrashed()->updateOrCreate(['id' => $id], $docRow);
+                }
+            }
+
+            // Restore Document Versions
+            if (isset($tables['document_versions']) && is_array($tables['document_versions'])) {
+                foreach ($tables['document_versions'] as $verRow) {
+                    $id = $verRow['id'];
+                    unset($verRow['id']);
+                    DocumentVersion::updateOrCreate(['id' => $id], $verRow);
+                }
+            }
+
+            // Restore System Settings
+            if (isset($tables['system_settings']) && is_array($tables['system_settings'])) {
+                foreach ($tables['system_settings'] as $settingRow) {
+                    $key = $settingRow['key'];
+                    SystemSetting::set($key, $settingRow['value'] ?? null);
+                }
+            }
+
+            DB::commit();
+
+            AuditService::log(
+                'FULL_DATABASE_RESTORE',
+                'System Backup & Restore',
+                "Restored database records from backup file {$file->getClientOriginalName()}",
+                null
+            );
+
+            return redirect()->back()->with('success', 'Database records restored from backup successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Full database restore failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Database restore failed: ' . $e->getMessage());
+        }
+    }
+}

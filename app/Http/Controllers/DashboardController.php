@@ -206,7 +206,24 @@ class DashboardController extends Controller
                 ];
             }
 
-            // 8. Document Analytics
+            // 8. Document Analytics & Overview
+            $hiddenTemplates = \App\Models\FormLayout::where('is_hidden', true)
+                ->pluck('document_type')
+                ->toArray();
+            $customCount = Document::where('type', 'custom_form')->count();
+            $standardCount = 14;
+            $totalDocTemplates = ($standardCount - count($hiddenTemplates)) + $customCount;
+
+            $summonsDocCount = Document::whereNotNull('case_id')
+                ->whereIn('type', ['summons', 'summons_respondent', 'summons_witness', 'notice_to_appear'])
+                ->count();
+
+            $settlementsDocCount = Document::whereNotNull('case_id')
+                ->whereIn('type', ['amicable_settlement', 'arbitration_agreement', 'arbitration_award', 'katunayan_pagkakasundo'])
+                ->count();
+
+            $recentDocsCount = Document::whereNotNull('case_id')->count();
+
             $totalDocuments = Document::count();
             $documentsByType = Document::selectRaw('type, count(*) as count')
                 ->groupBy('type')
@@ -244,7 +261,10 @@ class DashboardController extends Controller
                 'typeStats' => $typeStats,
                 'monthlyStats' => $allMonths,
                 'documentStats' => [
-                    'total' => $totalDocuments,
+                    'total' => $totalDocTemplates,
+                    'summons' => $summonsDocCount,
+                    'settlements' => $settlementsDocCount,
+                    'recent_count' => $recentDocsCount,
                     'by_type' => $documentsByType,
                     'recent' => $recentDocuments,
                 ],
@@ -274,6 +294,9 @@ class DashboardController extends Controller
                 'monthlyStats' => [],
                 'documentStats' => [
                     'total' => 0,
+                    'summons' => 0,
+                    'settlements' => 0,
+                    'recent_count' => 0,
                     'by_type' => [],
                     'recent' => [],
                 ],

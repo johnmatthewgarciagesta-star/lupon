@@ -12,7 +12,7 @@ import {
     RefreshCw,
     Calendar
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -41,6 +41,42 @@ export default function SettingsPage({ initialDeadline }: { initialDeadline?: st
     const [deadlineDate, setDeadlineDate] = useState(initialDeadline || '');
     const [isSavingDeadline, setIsSavingDeadline] = useState(false);
     const [deadlineMsg, setDeadlineMsg] = useState<string | null>(null);
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isRestoring, setIsRestoring] = useState(false);
+
+    const handleDownloadBackup = () => {
+        window.location.href = '/settings/backup/download';
+    };
+
+    const handleTriggerRestore = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleRestoreFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!confirm(`Are you sure you want to restore database records from file "${file.name}"? Existing data will be updated.`)) {
+            e.target.value = '';
+            return;
+        }
+
+        setIsRestoring(true);
+        const formData = new FormData();
+        formData.append('backup_file', file);
+
+        router.post('/settings/backup/restore', formData, {
+            onSuccess: () => {
+                setIsRestoring(false);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+            },
+            onError: () => {
+                setIsRestoring(false);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+            }
+        });
+    };
 
     const handleSaveDeadline = (e: React.FormEvent) => {
         e.preventDefault();
@@ -380,16 +416,33 @@ export default function SettingsPage({ initialDeadline }: { initialDeadline?: st
                                         <span className="text-muted-foreground">Backup Size</span>
                                         <span className="font-medium">215 MB</span>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <Button className="bg-[#1c2434] hover:bg-[#2c3a4f] text-white">
-                                            <Database className="mr-2 h-4 w-4" />
-                                            Create Backup Now
-                                        </Button>
-                                        <Button variant="outline">
-                                            <RotateCcw className="mr-2 h-4 w-4" />
-                                            Restore from Backup
-                                        </Button>
-                                    </div>
+                                     <div className="grid grid-cols-2 gap-4">
+                                         <Button 
+                                             onClick={handleDownloadBackup} 
+                                             className="bg-[#1c2434] hover:bg-[#2c3a4f] text-white flex items-center justify-center gap-2"
+                                         >
+                                             <Database className="h-4 w-4" />
+                                             Create Backup Now
+                                         </Button>
+
+                                         <Button 
+                                             variant="outline" 
+                                             onClick={handleTriggerRestore}
+                                             disabled={isRestoring}
+                                             className="flex items-center justify-center gap-2 border-amber-500/40 text-[#dd8b11] hover:bg-amber-50 dark:hover:bg-amber-950/40"
+                                         >
+                                             <RotateCcw className={`h-4 w-4 ${isRestoring ? 'animate-spin' : ''}`} />
+                                             {isRestoring ? 'Restoring Backup...' : 'Restore from Backup'}
+                                         </Button>
+
+                                         <input 
+                                             type="file" 
+                                             ref={fileInputRef} 
+                                             accept=".json,.txt" 
+                                             onChange={handleRestoreFileSelected} 
+                                             className="hidden" 
+                                         />
+                                     </div>
                                 </CardContent>
                             </Card>
                         </section>

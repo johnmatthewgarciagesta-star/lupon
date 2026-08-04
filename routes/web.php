@@ -46,6 +46,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('ltia/events/{id}', [App\Http\Controllers\LTIAController::class, 'updateEvent'])->name('ltia.update-event');
         Route::delete('ltia/events/{id}', [App\Http\Controllers\LTIAController::class, 'destroyEvent'])->name('ltia.destroy-event');
 
+        Route::get('system-settings', [App\Http\Controllers\SettingsBackupController::class, 'index'])->name('system-settings.index');
+
         // Case Lookup API
         Route::get('/api/cases/lookup', [App\Http\Controllers\CaseController::class, 'lookup'])->name('api.cases.lookup');
     });
@@ -76,6 +78,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('documents/create-folder', [App\Http\Controllers\DocumentController::class, 'createFolder'])->name('documents.create-folder');
         Route::post('documents/upload-to-folder', [App\Http\Controllers\DocumentController::class, 'uploadToFolder'])->name('documents.upload-to-folder');
         Route::delete('documents/folders/{id}', [App\Http\Controllers\DocumentController::class, 'destroyFolder'])->name('documents.destroy-folder');
+
+        // Security Anti-Tamper Backup & Version Restoration Routes
+        Route::get('documents/{id}/versions', [App\Http\Controllers\DocumentController::class, 'getVersions'])->name('documents.versions');
+        Route::post('documents/{id}/restore-version/{versionId}', [App\Http\Controllers\DocumentController::class, 'restoreVersion'])->name('documents.restore-version');
     });
 
     // Dynamic Permission-based & Admin Routes (Users, Audit, Roles & Permissions)

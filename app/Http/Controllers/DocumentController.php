@@ -226,6 +226,8 @@ class DocumentController extends Controller
             ],
         ]);
 
+        \App\Services\DocumentBackupService::recordVersion($document, 'created', 'Initial File Upload');
+
         AuditService::log('UPLOAD_DOCUMENT_TO_FOLDER', 'Document Management', "Uploaded document {$docType} into folder {$case->folder_name}", $case->id);
 
         return redirect()->back()->with('success', "Document uploaded into folder {$case->folder_name}.");
@@ -586,7 +588,7 @@ class DocumentController extends Controller
                     }
                 }
 
-                \App\Models\Document::create([
+                $createdDoc = \App\Models\Document::create([
                     'case_id' => $caseId,
                     'folder_name' => $folderName,
                     'type' => $type,
@@ -595,6 +597,8 @@ class DocumentController extends Controller
                     'issued_at' => now(),
                     'created_by' => auth()->id(),
                 ]);
+
+                \App\Services\DocumentBackupService::recordVersion($createdDoc, 'created', 'Form Created & Saved');
 
                 AuditService::log('CREATE', 'Documents', "Saved {$type} for Case #{$caseId}", $caseId);
 
@@ -752,7 +756,7 @@ class DocumentController extends Controller
                 }
             }
 
-            \App\Models\Document::create([
+            $createdDocPdf = \App\Models\Document::create([
                 'case_id' => $caseId,
                 'type' => $type,
                 'content' => $contentToSave,
@@ -760,6 +764,8 @@ class DocumentController extends Controller
                 'issued_at' => now(),
                 'created_by' => auth()->id(),
             ]);
+
+            \App\Services\DocumentBackupService::recordVersion($createdDocPdf, 'created', 'Form Generated & Output Issued');
 
             $auditDetail = "Generated {$type} for Case #{$caseId}";
             AuditService::log('CREATE', 'Documents', $auditDetail, $caseId);
@@ -2042,13 +2048,62 @@ class DocumentController extends Controller
 
         $document = \App\Models\Document::findOrFail($id);
 
-        // Delete the file if it exists
-        if ($document->file_path && \Storage::disk('public')->exists($document->file_path)) {
-            \Storage::disk('public')->delete($document->file_path);
-        }
+        \App\Services\DocumentBackupService::recordVersion($document, 'soft_deleted', 'Document soft deleted (Moved to Trash)');
 
         $document->delete();
 
         return redirect()->route('documents.index')->with('success', 'Document deleted successfully.');
+    }
+
+    /**
+     * Security & Anti-Tamper: Get Version Revision History for a document.
+     */
+    public function getVersions($id)
+    {
+        try {
+            $document = \App\Models\Document::withTrashed()->findOrFail($id);
+            $versions = \App\Models\DocumentVersion::where('document_id', $document->id)
+                ->with('editor')
+                ->orderBy('version_number', 'desc')
+                ->get()
+                ->map(function ($v) {
+                    return [
+                        'id' => $v->id,
+                        'version_number' => $v->version_number,
+                        'edited_by_name' => $v->edited_by_name ?: ($v->editor ? $v->editor->name : 'System Automated Backup'),
+                        'change_type' => $v->change_type,
+                        'ip_address' => $v->ip_address,
+                        'created_at' => $v->created_at ? $v->created_at->format('M d, Y H:i:s') : null,
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'document_id' => $document->id,
+                'current_version' => $versions->first()['version_number'] ?? 1,
+                'versions' => $versions,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 404);
+        }
+    }
+
+    /**
+     * Security & Anti-Tamper: Restore document back to a historical version.
+     */
+    public function restoreVersion(Request $request, $id, $versionId)
+    {
+        if ($this->isAdmin()) {
+            return redirect()->back()->with('error', 'Administrators are in View-Only mode.');
+        }
+
+        $document = \App\Models\Document::withTrashed()->findOrFail($id);
+        $success = \App\Services\DocumentBackupService::restoreVersion($document, (int)$versionId);
+
+        if ($success) {
+            return redirect()->back()->with('success', "Document restored back to version #{$versionId} successfully.");
+        }
+
+        return redirect()->back()->with('error', 'Failed to restore document version.');
     }
 }

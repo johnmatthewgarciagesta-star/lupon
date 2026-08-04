@@ -5,7 +5,7 @@ import {
     Scale, AlertTriangle, Gavel, Handshake, Calendar, BadgeCheck, X,
     FileSignature, ClipboardCheck, UserPlus, Send, History, Trash2,
     ClipboardList, Briefcase, ShieldAlert, BadgeInfo, Edit, Upload, Loader2,
-    Folder, FolderPlus, FilePlus
+    Folder, FolderPlus, FilePlus, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, any> = {
@@ -134,6 +134,8 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
     const [search, setSearch] = useState('');
     // Filter for recent docs table only
     const [docFilter, setDocFilter] = useState('all');
+    // Collapsible Recent Documents section state (defaults to collapsed for single-page view)
+    const [showRecentDocs, setShowRecentDocs] = useState(false);
 
     // ─── Case Folder Management States ────────────────────────────────────────
     const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
@@ -396,10 +398,10 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Documents" />
 
-            <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
+            <div className="flex flex-col h-[calc(100vh-3.5rem)] p-4 md:p-6 space-y-4 overflow-hidden">
 
                 {/* ── Page Header ── */}
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between shrink-0">
                     <div>
                         <h2 className="text-2xl font-bold tracking-tight">Document Management</h2>
                         <p className="text-muted-foreground">Search and generate official Lupon documents</p>
@@ -452,66 +454,6 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                     </div>
                 </div>
 
-                {/* ── Stats ── */}
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    {[
-                        { 
-                            label: 'Total Documents', 
-                            value: stats.total, 
-                            sub: 'Total generated forms', 
-                            icon: <FileText className="h-4 w-4 text-muted-foreground" />,
-                            action: () => {
-                                setDocFilter('all');
-                                document.getElementById('recent-documents-section')?.scrollIntoView({ behavior: 'smooth' });
-                            }
-                        },
-                        { 
-                            label: 'Summons Issued', 
-                            value: stats.summons, 
-                            sub: 'Official summons generated', 
-                            icon: <Bell className="h-4 w-4 text-muted-foreground" />,
-                            action: () => {
-                                setDocFilter('summons');
-                                document.getElementById('recent-documents-section')?.scrollIntoView({ behavior: 'smooth' });
-                            }
-                        },
-                        { 
-                            label: 'Settlements', 
-                            value: stats.settlements, 
-                            sub: 'Agreements & awards', 
-                            icon: <FileCheck className="h-4 w-4 text-muted-foreground" />,
-                            action: () => {
-                                setDocFilter('amicable_settlement');
-                                document.getElementById('recent-documents-section')?.scrollIntoView({ behavior: 'smooth' });
-                            }
-                        },
-                        { 
-                            label: 'Recent Documents', 
-                            value: stats.recent, 
-                            sub: 'Latest system activity', 
-                            icon: <History className="h-4 w-4 text-muted-foreground" />,
-                            action: () => {
-                                setDocFilter('all');
-                                document.getElementById('recent-documents-section')?.scrollIntoView({ behavior: 'smooth' });
-                            }
-                        },
-                    ].map(s => (
-                        <Card 
-                            key={s.label}
-                            className="cursor-pointer hover:bg-secondary/50 dark:hover:bg-secondary/80 transition-colors"
-                            onClick={s.action}
-                        >
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">{s.label}</CardTitle>
-                                {s.icon}
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{s.value}</div>
-                                <p className="text-xs text-muted-foreground">{s.sub}</p>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
 
                 {/* ── Case Document Folders Management Section ── */}
                 <div className="space-y-4">
@@ -618,12 +560,12 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                 </div>
 
                 {/* ── Document Templates ── */}
-                <Card>
-                    <CardHeader>
+                <Card className="flex-1 flex flex-col min-h-0 border shadow-sm overflow-hidden">
+                    <CardHeader className="py-3 px-4 shrink-0 border-b">
                         <div className="flex items-center justify-between flex-wrap gap-2">
                             <div>
-                                <CardTitle>Document Templates</CardTitle>
-                                <p className="text-sm text-muted-foreground mt-0.5">
+                                <CardTitle className="text-base font-bold">Document Templates</CardTitle>
+                                <p className="text-xs text-muted-foreground mt-0.5">
                                     {search
                                         ? `${filteredTemplates.length} of ${allAvailableTemplates.length} templates matching "${search}"`
                                         : `Choose from all ${allAvailableTemplates.length} official Lupon forms`}
@@ -631,7 +573,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="flex-1 overflow-y-auto p-4">
                         {filteredTemplates.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
                                 <FileText className="h-10 w-10 mb-3 text-[#dd8b11]" />
@@ -742,168 +684,189 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                     </CardContent>
                 </Card>
 
-                {/* ── Recent Documents ── */}
-                <Card id="recent-documents-section">
-                    <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-3">
-                        <div>
-                            <CardTitle>Recent Documents</CardTitle>
-                            <p className="text-sm text-muted-foreground mt-0.5">
-                                Documents generated or uploaded via this system
-                            </p>
+                {/* ── Recent Documents Collapsible Section ── */}
+                <Card id="recent-documents-section" className="border shadow-sm shrink-0">
+                    <CardHeader 
+                        className="py-3.5 px-4 flex flex-row items-center justify-between flex-wrap gap-3 cursor-pointer select-none hover:bg-muted/20 transition-colors"
+                        onClick={() => setShowRecentDocs(!showRecentDocs)}
+                    >
+                        <div className="flex items-center gap-3">
+                            <CardTitle className="text-base font-bold flex items-center gap-2">
+                                <History className="h-4 w-4 text-[#dd8b11]" />
+                                Recent Documents
+                            </CardTitle>
+                            <Badge variant="outline" className="bg-amber-500/10 text-[#dd8b11] border-amber-300 dark:bg-amber-950/40 dark:border-amber-800 font-bold text-xs px-2.5 py-0.5">
+                                {documents.length} Recent Documents Made
+                            </Badge>
                         </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <select
-                                id="doc-filter-type"
-                                value={docFilter}
-                                onChange={e => setDocFilter(e.target.value)}
-                                className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring max-w-[200px]"
+                        <div className="flex items-center gap-3">
+                            {showRecentDocs && (
+                                <div className="flex items-center gap-2 flex-wrap" onClick={e => e.stopPropagation()}>
+                                    <select
+                                        id="doc-filter-type"
+                                        value={docFilter}
+                                        onChange={e => setDocFilter(e.target.value)}
+                                        className="h-8 rounded-md border border-input bg-background px-2.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring max-w-[180px]"
+                                    >
+                                        <option value="all">All Types</option>
+                                        <optgroup label="Standard Forms">
+                                            {TEMPLATES.map(t => (
+                                                <option key={t.type} value={t.type}>{t.title}</option>
+                                            ))}
+                                        </optgroup>
+                                        <optgroup label="Other">
+                                            <option value="custom_form">Custom Form</option>
+                                            <option value="upload">Uploaded</option>
+                                        </optgroup>
+                                    </select>
+                                    {docFilter !== 'all' && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 text-xs"
+                                            onClick={() => setDocFilter('all')}
+                                        >
+                                            <X className="h-3 w-3 mr-1" /> Clear
+                                        </Button>
+                                    )}
+                                    {canEdit && (
+                                        <Link href="/documents/new">
+                                            <Button className="h-8 bg-[#dd8b11] hover:bg-[#c47c0f] text-white text-xs">
+                                                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                                                Add Document
+                                            </Button>
+                                        </Link>
+                                    )}
+                                </div>
+                            )}
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-8 text-xs font-semibold flex items-center gap-1.5 border-amber-500/40 text-[#dd8b11] hover:bg-amber-500/10 dark:hover:bg-amber-950/40"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowRecentDocs(!showRecentDocs);
+                                }}
                             >
-                                <option value="all">All Types</option>
-                                <optgroup label="Standard Forms">
-                                    {TEMPLATES.map(t => (
-                                        <option key={t.type} value={t.type}>{t.title}</option>
-                                    ))}
-                                </optgroup>
-                                <optgroup label="Other">
-                                    <option value="custom_form">Custom Form</option>
-                                    <option value="upload">Uploaded</option>
-                                </optgroup>
-                            </select>
-                            {docFilter !== 'all' && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-9 text-xs"
-                                    onClick={() => setDocFilter('all')}
-                                >
-                                    <X className="h-3 w-3 mr-1" /> Clear
-                                </Button>
-                            )}
-                            {canEdit && (
-                                <Link href="/documents/new">
-                                    <Button className="h-9 bg-[#dd8b11] hover:bg-[#c47c0f] text-white">
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        Add Document
-                                    </Button>
-                                </Link>
-                            )}
+                                {showRecentDocs ? (
+                                    <>
+                                        <ChevronUp className="h-4 w-4" />
+                                        Hide Recent Documents
+                                    </>
+                                ) : (
+                                    <>
+                                        <ChevronDown className="h-4 w-4" />
+                                        Show Recent Documents
+                                    </>
+                                )}
+                            </Button>
                         </div>
                     </CardHeader>
-                    <CardContent>
-                        <div className="rounded-md border">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b bg-muted/50">
-                                        <th className="px-4 py-3 text-left font-medium text-muted-foreground">Document Type</th>
-                                        <th className="px-4 py-3 text-left font-medium text-muted-foreground">Case No.</th>
-                                        <th className="px-4 py-3 text-left font-medium text-muted-foreground">Encoded By</th>
-                                        <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
-                                        <th className="px-4 py-3 text-left font-medium text-muted-foreground">Date</th>
-                                        <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredDocs.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={6} className="px-4 py-16 text-center text-muted-foreground">
-                                                <History className="h-8 w-8 mx-auto mb-2 text-[#dd8b11]" />
-                                                {docFilter !== 'all'
-                                                    ? `No documents of type "${docFilter}".`
-                                                    : (
-                                                        <span>
-                                                            No documents yet.{' '}
-                                                            <Link href="/documents/new" className="text-primary underline-offset-2 hover:underline">
-                                                                Add one
-                                                            </Link>
-                                                            {' '}or fill out a template above.
-                                                        </span>
-                                                    )
-                                                }
-                                            </td>
+                    {showRecentDocs && (
+                        <CardContent className="pt-2 border-t">
+                            <div className="rounded-md border mt-2">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b bg-muted/50">
+                                            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Document Type</th>
+                                            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Case No.</th>
+                                            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Encoded By</th>
+                                            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
+                                            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Date</th>
+                                            <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
                                         </tr>
-                                    ) : (
-                                        filteredDocs.map(doc => (
-                                            <tr key={doc.id} className="border-b last:border-0 hover:bg-muted/40 transition-colors">
-                                                <td className="px-4 py-3 font-medium">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="p-2 bg-[#dd8b11] rounded-lg flex-shrink-0">
-                                                            <FileText className="h-4 w-4 text-white dark:text-black stroke-[2]" />
-                                                        </div>
-                                                        <div className="flex flex-col">
-                                                            <span className="font-semibold text-xs">{getTemplateTitle(doc.type)}</span>
-                                                            <span className="text-[10px] text-muted-foreground uppercase opacity-70">
-                                                                {doc.type.replace(/_/g, ' ')}
+                                    </thead>
+                                    <tbody>
+                                        {filteredDocs.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
+                                                    <History className="h-8 w-8 mx-auto mb-2 text-[#dd8b11]" />
+                                                    {docFilter !== 'all'
+                                                        ? `No documents of type "${docFilter}".`
+                                                        : (
+                                                            <span>
+                                                                No documents yet.{' '}
+                                                                <Link href="/documents/new" className="text-primary underline-offset-2 hover:underline">
+                                                                    Add one
+                                                                </Link>
+                                                                {' '}or fill out a template above.
                                                             </span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3 text-muted-foreground font-mono text-xs">
-                                                    {doc.case_number ?? '—'}
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    {doc.creator ? (
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-[#dd8b11] flex-shrink-0">
-                                                                <span className="text-[10px] font-medium text-white dark:text-black">
-                                                                    {doc.creator.name.charAt(0).toUpperCase()}
-                                                                </span>
-                                                            </div>
-                                                            <span className="text-sm">{doc.creator.name}</span>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-muted-foreground">—</span>
-                                                    )}
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <Badge variant="outline">{doc.status}</Badge>
-                                                </td>
-                                                <td className="px-4 py-3 text-muted-foreground text-sm">
-                                                    {doc.date ? new Date(doc.date).toLocaleDateString() : '—'}
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <div className="flex justify-end gap-2">
-                                                        <a
-                                                            href={`/documents/view/${doc.id}`}
-                                                            target="_blank"
-                                                            title="View Document"
-                                                            className="inline-flex items-center justify-center rounded-md h-9 w-9 hover:bg-[#dd8b11] transition-colors text-muted-foreground hover:text-white"
-                                                        >
-                                                            <Eye className="h-4 w-4" />
-                                                        </a>
-                                                        <button
-                                                            disabled
-                                                            title="Download (coming soon)"
-                                                            className="inline-flex items-center justify-center rounded-md h-9 w-9 text-muted-foreground/30 cursor-not-allowed"
-                                                        >
-                                                            <Download className="h-4 w-4" />
-                                                        </button>
-                                                        {canEdit && (
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.preventDefault();
-                                                                    if (confirm('Are you sure you want to delete this document?')) {
-                                                                        router.post(`/documents/delete/${doc.id}`);
-                                                                    }
-                                                                }}
-                                                                title="Delete Document"
-                                                                className="inline-flex items-center justify-center rounded-md h-9 w-9 hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors"
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </button>
-                                                        )}
-                                                    </div>
+                                                        )
+                                                    }
                                                 </td>
                                             </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-3">
-                            {filteredDocs.length} document{filteredDocs.length !== 1 ? 's' : ''}
-                            {docFilter !== 'all' && ` (filtered by type: ${docFilter})`}
-                        </p>
-                    </CardContent>
+                                        ) : (
+                                            filteredDocs.map(doc => (
+                                                <tr key={doc.id} className="border-b last:border-0 hover:bg-muted/40 transition-colors">
+                                                    <td className="px-4 py-3 font-medium">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-[#dd8b11] rounded-lg flex-shrink-0">
+                                                                <FileText className="h-4 w-4 text-white dark:text-black stroke-[2]" />
+                                                            </div>
+                                                            <div>
+                                                                <div>{getTemplateTitle(doc.type)}</div>
+                                                                <div className="text-xs text-muted-foreground">{doc.type}</div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-muted-foreground">
+                                                        {doc.case_number ? (
+                                                            <span className="font-mono text-xs font-semibold bg-amber-50 dark:bg-amber-950/40 text-[#dd8b11] border border-amber-300 dark:border-amber-800 px-2 py-0.5 rounded">
+                                                                {doc.case_number}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-muted-foreground/50">—</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-muted-foreground text-sm">
+                                                        {doc.creator?.name || 'Encoder'}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <Badge variant="outline" className="font-normal capitalize">
+                                                            {doc.status || 'generated'}
+                                                        </Badge>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-muted-foreground text-sm">
+                                                        {doc.date ? new Date(doc.date).toLocaleDateString() : '—'}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex justify-end gap-2">
+                                                            <a
+                                                                href={`/documents/view/${doc.id}`}
+                                                                target="_blank"
+                                                                title="View Document"
+                                                                className="inline-flex items-center justify-center rounded-md h-9 w-9 hover:bg-[#dd8b11] transition-colors text-muted-foreground hover:text-white"
+                                                            >
+                                                                <Eye className="h-4 w-4" />
+                                                            </a>
+                                                            {canEdit && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        if (confirm('Are you sure you want to delete this document?')) {
+                                                                            router.post(`/documents/delete/${doc.id}`);
+                                                                        }
+                                                                    }}
+                                                                    title="Delete Document"
+                                                                    className="inline-flex items-center justify-center rounded-md h-9 w-9 hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-3">
+                                {filteredDocs.length} document{filteredDocs.length !== 1 ? 's' : ''}
+                                {docFilter !== 'all' && ` (filtered by type: ${docFilter})`}
+                            </p>
+                        </CardContent>
+                    )}
                 </Card>
 
             {/* ─── Upload Scan (AI) Modal ─── */}

@@ -18,7 +18,12 @@ import {
     Calendar,
     Sparkles,
     ArrowLeft,
-    Edit3
+    Edit3,
+    Bell,
+    Handshake,
+    FileCheck,
+    ChevronDown,
+    ChevronUp
 } from 'lucide-react';
 import { useState } from 'react';
 import { EditCaseStatusDialog } from '@/components/cases/edit-case-status-dialog';
@@ -106,6 +111,9 @@ interface DashboardProps {
     }>;
     documentStats?: {
         total: number;
+        summons?: number;
+        settlements?: number;
+        recent_count?: number;
         by_type: Array<{ type: string; count: number }>;
         recent: Array<{
             id: number;
@@ -138,6 +146,7 @@ export default function Dashboard({
 
     const [isNewCasesModalOpen, setIsNewCasesModalOpen] = useState(false);
     const [selectedStatusMonth, setSelectedStatusMonth] = useState('all');
+    const [showQuickActions, setShowQuickActions] = useState(false);
 
     // New Cases Modal local filters & month state (defaults to current month)
     const [modalSearch, setModalSearch] = useState('');
@@ -846,76 +855,241 @@ export default function Dashboard({
                     </Card>
                 </div>
 
-                {/* Document Section for Data Encoder side */}
-                {canEdit && documentStats && (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                        <Card className="col-span-3">
-                            <CardHeader>
-                                <CardTitle>Document Statistics</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-1">
-                                    <p className="text-sm font-medium text-muted-foreground">Total Generated</p>
-                                    <p className="text-2xl font-bold">{documentStats.total}</p>
-                                </div>
-                                <div className="mt-6 space-y-4">
-                                    {documentStats.by_type.slice(0, 3).map((stat, i) => (
-                                        <div key={i} className="flex items-center justify-between">
-                                            <div className="flex items-center space-x-2">
-                                                <FileText className="h-4 w-4 text-muted-foreground" />
-                                                <span className="text-sm font-medium">{stat.type}</span>
-                                            </div>
-                                            <span className="text-sm text-muted-foreground">{stat.count}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </CardContent>
-                        </Card>
+                {/* ── Document Overview Section ── */}
+                {documentStats && (
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-xl font-bold tracking-tight text-foreground">Document Overview</h3>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    Summary of generated forms, notices, settlements, and document records
+                                </p>
+                            </div>
+                            <Button variant="outline" size="sm" asChild className="text-xs">
+                                <Link href="/documents/templates">
+                                    View All Documents &rarr;
+                                </Link>
+                            </Button>
+                        </div>
 
-                        <Card className="col-span-4">
-                            <CardHeader className="flex flex-row items-center justify-between">
-                                <CardTitle>Recent Documents</CardTitle>
-                                <Button variant="link" asChild className="text-xs h-auto p-0 text-muted-foreground">
-                                    <Link href="/documents">View All &rarr;</Link>
-                                </Button>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-4">
-                                    {documentStats.recent.length === 0 ? (
-                                        <p className="text-sm text-center text-muted-foreground py-4">No documents generated yet.</p>
-                                    ) : (
-                                        documentStats.recent.map((doc) => (
-                                            <div key={doc.id} 
-                                                className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0 cursor-pointer hover:bg-secondary/50 p-1 rounded-sm transition-colors"
-                                                onClick={() => window.open(`/documents/view/${doc.id}`, '_blank')}
-                                            >
-                                                <div>
-                                                    <p className="text-sm font-medium">{doc.type}</p>
-                                                    <p className="text-xs text-muted-foreground">Case: {doc.case_number}</p>
+                        {/* 4 Document Overview Stat Cards */}
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                            <Card 
+                                className="cursor-pointer hover:bg-secondary/50 dark:hover:bg-secondary/80 transition-colors"
+                                onClick={() => router.visit('/documents/templates')}
+                            >
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Total Documents</CardTitle>
+                                    <FileText className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold text-[#dd8b11] dark:text-white">{documentStats.total}</div>
+                                    <p className="text-xs text-muted-foreground">Total generated forms</p>
+                                </CardContent>
+                            </Card>
+
+                            <Card 
+                                className="cursor-pointer hover:bg-secondary/50 dark:hover:bg-secondary/80 transition-colors"
+                                onClick={() => router.visit('/documents/templates')}
+                            >
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Summons & Notices</CardTitle>
+                                    <Bell className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold text-[#dd8b11] dark:text-white">{documentStats.summons ?? 0}</div>
+                                    <p className="text-xs text-muted-foreground">Issued to parties</p>
+                                </CardContent>
+                            </Card>
+
+                            <Card 
+                                className="cursor-pointer hover:bg-secondary/50 dark:hover:bg-secondary/80 transition-colors"
+                                onClick={() => router.visit('/documents/templates')}
+                            >
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Amicable Settlements</CardTitle>
+                                    <Handshake className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold text-[#dd8b11] dark:text-white">{documentStats.settlements ?? 0}</div>
+                                    <p className="text-xs text-muted-foreground">Resolved disputes</p>
+                                </CardContent>
+                            </Card>
+
+                            <Card 
+                                className="cursor-pointer hover:bg-secondary/50 dark:hover:bg-secondary/80 transition-colors"
+                                onClick={() => router.visit('/documents/templates')}
+                            >
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Recent Documents</CardTitle>
+                                    <FileCheck className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold text-[#dd8b11] dark:text-white">{documentStats.recent_count ?? (documentStats.recent?.length ?? 0)}</div>
+                                    <p className="text-xs text-muted-foreground">Generated in database</p>
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        {/* Document Breakdown & Recent Documents Table */}
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7 pt-2">
+                            <Card className="col-span-3 flex flex-col justify-between">
+                                <CardHeader className="pb-2">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <CardTitle className="text-base font-bold">Document Types Breakdown</CardTitle>
+                                            <p className="text-xs text-muted-foreground mt-0.5">Distribution of generated forms by type</p>
+                                        </div>
+                                        <Badge variant="outline" className="bg-amber-500/10 text-[#dd8b11] border-amber-300 dark:bg-amber-950/40 dark:border-amber-800 font-bold text-xs px-2 py-0.5">
+                                            {documentStats.recent_count ?? documentStats.total} Total
+                                        </Badge>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="flex-1 flex flex-col justify-between">
+                                    {(() => {
+                                        const rawData = documentStats.by_type || [];
+                                        const chartData = rawData.map(item => ({
+                                            name: item.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                                            value: item.count
+                                        }));
+                                        const total = chartData.reduce((sum, item) => sum + item.value, 0);
+                                        const DOC_COLORS = ['#dd8b11', '#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899'];
+
+                                        if (chartData.length === 0 || total === 0) {
+                                            return (
+                                                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground text-xs">
+                                                    <PieChartIcon className="h-8 w-8 mb-2 opacity-50 text-[#dd8b11]" />
+                                                    <span>No document statistics available yet.</span>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="text-xs text-muted-foreground">{doc.created_at}</p>
-                                                    <Badge variant="outline" className="mt-1 text-[10px] h-5">
-                                                        {doc.status}
-                                                    </Badge>
+                                            );
+                                        }
+
+                                        return (
+                                            <div className="space-y-3">
+                                                <div className="h-[190px] w-full flex items-center justify-center">
+                                                    <ResponsiveContainer width="100%" height="100%">
+                                                        <PieChart>
+                                                            <Pie
+                                                                data={chartData}
+                                                                cx="50%"
+                                                                cy="50%"
+                                                                innerRadius={50}
+                                                                outerRadius={75}
+                                                                paddingAngle={4}
+                                                                dataKey="value"
+                                                            >
+                                                                {chartData.map((_, index) => (
+                                                                    <Cell key={`cell-${index}`} fill={DOC_COLORS[index % DOC_COLORS.length]} />
+                                                                ))}
+                                                            </Pie>
+                                                            <Tooltip
+                                                                formatter={(val: any, name: any) => {
+                                                                    const pct = total > 0 ? Math.round(((val as number) / total) * 100) : 0;
+                                                                    return [`${val} documents (${pct}%)`, name];
+                                                                }}
+                                                                contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
+                                                                itemStyle={{ color: 'hsl(var(--foreground))' }}
+                                                            />
+                                                        </PieChart>
+                                                    </ResponsiveContainer>
+                                                </div>
+
+                                                <div className="space-y-1.5 border-t pt-3">
+                                                    {chartData.slice(0, 5).map((stat, i) => {
+                                                        const pct = total > 0 ? Math.round((stat.value / total) * 100) : 0;
+                                                        const color = DOC_COLORS[i % DOC_COLORS.length];
+                                                        return (
+                                                            <div key={i} className="flex items-center justify-between text-xs">
+                                                                <div className="flex items-center gap-2 truncate pr-2">
+                                                                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                                                                    <span className="font-medium text-foreground truncate">{stat.name}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-2 whitespace-nowrap">
+                                                                    <span className="font-bold text-foreground">{stat.value}</span>
+                                                                    <span className="text-muted-foreground text-[11px] font-semibold">({pct}%)</span>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
-                                        ))
-                                    )}
-                                </div>
-                            </CardContent>
-                        </Card>
+                                        );
+                                    })()}
+                                </CardContent>
+                            </Card>
+
+                            <Card className="col-span-4">
+                                <CardHeader className="flex flex-row items-center justify-between">
+                                    <CardTitle className="text-base font-bold">Recent Generated Documents</CardTitle>
+                                    <Button variant="link" asChild className="text-xs h-auto p-0 text-muted-foreground">
+                                        <Link href="/documents/templates">View All &rarr;</Link>
+                                    </Button>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-3">
+                                        {!documentStats.recent || documentStats.recent.length === 0 ? (
+                                            <p className="text-xs text-center text-muted-foreground py-4">No documents generated yet.</p>
+                                        ) : (
+                                            documentStats.recent.map((doc) => (
+                                                <div key={doc.id} 
+                                                    className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0 cursor-pointer hover:bg-secondary/50 p-1.5 rounded-md transition-colors"
+                                                    onClick={() => window.open(`/documents/view/${doc.id}`, '_blank')}
+                                                >
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-foreground capitalize">{doc.type.replace(/_/g, ' ')}</p>
+                                                        <p className="text-xs text-muted-foreground">Case: {doc.case_number}</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-xs text-muted-foreground">{doc.created_at}</p>
+                                                        <Badge variant="outline" className="mt-1 text-[10px] h-5">
+                                                            {doc.status}
+                                                        </Badge>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
                     </div>
                 )}
 
-                {/* Quick Actions */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Quick Actions</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {canEdit && (
-                            <>
+                {/* Quick Actions (Collapsible & Minimized by default) */}
+                {canEdit && (
+                    <Card className="border shadow-sm">
+                        <CardHeader 
+                            className="py-3 px-4 flex flex-row items-center justify-between cursor-pointer select-none hover:bg-muted/20 transition-colors"
+                            onClick={() => setShowQuickActions(!showQuickActions)}
+                        >
+                            <CardTitle className="text-base font-bold flex items-center gap-2">
+                                <Sparkles className="h-4 w-4 text-[#dd8b11]" />
+                                Quick Actions
+                            </CardTitle>
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-8 text-xs font-semibold flex items-center gap-1.5 border-amber-500/40 text-[#dd8b11] hover:bg-amber-500/10 dark:hover:bg-amber-950/40"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowQuickActions(!showQuickActions);
+                                }}
+                            >
+                                {showQuickActions ? (
+                                    <>
+                                        <ChevronUp className="h-4 w-4" />
+                                        Hide Quick Actions
+                                    </>
+                                ) : (
+                                    <>
+                                        <ChevronDown className="h-4 w-4" />
+                                        Show Quick Actions
+                                    </>
+                                )}
+                            </Button>
+                        </CardHeader>
+                        {showQuickActions && (
+                            <CardContent className="pt-3 border-t grid gap-4 md:grid-cols-2 lg:grid-cols-2">
                                 <Button variant="outline" asChild className="h-auto py-4 justify-start space-x-4 hover:border-[#dd8b11] hover:bg-secondary/50 dark:hover:bg-secondary/80 group">
                                     <Link href="/documents">
                                         <div className="p-2 bg-transparent rounded-lg transition-colors border border-transparent">
@@ -938,21 +1112,10 @@ export default function Dashboard({
                                         </div>
                                     </Link>
                                 </Button>
-                            </>
+                            </CardContent>
                         )}
-                        <Button variant="outline" asChild className="h-auto py-4 justify-start space-x-4 hover:border-[#dd8b11] hover:bg-secondary/50 dark:hover:bg-secondary/80 group">
-                            <Link href="/ltia">
-                                <div className="p-2 bg-transparent rounded-lg transition-colors border border-transparent">
-                                    <Trophy className="h-5 w-5 text-black dark:text-white stroke-[2]" />
-                                </div>
-                                <div className="text-left">
-                                    <div className="font-semibold text-[#dd8b11] dark:text-white">LTIA</div>
-                                    <div className="text-xs text-muted-foreground font-normal">View achievements</div>
-                                </div>
-                            </Link>
-                        </Button>
-                    </CardContent>
-                </Card>
+                    </Card>
+                )}
 
             </div>
         </AppLayout>

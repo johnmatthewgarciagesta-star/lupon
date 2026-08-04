@@ -1,8 +1,9 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { SharedData } from '@/types';
 import {
-    Folder, FolderPlus, FileText, Search, Plus, Eye, Upload, FilePlus, Loader2, X, Filter, Trash2
+    Folder, FolderPlus, FileText, Search, Plus, Eye, Upload, FilePlus, Loader2, X, Filter, Trash2, ChevronDown, ChevronUp, ShieldCheck
 } from 'lucide-react';
+import { DocumentVersionHistoryModal } from '@/components/documents/document-version-history-modal';
 import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,9 @@ export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
     // Search filter for folders
     const [search, setSearch] = useState('');
 
+    // Toggle for Case Folders Grid (Selective / Minimized by default)
+    const [showCaseFolders, setShowCaseFolders] = useState(false);
+
     // Modal states for Create Case Folder
     const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
@@ -71,6 +75,9 @@ export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
     // Folder Deletion State
     const [folderToDelete, setFolderToDelete] = useState<CaseFolder | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+
+    // Document Version Security History Modal
+    const [historyDoc, setHistoryDoc] = useState<{ id: number; title: string } | null>(null);
 
     const handleDeleteFolder = () => {
         if (!folderToDelete) return;
@@ -198,29 +205,66 @@ export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
 
                 {/* ── Case Folders Repository Grid ── */}
                 <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-muted-foreground">
-                            Showing <strong className="text-foreground">{filteredFolders.length}</strong> case folder repositories
-                        </span>
+                    <div className="flex items-center justify-between flex-wrap gap-3 p-3.5 bg-card border rounded-lg shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-amber-500/10 rounded-lg">
+                                <Folder className="h-5 w-5 text-[#dd8b11]" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold flex items-center gap-2">
+                                    Case Folder Repositories
+                                    <Badge variant="outline" className="bg-amber-50 text-[#dd8b11] border-amber-300 font-bold text-[11px] px-2 py-0.5">
+                                        {filteredFolders.length} {filteredFolders.length === 1 ? 'Folder' : 'Folders'}
+                                    </Badge>
+                                </h3>
+                                <p className="text-xs text-muted-foreground">
+                                    {showCaseFolders 
+                                        ? `Showing ${filteredFolders.length} case folder repositories`
+                                        : search
+                                            ? `Search query "${search}" matches ${filteredFolders.length} folder(s). Click "Show Case Folders" to view.`
+                                            : 'Click "Show Case Folders" to display case folder repositories.'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs font-semibold flex items-center gap-2 border-amber-500/40 text-[#dd8b11] hover:bg-amber-500/10 dark:hover:bg-amber-950/40"
+                            onClick={() => setShowCaseFolders(!showCaseFolders)}
+                        >
+                            {showCaseFolders ? (
+                                <>
+                                    <ChevronUp className="h-4 w-4" />
+                                    Hide Case Folders
+                                </>
+                            ) : (
+                                <>
+                                    <ChevronDown className="h-4 w-4" />
+                                    Show Case Folders
+                                </>
+                            )}
+                        </Button>
                     </div>
 
-                    {filteredFolders.length === 0 ? (
-                        <Card className="p-12 text-center border-2 border-dashed bg-muted/20">
-                            <Folder className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
-                            <h3 className="text-base font-bold">No case folders found</h3>
-                            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-                                {search
-                                    ? `No case folder matches "${search}". Try clearing your search.`
-                                    : 'Click "+ Create Case Folder" above to initialize a new dedicated case directory (e.g. case-026).'}
-                            </p>
-                            {search && (
-                                <Button variant="outline" size="sm" onClick={() => setSearch('')} className="mt-4 h-8 text-xs">
-                                    Clear Search Filter
-                                </Button>
-                            )}
-                        </Card>
-                    ) : (
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {showCaseFolders && (
+                        filteredFolders.length === 0 ? (
+                            <Card className="p-12 text-center border-2 border-dashed bg-muted/20">
+                                <Folder className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
+                                <h3 className="text-base font-bold">No case folders found</h3>
+                                <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                                    {search
+                                        ? `No case folder matches "${search}". Try clearing your search.`
+                                        : 'Click "+ Create Case Folder" above to initialize a new dedicated case directory (e.g. case-026).'}
+                                </p>
+                                {search && (
+                                    <Button variant="outline" size="sm" onClick={() => setSearch('')} className="mt-4 h-8 text-xs">
+                                        Clear Search Filter
+                                    </Button>
+                                )}
+                            </Card>
+                        ) : (
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {filteredFolders.map((folder) => (
                                 <Card key={folder.id} className="border shadow-sm hover:shadow-md transition-shadow group">
                                     <CardHeader className="p-4 pb-2 border-b bg-slate-50/50 dark:bg-slate-900/50 flex flex-row items-center justify-between">
@@ -271,14 +315,26 @@ export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
                                                             <FileText className="h-3.5 w-3.5 text-[#dd8b11] flex-shrink-0" />
                                                             <span className="truncate font-medium">📄 {doc.type.replace(/_/g, ' ')}</span>
                                                         </div>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                                            onClick={() => window.open(doc.file_path || `/documents/view/${doc.id}`, '_blank')}
-                                                        >
-                                                            <Eye className="h-3 w-3" />
-                                                        </Button>
+                                                        <div className="flex items-center gap-1 shrink-0">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-6 w-6 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                                                                title="Security Revision History & Recovery"
+                                                                onClick={() => setHistoryDoc({ id: doc.id, title: doc.type.replace(/_/g, ' ') })}
+                                                            >
+                                                                <ShieldCheck className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                                                title="View Document"
+                                                                onClick={() => window.open(doc.file_path || `/documents/view/${doc.id}`, '_blank')}
+                                                            >
+                                                                <Eye className="h-3 w-3" />
+                                                            </Button>
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>
@@ -310,8 +366,18 @@ export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
                                 </Card>
                             ))}
                         </div>
-                    )}
-                </div>
+                    )
+                )}
+            </div>
+
+            {/* Document Security Revision History Modal */}
+            <DocumentVersionHistoryModal
+                isOpen={!!historyDoc}
+                onClose={() => setHistoryDoc(null)}
+                documentId={historyDoc?.id ?? null}
+                documentTitle={historyDoc?.title ?? ''}
+                canEdit={canEdit}
+            />
 
                 {/* ── Create Case Folder Modal ── */}
                 <Dialog open={isCreateFolderModalOpen} onOpenChange={setIsCreateFolderModalOpen}>

@@ -8,6 +8,7 @@ import {
     ClipboardList,
     Users,
     Trophy,
+    Settings,
     ShieldAlert,
     ChevronsLeft,
     ChevronsRight,
@@ -73,6 +74,11 @@ const mainNavItems: NavItem[] = [
         title: 'Users',
         href: '/users',
         icon: Users,
+    },
+    {
+        title: 'LTIA',
+        href: '/ltia',
+        icon: Trophy,
     },
 ];
 

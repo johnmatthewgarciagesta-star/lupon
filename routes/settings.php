@@ -7,7 +7,12 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::middleware(['auth'])->group(function () {
-    Route::redirect('settings', '/settings/profile');
+    Route::get('settings/system', [App\Http\Controllers\SettingsBackupController::class, 'index'])->name('settings.system');
+    Route::get('settings/backup', function () {
+        return Inertia::render('settings/backup');
+    })->name('settings.backup');
+    Route::get('settings/backup/download', [App\Http\Controllers\SettingsBackupController::class, 'downloadBackup'])->name('settings.backup.download');
+    Route::post('settings/backup/restore', [App\Http\Controllers\SettingsBackupController::class, 'restoreBackup'])->name('settings.backup.restore');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
