@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('status')->default('Draft'); // Draft, Issued, Signed
             $table->timestamp('issued_at')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

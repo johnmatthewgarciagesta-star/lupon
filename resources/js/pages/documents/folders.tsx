@@ -131,6 +131,15 @@ export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
     const handleFolderUploadSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!uploadFolderTarget || !folderUploadFile) return;
+
+        const allowedExtensions = ['pdf', 'png', 'jpg', 'jpeg'];
+        const ext = folderUploadFile.name.split('.').pop()?.toLowerCase() || '';
+
+        if (!allowedExtensions.includes(ext)) {
+            alert('Invalid file type. Only PDF, PNG, and JPG files are accepted.');
+            return;
+        }
+
         setIsUploadingToFolder(true);
         const formData = new FormData();
         formData.append('case_id', String(uploadFolderTarget.id));
@@ -143,7 +152,14 @@ export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
                 setFolderUploadFile(null);
                 setIsUploadingToFolder(false);
             },
-            onError: () => setIsUploadingToFolder(false)
+            onError: (errors: any) => {
+                setIsUploadingToFolder(false);
+                if (errors?.file) {
+                    alert('Invalid file type. Only PDF, PNG, and JPG files are accepted.');
+                } else if (errors) {
+                    alert(Object.values(errors).join('\n') || 'Upload failed.');
+                }
+            }
         });
     };
 
@@ -496,11 +512,24 @@ export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
                                     </div>
 
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-semibold">Select File (PDF, DOCX, JPG, PNG)</Label>
+                                        <Label className="text-xs font-semibold">Select File (PDF, PNG, JPG)</Label>
                                         <Input
                                             type="file"
-                                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                            onChange={(e) => setFolderUploadFile(e.target.files?.[0] || null)}
+                                            accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0] || null;
+                                                if (file) {
+                                                    const allowedExtensions = ['pdf', 'png', 'jpg', 'jpeg'];
+                                                    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+                                                    if (!allowedExtensions.includes(ext)) {
+                                                        alert('Invalid file type. Only PDF, PNG, and JPG files are accepted.');
+                                                        e.target.value = '';
+                                                        setFolderUploadFile(null);
+                                                        return;
+                                                    }
+                                                }
+                                                setFolderUploadFile(file);
+                                            }}
                                             className="h-9 text-xs cursor-pointer"
                                             required
                                         />

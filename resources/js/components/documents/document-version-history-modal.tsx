@@ -88,6 +88,13 @@ export function DocumentVersionHistoryModal({
                 </DialogHeader>
 
                 <div className="py-3 space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                    {!canEdit && (
+                        <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 text-[#dd8b11] rounded text-[11px] font-medium flex items-center gap-1.5">
+                            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                            <span>Administrators are in View-Only mode. (Version restoration is enabled for Data Encoders).</span>
+                        </div>
+                    )}
+
                     {isLoading ? (
                         <div className="py-12 text-center text-xs text-muted-foreground">
                             <Clock className="h-6 w-6 animate-spin mx-auto mb-2 text-[#dd8b11]" />
@@ -100,59 +107,67 @@ export function DocumentVersionHistoryModal({
                             <p className="text-[11px] mt-0.5">Every view, edit, or system update automatically generates an encrypted backup copy here.</p>
                         </div>
                     ) : (
-                        versions.map((ver, idx) => {
-                            const isCurrent = idx === 0;
-                            return (
-                                <div
-                                    key={ver.id}
-                                    className={`p-3.5 rounded-lg border text-xs flex items-center justify-between gap-3 transition-colors ${
-                                        isCurrent
-                                            ? 'bg-emerald-500/5 border-emerald-500/30 dark:bg-emerald-950/20'
-                                            : 'bg-card border-border hover:bg-muted/30'
-                                    }`}
-                                >
-                                    <div className="space-y-1 min-w-0 flex-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-bold text-foreground">
-                                                Version #{ver.version_number}
-                                            </span>
-                                            {isCurrent && (
-                                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 font-bold text-[10px] px-2 py-0.2">
-                                                    Active State
-                                                </Badge>
-                                            )}
-                                            <Badge variant="secondary" className="text-[10px] capitalize font-medium">
-                                                {ver.change_type}
-                                            </Badge>
-                                        </div>
-
-                                        <div className="flex items-center gap-3 text-muted-foreground text-[11px]">
-                                            <span className="flex items-center gap-1">
-                                                <User className="h-3 w-3" />
-                                                {ver.edited_by_name}
-                                            </span>
-                                            <span className="flex items-center gap-1">
-                                                <Clock className="h-3 w-3" />
-                                                {ver.created_at}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {canEdit && !isCurrent && (
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            disabled={restoringVersionId === ver.id}
-                                            className="h-8 text-xs font-semibold border-amber-400 text-[#dd8b11] hover:bg-amber-50 dark:hover:bg-amber-950/40 shrink-0"
-                                            onClick={() => handleRestore(ver)}
-                                        >
-                                            <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                                            {restoringVersionId === ver.id ? 'Restoring...' : 'Restore'}
-                                        </Button>
-                                    )}
+                        <>
+                            {versions.length === 1 && (
+                                <div className="p-2.5 bg-muted/40 border rounded text-[11px] text-muted-foreground">
+                                    💡 <strong>Single Version Document:</strong> Version #1 is currently the live <strong>Active State</strong>. Editing or re-generating this document will automatically create Version #2, enabling you to restore back to Version #1 whenever needed.
                                 </div>
-                            );
-                        })
+                            )}
+
+                            {versions.map((ver, idx) => {
+                                const isCurrent = idx === 0;
+                                return (
+                                    <div
+                                        key={ver.id}
+                                        className={`p-3.5 rounded-lg border text-xs flex items-center justify-between gap-3 transition-colors ${
+                                            isCurrent
+                                                ? 'bg-emerald-500/5 border-emerald-500/30 dark:bg-emerald-950/20'
+                                                : 'bg-card border-border hover:bg-muted/30'
+                                        }`}
+                                    >
+                                        <div className="space-y-1 min-w-0 flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-foreground">
+                                                    Version #{ver.version_number}
+                                                </span>
+                                                {isCurrent && (
+                                                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 font-bold text-[10px] px-2 py-0.2">
+                                                        Active State
+                                                    </Badge>
+                                                )}
+                                                <Badge variant="secondary" className="text-[10px] capitalize font-medium">
+                                                    {ver.change_type}
+                                                </Badge>
+                                            </div>
+
+                                            <div className="flex items-center gap-3 text-muted-foreground text-[11px]">
+                                                <span className="flex items-center gap-1">
+                                                    <User className="h-3 w-3" />
+                                                    {ver.edited_by_name}
+                                                </span>
+                                                <span className="flex items-center gap-1">
+                                                    <Clock className="h-3 w-3" />
+                                                    {ver.created_at}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {canEdit && !isCurrent && (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                disabled={restoringVersionId === ver.id}
+                                                className="h-8 text-xs font-semibold border-amber-400 text-[#dd8b11] hover:bg-amber-50 dark:hover:bg-amber-950/40 shrink-0"
+                                                onClick={() => handleRestore(ver)}
+                                            >
+                                                <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                                                {restoringVersionId === ver.id ? 'Restoring...' : 'Restore'}
+                                            </Button>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </>
                     )}
                 </div>
 

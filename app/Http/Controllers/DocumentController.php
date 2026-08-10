@@ -201,8 +201,11 @@ class DocumentController extends Controller
 
         $request->validate([
             'case_id' => 'required|exists:cases,id',
-            'file' => 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
+            'file' => 'required|file|mimes:pdf,png,jpg,jpeg|max:10240',
             'document_type' => 'nullable|string',
+        ], [
+            'file.mimes' => 'Invalid file type. Only PDF, PNG, and JPG files are accepted.',
+            'file.file' => 'Invalid file type. Only PDF, PNG, and JPG files are accepted.',
         ]);
 
         $case = \App\Models\LuponCase::findOrFail($request->case_id);
@@ -418,6 +421,11 @@ class DocumentController extends Controller
         $readonly = request('mode') !== 'edit';
         $missingData = empty($data);
 
+        if (request('mode') === 'edit') {
+            $documentId = $document->id;
+            return view('documents.form-fill', compact('type', 'imageBase64', 'fields', 'data', 'case', 'documentId'));
+        }
+
         return view('documents.visual-editor', compact('type', 'imageBase64', 'fields', 'readonly', 'case', 'missingData'));
     }
 
@@ -472,7 +480,8 @@ class DocumentController extends Controller
         $missingData = empty($data);
 
         if (request('mode') === 'edit') {
-            return view('documents.form-fill', compact('type', 'imageBase64', 'fields', 'data', 'case'));
+            $documentId = $latestDoc->id ?? null;
+            return view('documents.form-fill', compact('type', 'imageBase64', 'fields', 'data', 'case', 'documentId'));
         }
 
         return view('documents.templates.print', compact('type', 'imageBase64', 'fields', 'data', 'case'));
@@ -588,17 +597,30 @@ class DocumentController extends Controller
                     }
                 }
 
-                $createdDoc = \App\Models\Document::create([
-                    'case_id' => $caseId,
-                    'folder_name' => $folderName,
-                    'type' => $type,
-                    'content' => $contentToSave,
-                    'status' => 'Issued',
-                    'issued_at' => now(),
-                    'created_by' => auth()->id(),
-                ]);
+                $documentId = $request->input('document_id') ?: $request->input('id');
+                $existingDoc = $documentId ? \App\Models\Document::find($documentId) : null;
 
-                \App\Services\DocumentBackupService::recordVersion($createdDoc, 'created', 'Form Created & Saved');
+                if ($existingDoc) {
+                    $existingDoc->update([
+                        'case_id' => $caseId ?: $existingDoc->case_id,
+                        'folder_name' => $folderName ?: $existingDoc->folder_name,
+                        'type' => $type,
+                        'content' => $contentToSave,
+                    ]);
+                    $createdDoc = $existingDoc;
+                    \App\Services\DocumentBackupService::recordVersion($createdDoc, 'edited', 'Document Form Updated & Saved');
+                } else {
+                    $createdDoc = \App\Models\Document::create([
+                        'case_id' => $caseId,
+                        'folder_name' => $folderName,
+                        'type' => $type,
+                        'content' => $contentToSave,
+                        'status' => 'Issued',
+                        'issued_at' => now(),
+                        'created_by' => auth()->id(),
+                    ]);
+                    \App\Services\DocumentBackupService::recordVersion($createdDoc, 'created', 'Form Created & Saved');
+                }
 
                 AuditService::log('CREATE', 'Documents', "Saved {$type} for Case #{$caseId}", $caseId);
 
@@ -756,16 +778,28 @@ class DocumentController extends Controller
                 }
             }
 
-            $createdDocPdf = \App\Models\Document::create([
-                'case_id' => $caseId,
-                'type' => $type,
-                'content' => $contentToSave,
-                'status' => 'Issued',
-                'issued_at' => now(),
-                'created_by' => auth()->id(),
-            ]);
+            $documentId = $request->input('document_id') ?: $request->input('id');
+            $existingDocPdf = $documentId ? \App\Models\Document::find($documentId) : null;
 
-            \App\Services\DocumentBackupService::recordVersion($createdDocPdf, 'created', 'Form Generated & Output Issued');
+            if ($existingDocPdf) {
+                $existingDocPdf->update([
+                    'case_id' => $caseId ?: $existingDocPdf->case_id,
+                    'type' => $type,
+                    'content' => $contentToSave,
+                ]);
+                $createdDocPdf = $existingDocPdf;
+                \App\Services\DocumentBackupService::recordVersion($createdDocPdf, 'edited', 'Form Content Updated & Issued');
+            } else {
+                $createdDocPdf = \App\Models\Document::create([
+                    'case_id' => $caseId,
+                    'type' => $type,
+                    'content' => $contentToSave,
+                    'status' => 'Issued',
+                    'issued_at' => now(),
+                    'created_by' => auth()->id(),
+                ]);
+                \App\Services\DocumentBackupService::recordVersion($createdDocPdf, 'created', 'Form Generated & Output Issued');
+            }
 
             $auditDetail = "Generated {$type} for Case #{$caseId}";
             AuditService::log('CREATE', 'Documents', $auditDetail, $caseId);
@@ -1590,19 +1624,32 @@ class DocumentController extends Controller
             }
             \Log::error('AI Scan Ingestion Error: ' . $e->getMessage());
 
+            $rawMsg = $e->getMessage();
+            if (str_contains($rawMsg, 'Could not resolve host') || 
+                str_contains($rawMsg, 'cURL error 6') || 
+                str_contains($rawMsg, 'cURL error 7') || 
+                str_contains($rawMsg, 'cURL error 28') || 
+                str_contains($rawMsg, 'Connection refused') || 
+                str_contains($rawMsg, 'Network is unreachable') || 
+                str_contains($rawMsg, 'Failed to connect')) {
+                $userFacingError = 'Internet connection required for Gemini AI metadata extraction. Please check your network or enter data manually.';
+            } else {
+                $userFacingError = 'Error parsing document: ' . $rawMsg;
+            }
+
             // Log failed upload & parse in Audit Trail
             $fileSize = isset($file) ? round($file->getSize() / 1024, 2) : 0;
             $mimeType = isset($file) ? $file->getMimeType() : 'unknown';
             \App\Services\AuditService::log(
                 'UPLOAD_FAILED',
                 'Documents',
-                "Failed scanned document upload: {$fileName} (Size: {$fileSize} KB, Type: {$mimeType}). Reason: " . $e->getMessage(),
+                "Failed scanned document upload: {$fileName} (Size: {$fileSize} KB, Type: {$mimeType}). Reason: " . $userFacingError,
                 null
             );
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error parsing document: ' . $e->getMessage()
+                'message' => $userFacingError
             ], 500);
         }
     }

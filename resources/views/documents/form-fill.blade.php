@@ -1122,6 +1122,7 @@
         <input type="hidden" name="action" value="preview">
         <input type="hidden" name="layout_overrides" id="layout-overrides" value="">
         <input type="hidden" name="folder_name" id="hidden_target_folder" value="{{ isset($case) ? ($case->folder_name ?? ('case-'.sprintf('%03d', $case->id))) : '' }}">
+        <input type="hidden" name="document_id" value="{{ $documentId ?? $document->id ?? $id ?? '' }}">
         @if($case)
             <input type="hidden" name="case_id" value="{{ $case->id }}">
         @endif

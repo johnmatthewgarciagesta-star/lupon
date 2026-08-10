@@ -9,19 +9,43 @@ use Illuminate\Support\Facades\Log;
 
 class CaseController extends Controller
 {
+    public static function checkMonthlyRolloverAutoArchive()
+    {
+        try {
+            $startOfCurrentMonth = \Carbon\Carbon::now()->startOfMonth();
+            
+            // Auto-archive cases from prior months that have not been modified or restored during the current month
+            $olderCases = LuponCase::where('date_filed', '<', $startOfCurrentMonth)
+                ->where('updated_at', '<', $startOfCurrentMonth)
+                ->whereNull('deleted_at')
+                ->get();
+
+            foreach ($olderCases as $case) {
+                $case->delete();
+                AuditService::log(
+                    'AUTO_ARCHIVE',
+                    'Cases',
+                    "Auto-archived Case #{$case->case_number} upon new month rollover",
+                    $case->case_number
+                );
+            }
+        } catch (\Exception $e) {
+            Log::error('Monthly Auto-Archive failed: ' . $e->getMessage());
+        }
+    }
+
     public function index(Request $request)
     {
-        // Auto-archive disabled to keep all cases visible on the main cases page
-        // LuponCase::where('date_filed', '<=', now()->subDays(31))->whereNull('deleted_at')->delete();
+        // Auto-archive cases from prior months when a new month arrives
+        static::checkMonthlyRolloverAutoArchive();
 
         $query = LuponCase::with(['documents.creator', 'creator']);
 
-        // Search
+        // Search across case_number, folder_name, title, complainant, respondent, nature_of_case, status, date_filed
         if ($request->filled('search')) {
             $search = $request->input('search');
             $cleanSearch = trim($search, '/ ');
             
-            // Extract numeric ID if pattern matches "case-026" or "case-26" or "26"
             $numericId = null;
             if (preg_match('/^case-(\d+)$/i', $cleanSearch, $matches)) {
                 $numericId = (int) $matches[1];
@@ -29,7 +53,6 @@ class CaseController extends Controller
                 $numericId = (int) $cleanSearch;
             }
             
-            // Try parsing string as date for formats like MM/DD/YYYY to match SQL "Y-m-d"
             $dateParsed = null;
             if (strtotime($cleanSearch) !== false) {
                 try {
@@ -43,6 +66,8 @@ class CaseController extends Controller
                     ->orWhere('title', 'like', "%{$cleanSearch}%")
                     ->orWhere('complainant', 'like', "%{$cleanSearch}%")
                     ->orWhere('respondent', 'like', "%{$cleanSearch}%")
+                    ->orWhere('nature_of_case', 'like', "%{$cleanSearch}%")
+                    ->orWhere('status', 'like', "%{$cleanSearch}%")
                     ->orWhere('date_filed', 'like', "%{$cleanSearch}%");
 
                 if ($numericId !== null) {
@@ -58,10 +83,15 @@ class CaseController extends Controller
 
         // Filter by Status
         if ($request->filled('status') && $request->status !== 'all') {
-            if ($request->status === 'Escalated') {
+            $st = $request->status;
+            if (strcasecmp($st, 'Resolved') === 0 || strcasecmp($st, 'Settled') === 0) {
+                $query->whereIn('status', ['Resolved', 'Settled']);
+            } elseif (strcasecmp($st, 'Escalated') === 0) {
                 $query->whereIn('status', ['Escalated', 'Certified', 'Dismissed']);
+            } elseif (strcasecmp($st, 'Pending') === 0) {
+                $query->whereIn('status', ['Pending', 'Ongoing']);
             } else {
-                $query->where('status', $request->status);
+                $query->where('status', 'like', "%{$st}%");
             }
         }
 
@@ -70,30 +100,40 @@ class CaseController extends Controller
             $query->whereDate('date_filed', $request->date);
         }
 
-        // Filter by Nature
+        // Filter by Nature / Case Type
         if ($request->filled('nature') && $request->nature !== 'all') {
             $query->where('nature_of_case', 'like', "%{$request->nature}%");
         }
 
-        // Filter by Month or New Cases trigger
-        if ($request->filled('month') || $request->input('filter') === 'new_cases') {
-            $monthVal = $request->input('month', 'latest');
+        // Filter by Month (ONLY if explicitly set to a specific month or 'latest', and NOT 'all')
+        if ($request->filled('month') && $request->month !== 'all') {
+            $monthVal = $request->input('month');
             $targetYear = \Carbon\Carbon::now()->year;
 
-            if ($monthVal === 'latest' || $request->input('filter') === 'new_cases') {
+            if ($monthVal === 'latest') {
                 $targetMonth = \Carbon\Carbon::now()->month;
+                $query->where(function($q) use ($targetMonth, $targetYear) {
+                    $q->whereMonth('date_filed', $targetMonth)
+                      ->orWhereMonth('created_at', $targetMonth);
+                });
             } elseif (is_numeric($monthVal)) {
                 $targetMonth = (int) $monthVal;
-            } else {
-                $targetMonth = \Carbon\Carbon::now()->month;
+                $query->where(function($q) use ($targetMonth, $targetYear) {
+                    $q->whereMonth('date_filed', $targetMonth)
+                      ->orWhereMonth('created_at', $targetMonth);
+                });
             }
-
-            $query->whereMonth('date_filed', $targetMonth)
-                  ->whereYear('date_filed', $targetYear);
+        } elseif ($request->input('filter') === 'new_cases') {
+            $targetMonth = \Carbon\Carbon::now()->month;
+            $targetYear = \Carbon\Carbon::now()->year;
+            $query->where(function($q) use ($targetMonth, $targetYear) {
+                $q->whereMonth('date_filed', $targetMonth)
+                  ->orWhereMonth('created_at', $targetMonth);
+            });
         }
 
         // Sort
-        $defaultSort = ($request->filled('month') || $request->input('filter') === 'new_cases') ? 'date_filed' : 'created_at';
+        $defaultSort = ($request->filled('month') && $request->month !== 'all') ? 'date_filed' : 'created_at';
         $sortField = $request->input('sort_by', $defaultSort);
         $sortOrder = $request->input('sort_order', 'desc');
         
@@ -311,6 +351,7 @@ class CaseController extends Controller
         try {
             $case = LuponCase::onlyTrashed()->findOrFail($id);
             $case->restore();
+            $case->touch(); // Refresh updated_at timestamp so monthly rollover auto-archive respects manual restoration
 
             AuditService::log('UPDATE', 'Cases', "Restored Case #{$case->case_number}", $case->case_number);
 

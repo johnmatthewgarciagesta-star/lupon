@@ -295,8 +295,10 @@ export default function CaseManagement({ cases, filters }: Props) {
                                     <SelectContent>
                                         <SelectItem value="all">All Status</SelectItem>
                                         <SelectItem value="Pending">Pending</SelectItem>
-                                        <SelectItem value="Resolved">Resolved / Settled</SelectItem>
                                         <SelectItem value="Mediation">Mediation</SelectItem>
+                                        <SelectItem value="Conciliation">Conciliation</SelectItem>
+                                        <SelectItem value="Arbitration">Arbitration</SelectItem>
+                                        <SelectItem value="Resolved">Resolved / Settled</SelectItem>
                                         <SelectItem value="Escalated">Escalated (Referred to Court)</SelectItem>
                                         <SelectItem value="Dismissed">Dismissed</SelectItem>
                                         <SelectItem value="Certified">Certified</SelectItem>

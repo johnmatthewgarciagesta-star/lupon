@@ -202,7 +202,11 @@ export default function DocumentsTemplates({ documents, stats, customTemplates, 
             const result = await res.json();
 
             if (!res.ok || !result.success) {
-                throw new Error(result.message || 'Failed to analyze document.');
+                const rawMsg = result.message || 'Failed to analyze document.';
+                if (rawMsg.includes('Could not resolve host') || rawMsg.includes('cURL error') || rawMsg.includes('Internet connection required') || rawMsg.includes('Failed to fetch')) {
+                    throw new Error('Internet connection required for Gemini AI metadata extraction. Please check your network or enter data manually.');
+                }
+                throw new Error(rawMsg);
             }
 
             setTempFilePath(result.temp_file);
@@ -216,7 +220,12 @@ export default function DocumentsTemplates({ documents, stats, customTemplates, 
 
         } catch (err: any) {
             console.error(err);
-            setScanError(err.message || 'An unexpected error occurred during processing.');
+            const msg = err.message || '';
+            if (msg.includes('Could not resolve host') || msg.includes('cURL error') || msg.includes('Internet connection required') || msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+                setScanError('Internet connection required for Gemini AI metadata extraction. Please check your network or enter data manually.');
+            } else {
+                setScanError(msg || 'An unexpected error occurred during processing.');
+            }
         } finally {
             setIsScanning(false);
         }
@@ -601,6 +610,18 @@ export default function DocumentsTemplates({ documents, stats, customTemplates, 
                                                                 <ShieldCheck className="mr-1 h-3.5 w-3.5" />
                                                                 History
                                                             </Button>
+                                                            {canEdit && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-7 px-2 text-xs text-[#dd8b11] hover:bg-amber-50 dark:hover:bg-amber-950/40"
+                                                                    title="Edit Document Fields"
+                                                                    onClick={() => window.open(`/documents/view/${doc.id}?mode=edit`, '_blank')}
+                                                                >
+                                                                    <Edit className="mr-1 h-3.5 w-3.5" />
+                                                                    Edit
+                                                                </Button>
+                                                            )}
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
