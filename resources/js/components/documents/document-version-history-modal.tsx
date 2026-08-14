@@ -69,8 +69,12 @@ export function DocumentVersionHistoryModal({
             onSuccess: () => {
                 setRestoringVersionId(null);
                 onClose();
+                router.reload();
             },
-            onError: () => setRestoringVersionId(null),
+            onError: (errors: any) => {
+                setRestoringVersionId(null);
+                alert(errors?.error || 'Failed to restore document version.');
+            },
         });
     };
 

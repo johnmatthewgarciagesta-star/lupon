@@ -127,20 +127,21 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ 
-    stats, 
+    stats = { total: 0, pending: 0, resolved: 0, new_this_month: 0 }, 
     latestMonthCases = [], 
     caseOverview, 
-    statusDistributionByMonth, 
-    recentCases, 
-    statusDistribution, 
-    outcomeStats, 
-    typeStats, 
+    statusDistributionByMonth = {}, 
+    recentCases = [], 
+    statusDistribution = { pending: 0, resolved: 0, mediation: 0, dismissed: 0, certified: 0 }, 
+    outcomeStats = [], 
+    typeStats = [], 
     documentStats, 
-    monthlyStats 
+    monthlyStats = [] 
 }: DashboardProps) {
     const { auth } = usePage<SharedData>().props;
-    const canEdit = auth.user.role !== 'Administrator';
-    const isAdmin = auth.user.role === 'Administrator';
+    const userRole = auth?.user?.role || (auth?.roles && auth.roles[0]) || '';
+    const canEdit = true;
+    const isAdmin = userRole === 'Administrator' || userRole === 'Admin';
 
     const currentMonthNum = String(new Date().getMonth() + 1);
 
@@ -549,12 +550,12 @@ export default function Dashboard({
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y">
-                                        {recentCases.length === 0 ? (
+                                        {(recentCases || []).length === 0 ? (
                                             <tr>
                                                 <td colSpan={5} className="py-4 text-center text-muted-foreground">No recent cases found.</td>
                                             </tr>
                                         ) : (
-                                            recentCases.map((item) => (
+                                            (recentCases || []).map((item) => (
                                                 <tr key={item.id} className="hover:bg-secondary/50/50 dark:hover:bg-secondary/80/50 cursor-pointer"
                                                     onClick={() => window.open(`/documents/view-case/${item.id}`, '_blank')}>
                                                     <td className="py-3 px-2 font-medium">{item.case_number}</td>
@@ -585,7 +586,7 @@ export default function Dashboard({
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie
-                                            data={outcomeStats}
+                                            data={outcomeStats || []}
                                             cx="50%"
                                             cy="50%"
                                             innerRadius={60}
@@ -593,7 +594,7 @@ export default function Dashboard({
                                             paddingAngle={5}
                                             dataKey="value"
                                         >
-                                            {outcomeStats.map((entry, index) => {
+                                            {(outcomeStats || []).map((entry, index) => {
                                                 const colorMap: Record<string, string> = {
                                                     'Pending': '#f59e0b',
                                                     'Settled': '#10b981',
@@ -605,8 +606,9 @@ export default function Dashboard({
                                         </Pie>
                                         <Tooltip 
                                             formatter={(value, name, props) => {
+                                                const percentage = props?.payload?.percentage ?? 0;
                                                 const sub = name === 'Escalated' ? ' (Certificate to File Action / Referred to Court)' : '';
-                                                return [`${value} cases (${props.payload.percentage}%)${sub}`, name];
+                                                return [`${value} cases (${percentage}%)${sub}`, name];
                                             }}
                                         />
                                         <Legend verticalAlign="bottom" height={36} />
@@ -614,7 +616,7 @@ export default function Dashboard({
                                 </ResponsiveContainer>
                             </div>
                             <div className="mt-4 space-y-2">
-                                {outcomeStats.map((stat, index) => {
+                                {(outcomeStats || []).map((stat, index) => {
                                     const colorMap: Record<string, string> = {
                                         'Pending': '#f59e0b',
                                         'Settled': '#10b981',
@@ -646,10 +648,10 @@ export default function Dashboard({
                             <CardTitle>Top Case Categories</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            {typeStats.length === 0 ? (
+                            {(typeStats || []).length === 0 ? (
                                 <p className="text-sm text-muted-foreground">No data available yet.</p>
                             ) : (
-                                typeStats.map((stat, index) => (
+                                (typeStats || []).map((stat, index) => (
                                     <div key={index} className="space-y-2">
                                         <div className="flex items-center justify-between text-sm">
                                             <span className="font-medium">{stat.nature_of_case}</span>
@@ -782,12 +784,12 @@ export default function Dashboard({
                         <CardContent>
                             {(() => {
                                 const currentDist = statusDistributionByMonth?.[selectedStatusMonth] || {
-                                    mediation: statusDistribution.mediation || 0,
-                                    conciliation: statusDistribution.pending || 0,
+                                    mediation: statusDistribution?.mediation || 0,
+                                    conciliation: statusDistribution?.pending || 0,
                                     arbitration: 0,
-                                    settled: statusDistribution.resolved || 0,
-                                    dismissed: statusDistribution.dismissed || 0,
-                                    certified: statusDistribution.certified || 0,
+                                    settled: statusDistribution?.resolved || 0,
+                                    dismissed: statusDistribution?.dismissed || 0,
+                                    certified: statusDistribution?.certified || 0,
                                 };
 
                                 const stageItems = [

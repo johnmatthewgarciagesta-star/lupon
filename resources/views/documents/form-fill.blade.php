@@ -1584,8 +1584,7 @@
             document.querySelector('.loader-text').innerText = 'Generating PDF...'; // reset loader text
             if(data.success) {
                 alert('Success! ' + data.message);
-                // Optionally return user to action
-                document.querySelector('input[name="action"]').value = 'preview'; // restore default
+                window.location.href = '/cases';
             } else {
                 alert('Error: ' + data.message);
                 document.querySelector('input[name="action"]').value = 'preview'; // restore default

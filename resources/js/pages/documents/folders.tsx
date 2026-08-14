@@ -46,12 +46,12 @@ interface FoldersProps {
 export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
     const { auth } = usePage<SharedData>().props;
     const isAdmin = auth?.user?.role === 'Administrator' || auth?.user?.role === 'Admin' || auth?.roles?.includes('Administrator') || auth?.roles?.includes('Admin');
-    const canEdit = !isAdmin;
+    const canEdit = true;
 
     // Search filter for folders
     const [search, setSearch] = useState('');
 
-    // Toggle for Case Folders Grid (Selective / Minimized by default)
+    // Toggle for Case Folders Grid (Collapsed by default)
     const [showCaseFolders, setShowCaseFolders] = useState(false);
 
     // Modal states for Create Case Folder
@@ -94,13 +94,13 @@ export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
     // Filter case folders by search (matches case-026, complainant, respondent, case_number)
     const filteredFolders = useMemo(() => {
         const q = search.trim().toLowerCase();
-        if (!q) return caseFolders;
-        return caseFolders.filter((f) =>
-            f.folder_name.toLowerCase().includes(q) ||
-            f.case_number.toLowerCase().includes(q) ||
-            f.complainant.toLowerCase().includes(q) ||
-            f.respondent.toLowerCase().includes(q) ||
-            f.nature_of_case.toLowerCase().includes(q)
+        if (!q) return caseFolders ?? [];
+        return (caseFolders ?? []).filter((f) =>
+            (f.folder_name ?? '').toLowerCase().includes(q) ||
+            (f.case_number ?? '').toLowerCase().includes(q) ||
+            (f.complainant ?? '').toLowerCase().includes(q) ||
+            (f.respondent ?? '').toLowerCase().includes(q) ||
+            (f.nature_of_case ?? '').toLowerCase().includes(q)
         );
     }, [search, caseFolders]);
 
@@ -346,7 +346,7 @@ export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
                                                                 size="icon"
                                                                 className="h-6 w-6 text-muted-foreground hover:text-foreground"
                                                                 title="View Document"
-                                                                onClick={() => window.open(doc.file_path || `/documents/view/${doc.id}`, '_blank')}
+                                                                onClick={() => window.open(`/documents/view/${doc.id}`, '_blank')}
                                                             >
                                                                 <Eye className="h-3 w-3" />
                                                             </Button>

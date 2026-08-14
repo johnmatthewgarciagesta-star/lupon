@@ -14,11 +14,17 @@ Route::get('/', function () {
 // 1. Broken Access Control (OWASP #1) - Pinipigilan nito ang mga user na makapasok sa mga pahina na hindi para sa kanila.
 // Ang middleware na 'auth' at 'verified' ay sinisiguro na tanging ang nakapag-login lamang ang makakapasok.
 Route::middleware(['auth', 'verified'])->group(function () {
+    // Notification Routes
+    Route::get('/notifications', [App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/{id}/read', [App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('/notifications/read-all', [App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
+    Route::delete('/notifications/clear', [App\Http\Controllers\NotificationController::class, 'clear'])->name('notifications.clear');
+
     // Shared Routes
     // 2. Role-Based Access Control (Isa pang proteksyon para sa OWASP #1)
     // Ang middleware na 'role' ay sinisiguro na ang 'Administrator' o 'Data Encoder' lang ang makakabukas ng mga route na ito.
     // Kapag sinubukan itong buksan ng ordinaryong user o hacker, sila ay ma-blo-block (403 Forbidden).
-    Route::middleware('role:Administrator|Data Encoder')->group(function () {
+    Route::middleware('role:Administrator|Admin|Data Encoder|Encoder|Lupon Secretary|Secretary')->group(function () {
         Route::put('/cases/{id}', [App\Http\Controllers\CaseController::class, 'update'])->name('cases.update');
         Route::get('dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
@@ -38,6 +44,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('system-reports', [App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
         Route::get('reports/generate', [App\Http\Controllers\ReportController::class, 'generate'])->name('reports.generate');
+        Route::get('/api/reports/check-count', [App\Http\Controllers\ReportController::class, 'checkCount'])->name('api.reports.check-count');
 
         Route::get('ltia', [App\Http\Controllers\LTIAController::class, 'index'])->name('ltia.index');
         Route::post('ltia/deadline', [App\Http\Controllers\LTIAController::class, 'updateDeadline'])->name('ltia.update-deadline');
@@ -53,7 +60,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Encoder and Admin Routes (Editing cases, documents, etc.)
-    Route::middleware('role:Administrator|Data Encoder')->group(function () {
+    Route::middleware('role:Administrator|Admin|Data Encoder|Encoder|Lupon Secretary|Secretary')->group(function () {
         Route::post('cases', [App\Http\Controllers\CaseController::class, 'store'])->name('cases.store');
         Route::delete('/cases/{id}', [App\Http\Controllers\CaseController::class, 'destroy'])->name('cases.destroy');
         Route::post('/cases/{id}/archive', [App\Http\Controllers\CaseController::class, 'destroy'])->name('cases.archive-single');
@@ -85,15 +92,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Dynamic Permission-based & Admin Routes (Users, Audit, Roles & Permissions)
-    Route::middleware('role_or_permission:Administrator|view users|manage users|view_users|manage_users')->group(function () {
+    Route::middleware('role_or_permission:Administrator|Admin|view users|manage users|view_users|manage_users')->group(function () {
         Route::resource('users', App\Http\Controllers\UserController::class)->except(['create', 'show', 'edit']);
     });
 
-    Route::middleware('role_or_permission:Administrator|view audit trail|view_audit_trail')->group(function () {
+    Route::middleware('role_or_permission:Administrator|Admin|view audit trail|view_audit_trail')->group(function () {
         Route::get('audit', [App\Http\Controllers\AuditController::class, 'index'])->name('audit.index');
     });
 
-    Route::middleware('role_or_permission:Administrator|manage roles|manage_roles')->group(function () {
+    Route::middleware('role_or_permission:Administrator|Admin|manage roles|manage_roles')->group(function () {
         Route::get('roles-permissions', [App\Http\Controllers\RolePermissionController::class, 'index'])->name('roles-permissions.index');
         Route::post('roles-permissions/{role}', [App\Http\Controllers\RolePermissionController::class, 'update'])->name('roles-permissions.update');
     });

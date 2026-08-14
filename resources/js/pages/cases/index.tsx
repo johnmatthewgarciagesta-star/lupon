@@ -107,13 +107,15 @@ interface Props {
         filter?: string;
         sort_by?: string;
         sort_order?: string;
+        doc_type?: string;
+        doc_title?: string;
     };
 }
 
 export default function CaseManagement({ cases, filters }: Props) {
     const { auth } = usePage<{ auth: { user: { role: string } } }>().props;
     const isAdmin = auth?.user?.role === 'Administrator' || auth?.user?.role === 'Admin';
-    const canEdit = !isAdmin;
+    const canEdit = true;
 
     const breadcrumbs = [
         {
@@ -140,13 +142,12 @@ export default function CaseManagement({ cases, filters }: Props) {
     // Debounced search
     const updateSearch = useCallback(
         debounce((value: string) => {
-            router.get(
-                '/cases',
-                { search: value, status, nature, date, month, sort_by: sortField, sort_order: sortOrder },
-                { preserveState: true, replace: true }
-            );
+            const params: any = { search: value, status, nature, date, month, sort_by: sortField, sort_order: sortOrder };
+            if (filters.doc_type) params.doc_type = filters.doc_type;
+            if (filters.doc_title) params.doc_title = filters.doc_title;
+            router.get('/cases', params, { preserveState: true, replace: true });
         }, 300),
-        [status, nature, date, month, sortField, sortOrder]
+        [status, nature, date, month, sortField, sortOrder, filters.doc_type, filters.doc_title]
     );
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -350,11 +351,30 @@ export default function CaseManagement({ cases, filters }: Props) {
                                 Clear Filters
                             </Button>
                             <div className="ml-auto text-sm text-muted-foreground">
-                                Showing <span className="font-medium">{cases.from || 0}-{cases.to || 0}</span> of {cases.total} cases
+                                Showing <span className="font-medium">{cases?.from || 0}-{cases?.to || 0}</span> of {cases?.total || 0} cases
                             </div>
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Document Filter Banner */}
+                {filters.doc_type && (
+                    <div className="flex items-center justify-between p-3 px-4 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs font-semibold text-amber-700 dark:text-amber-300">
+                        <div className="flex items-center gap-2">
+                            <Folder className="h-4 w-4 text-[#dd8b11]" />
+                            <span>Showing cases filtered by document file: <strong>{filters.doc_title || filters.doc_type}</strong></span>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={clearFilters}
+                            className="h-6 text-[11px] px-2 font-bold text-amber-800 dark:text-amber-200 hover:bg-amber-200/50"
+                        >
+                            <X className="mr-1 h-3 w-3" />
+                            Clear Filter / Show All Cases
+                        </Button>
+                    </div>
+                )}
 
                 {/* Table */}
                 <div className="rounded-md border bg-card shadow-sm">
@@ -395,25 +415,47 @@ export default function CaseManagement({ cases, filters }: Props) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
-                                {cases.data.length === 0 ? (
+                                {!cases?.data || cases.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={9} className="p-8 text-center text-muted-foreground">
-                                            No cases found.
+                                        <td colSpan={9} className="p-12 text-center text-muted-foreground">
+                                            <div className="flex flex-col items-center justify-center max-w-sm mx-auto space-y-2">
+                                                <Folder className="h-10 w-10 text-muted-foreground/40 mb-1" />
+                                                <p className="font-semibold text-sm text-foreground">
+                                                    {filters.doc_type 
+                                                        ? `No cases currently have a "${filters.doc_title || filters.doc_type}" document file attached.`
+                                                        : 'No cases found.'}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {filters.doc_type 
+                                                        ? 'Cases will appear here automatically once this document file is created or attached.'
+                                                        : 'Try adjusting your search query or filters above.'}
+                                                </p>
+                                                {filters.doc_type && (
+                                                    <Button variant="outline" size="sm" onClick={clearFilters} className="mt-2 text-xs font-semibold">
+                                                        Show All Cases
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ) : (
                                     cases.data.map((item, index) => {
                                         const folderName = item.folder_name || `case-${String(item.id).padStart(3, '0')}`;
                                         const docCount = item.documents_count || (item.documents ? item.documents.length : 0);
+                                        const formattedDate = item.date_filed && !isNaN(new Date(item.date_filed).getTime())
+                                            ? new Date(item.date_filed).toLocaleDateString()
+                                            : (item.date_filed || 'N/A');
+                                        const encoderName = item.creator?.name || (item.created_by ? `Encoder #${item.created_by}` : 'System Admin');
+
                                         return (
                                             <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50 border-b">
-                                                <td className="py-3 px-4 text-center text-muted-foreground font-medium">
-                                                    {cases.from + index}
+                                                <td className="py-3 px-4 text-center text-muted-foreground font-medium align-middle">
+                                                    {(cases.from || 1) + index}
                                                 </td>
-                                                <td className="py-3 px-4 font-medium text-[#1c2434] dark:text-white whitespace-nowrap">
+                                                <td className="py-3 px-4 font-medium text-[#1c2434] dark:text-white whitespace-nowrap align-middle">
                                                     {item.case_number}
                                                 </td>
-                                                <td className="py-3 px-4 whitespace-nowrap">
+                                                <td className="py-3 px-4 whitespace-nowrap align-middle">
                                                     <Button 
                                                         variant="outline" 
                                                         size="sm" 
@@ -421,36 +463,36 @@ export default function CaseManagement({ cases, filters }: Props) {
                                                         onClick={() => setSelectedCaseForDrawer(item)}
                                                     >
                                                         <Folder className="h-3.5 w-3.5" />
-                                                        📁 {folderName}
+                                                        {folderName}
                                                     </Button>
                                                 </td>
-                                                <td className="py-3 px-4 text-muted-foreground max-w-[220px]">
-                                                    <div className="font-semibold text-foreground truncate">{item.complainant}</div>
-                                                    <div className="text-xs text-muted-foreground/70">vs. {item.respondent}</div>
+                                                <td className="py-3 px-4 text-muted-foreground max-w-[220px] align-middle">
+                                                    <div className="font-semibold text-foreground truncate">{item.complainant || 'N/A'}</div>
+                                                    <div className="text-xs text-muted-foreground/70 truncate">vs. {item.respondent || 'N/A'}</div>
                                                 </td>
-                                                <td className="py-3 px-4 text-muted-foreground truncate max-w-[180px]" title={item.nature_of_case}>
-                                                    {item.nature_of_case}
+                                                <td className="py-3 px-4 text-muted-foreground truncate max-w-[180px] align-middle" title={item.nature_of_case}>
+                                                    {item.nature_of_case || 'Unspecified'}
                                                 </td>
-                                                <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">
-                                                    {new Date(item.date_filed).toLocaleDateString()}
+                                                <td className="py-3 px-4 text-muted-foreground whitespace-nowrap align-middle">
+                                                    {formattedDate}
                                                 </td>
-                                                <td className="py-3 px-4 text-center">
+                                                <td className="py-3 px-4 text-center align-middle">
                                                     <Button 
                                                         variant="ghost" 
                                                         size="sm" 
-                                                        className="h-7 text-xs font-semibold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 gap-1"
+                                                        className="h-7 text-xs font-semibold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 gap-1 mx-auto"
                                                         onClick={() => setSelectedCaseForDrawer(item)}
                                                     >
                                                         <FileText className="h-3.5 w-3.5 text-[#dd8b11]" />
                                                         {docCount} File{docCount !== 1 ? 's' : ''}
                                                     </Button>
                                                 </td>
-                                                <td className="py-3 px-4 whitespace-nowrap">
+                                                <td className="py-3 px-4 whitespace-nowrap align-middle">
                                                     <Badge variant="outline" className={`font-normal rounded-full ${getBadgeStyles(item.status)}`}>
-                                                        {item.status}
+                                                        {item.status || 'Pending'}
                                                     </Badge>
                                                 </td>
-                                                <td>
+                                                <td className="py-3 px-4 whitespace-nowrap text-right align-middle">
                                                     <div className="flex items-center justify-end gap-2">
                                                         <Button 
                                                             variant="ghost" 
@@ -479,13 +521,14 @@ export default function CaseManagement({ cases, filters }: Props) {
                                                                 <Archive className="h-4 w-4" />
                                                             </Button>
                                                         )}
-                                                        {item.creator && (
-                                                            <div className="flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800" title={`Encoded by: ${item.creator.name}`}>
-                                                                <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">
-                                                                    {item.creator.name.charAt(0).toUpperCase()}
-                                                                </span>
-                                                            </div>
-                                                        )}
+                                                        <div 
+                                                            className="flex items-center justify-center w-7 h-7 rounded-full bg-amber-500/10 text-[#dd8b11] border border-amber-300 dark:border-amber-700 shadow-xs" 
+                                                            title={`Encoded by: ${encoderName}`}
+                                                        >
+                                                            <span className="text-[10px] font-bold">
+                                                                {encoderName.charAt(0).toUpperCase()}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -601,7 +644,7 @@ export default function CaseManagement({ cases, filters }: Props) {
                                                             variant="outline" 
                                                             size="sm" 
                                                             className="h-8 text-xs font-semibold"
-                                                            onClick={() => window.open(doc.file_path || `/documents/view/${doc.id}`, '_blank')}
+                                                            onClick={() => window.open(`/documents/view/${doc.id}`, '_blank')}
                                                         >
                                                             <Eye className="mr-1.5 h-3.5 w-3.5" />
                                                             Open File

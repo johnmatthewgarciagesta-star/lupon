@@ -161,10 +161,12 @@ export default function PersonnelPage({ users, filters, stats, recentActivities 
         setIsPermissionsOpen(true);
         try {
             const response = await axios.get('/roles-permissions');
-            setRolesListWithPerms(response.data.roles);
+            const allowed = ['Administrator', 'Data Encoder'];
+            const filtered = (response.data.roles || []).filter((r: any) => allowed.includes(r.name));
+            setRolesListWithPerms(filtered);
             setAllPermissionsList(response.data.permissions);
-            if (response.data.roles.length > 0) {
-                setSelectedRole(response.data.roles[0]);
+            if (filtered.length > 0) {
+                setSelectedRole(filtered[0]);
             }
         } catch (error) {
             console.error("Error fetching roles and permissions", error);

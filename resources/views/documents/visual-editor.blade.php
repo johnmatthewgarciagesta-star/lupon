@@ -260,20 +260,43 @@
 
 <body>
 
-    <!-- Document Header Info & Floating Google Docs Toolbar (Matching Screenshot) -->
+    <!-- Document Header Info & Admin Navigation Bar -->
     <div class="fixed top-3 left-4 right-4 z-50 flex items-center justify-between pointer-events-none print:hidden">
-        <!-- Left Document Info Badge -->
-        <div class="bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-2xl shadow-md border border-gray-200/80 flex items-center gap-3 pointer-events-auto">
-            <div class="bg-blue-600 text-white p-2 rounded-xl flex items-center justify-center shadow-sm">
-                <span class="material-icons-outlined text-base">description</span>
+        <!-- Left Document Info & Admin Badge -->
+        <div class="flex items-center gap-2 pointer-events-auto">
+            <!-- Admin Portal System Badge & Return Links -->
+            <div class="bg-slate-900/95 backdrop-blur-md text-white px-3.5 py-2 rounded-2xl shadow-md border border-slate-800 flex items-center gap-2.5">
+                <div class="bg-gradient-to-tr from-amber-500 to-amber-400 text-slate-950 p-1.5 rounded-xl flex items-center justify-center font-bold shadow-sm">
+                    <span class="material-icons-outlined text-sm">shield</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-[10px] font-black tracking-wider uppercase text-amber-400">Lupon Admin</span>
+                    <div class="flex items-center gap-2 mt-0.5">
+                        <a href="/documents" class="text-[11px] text-slate-300 hover:text-white font-semibold flex items-center gap-0.5 transition-colors" title="Back to Admin Documents">
+                            <span class="material-icons-outlined text-xs">arrow_back</span>
+                            <span>Documents</span>
+                        </a>
+                        <span class="text-slate-600">•</span>
+                        <a href="/dashboard" class="text-[11px] text-slate-300 hover:text-white font-semibold flex items-center gap-0.5 transition-colors" title="Go to Dashboard">
+                            <span>Dashboard</span>
+                        </a>
+                    </div>
+                </div>
             </div>
-            <div class="flex flex-col justify-center">
-                <h1 class="text-xs font-bold text-gray-800 leading-tight">{{ ucwords(str_replace('_', ' ', $type)) }}</h1>
-                @if(isset($case) && $case)
-                    <p class="text-[11px] text-blue-600 font-semibold opacity-90" title="{{ $case->title }}">Case No: {{ $case->case_number }}</p>
-                @else
-                    <p class="text-[11px] text-gray-500 font-medium">Standalone Document</p>
-                @endif
+
+            <!-- Document Title Badge -->
+            <div class="bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-2xl shadow-md border border-gray-200/80 flex items-center gap-3">
+                <div class="bg-blue-600 text-white p-2 rounded-xl flex items-center justify-center shadow-sm">
+                    <span class="material-icons-outlined text-base">description</span>
+                </div>
+                <div class="flex flex-col justify-center">
+                    <h1 class="text-xs font-bold text-gray-800 leading-tight">{{ ucwords(str_replace('_', ' ', $type)) }}</h1>
+                    @if(isset($case) && $case)
+                        <p class="text-[11px] text-blue-600 font-semibold opacity-90" title="{{ $case->title }}">Case No: {{ $case->case_number }}</p>
+                    @else
+                        <p class="text-[11px] text-gray-500 font-medium">Standalone Document</p>
+                    @endif
+                </div>
             </div>
         </div>
 
@@ -371,7 +394,17 @@
             </div>
         </div>
 
-        <div></div>
+        <!-- Right Admin Quick Navigation & Actions -->
+        <div class="bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-2xl shadow-md border border-gray-200/80 flex items-center gap-2 pointer-events-auto">
+            <a href="/audit" class="text-xs font-semibold text-gray-700 hover:text-blue-600 flex items-center gap-1 px-2.5 py-1 rounded-xl hover:bg-gray-100 transition-colors" title="View Security Audit Trail">
+                <span class="material-icons-outlined text-sm text-blue-600">verified</span>
+                <span>Audit Log</span>
+            </a>
+            <a href="/cases" class="text-xs font-semibold text-gray-700 hover:text-blue-600 flex items-center gap-1 px-2.5 py-1 rounded-xl hover:bg-gray-100 transition-colors" title="View Cases">
+                <span class="material-icons-outlined text-sm text-amber-600">folder</span>
+                <span>Cases</span>
+            </a>
+        </div>
     </div>
 
     <!-- Floating Controls Group -->
@@ -539,8 +572,20 @@
     <!-- Workspace -->
     <div class="workspace">
         <div class="page-container" id="page-canvas">
-            <!-- Background Image -->
-            @if(!empty($imageBase64))
+            <!-- Background Image or Uploaded File Preview -->
+            @if(!empty($filePath))
+                <div class="w-full h-full flex flex-col items-center justify-center bg-gray-100 p-2 overflow-hidden rounded-xl shadow-inner z-10">
+                    @php
+                        $cleanUrl = str_starts_with($filePath, '/') || str_starts_with($filePath, 'http') ? $filePath : asset($filePath);
+                        $isPdf = str_ends_with(strtolower($filePath), '.pdf') || str_contains(strtolower($filePath), 'pdf');
+                    @endphp
+                    @if($isPdf)
+                        <iframe src="{{ $cleanUrl }}" class="w-full h-full border-0 rounded-lg shadow-sm"></iframe>
+                    @else
+                        <img src="{{ $cleanUrl }}" class="max-w-full max-h-full object-contain rounded-lg shadow-md" alt="Uploaded Document">
+                    @endif
+                </div>
+            @elseif(!empty($imageBase64))
                 <img id="background-image" src="data:image/png;base64,{{ $imageBase64 }}" alt="Form Background">
             @else
                 <div class="flex items-center justify-center h-full text-red-500">

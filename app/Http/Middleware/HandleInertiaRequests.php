@@ -38,6 +38,7 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'name' => config('app.name'),
+            'csrf_token' => csrf_token(),
             'auth' => [
                 'user' => $request->user() ? array_merge($request->user()->toArray(), [
                     'role' => $request->user()->getRoleNames()->first() ?? 'No Role'
@@ -45,12 +46,16 @@ class HandleInertiaRequests extends Middleware
                 'roles' => $request->user() ? $request->user()->getRoleNames() : [],
                 'permissions' => $request->user() ? $request->user()->getAllPermissions()->pluck('name') : [],
             ],
+<<<<<<< HEAD
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
                 'message' => fn () => $request->session()->get('message'),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+=======
+            'sidebarOpen' => true,
+>>>>>>> a485458 (Fixed errors after interview with tito ni gab)
         ];
     }
 }

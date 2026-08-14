@@ -18,12 +18,6 @@ const prefersDark = (): boolean => {
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
 };
 
-const setCookie = (name: string, value: string, days = 365): void => {
-    if (typeof document === 'undefined') return;
-    const maxAge = days * 24 * 60 * 60;
-    document.cookie = `${name}=${value};path=/;max-age=${maxAge};SameSite=Lax`;
-};
-
 const getStoredAppearance = (): Appearance => {
     if (typeof window === 'undefined') return 'system';
 
@@ -67,7 +61,6 @@ export function initializeTheme(): void {
 
     if (!localStorage.getItem('appearance')) {
         localStorage.setItem('appearance', 'system');
-        setCookie('appearance', 'system');
     }
 
     currentAppearance = getStoredAppearance();
@@ -92,11 +85,8 @@ export function useAppearance(): UseAppearanceReturn {
     const updateAppearance = useCallback((mode: Appearance): void => {
         currentAppearance = mode;
 
-        // Store in localStorage for client-side persistence...
+        // Store in localStorage for client-side persistence (no HTTP cookies)
         localStorage.setItem('appearance', mode);
-
-        // Store in cookie for SSR...
-        setCookie('appearance', mode);
 
         applyTheme(mode);
         notify();

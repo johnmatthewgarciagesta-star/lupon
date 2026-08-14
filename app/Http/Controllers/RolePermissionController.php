@@ -14,7 +14,15 @@ class RolePermissionController extends Controller
      */
     public function index()
     {
-        $roles = Role::with('permissions')->get();
+        $allowedRoles = ['Administrator', 'Data Encoder'];
+
+        foreach ($allowedRoles as $roleName) {
+            Role::firstOrCreate(['name' => $roleName]);
+        }
+
+        $roles = Role::with('permissions')
+            ->whereIn('name', $allowedRoles)
+            ->get();
         $permissions = Permission::all();
 
         return response()->json([

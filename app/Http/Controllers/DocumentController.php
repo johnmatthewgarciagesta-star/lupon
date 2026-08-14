@@ -420,13 +420,18 @@ class DocumentController extends Controller
         $imageBase64 = $this->generateBackgroundImage($type);
         $readonly = request('mode') !== 'edit';
         $missingData = empty($data);
+        $filePath = $document->file_path;
 
+<<<<<<< HEAD
         if (request('mode') === 'edit') {
             $documentId = $document->id;
             return view('documents.form-fill', compact('type', 'imageBase64', 'fields', 'data', 'case', 'documentId'));
         }
 
         return view('documents.visual-editor', compact('type', 'imageBase64', 'fields', 'readonly', 'case', 'missingData'));
+=======
+        return view('documents.visual-editor', compact('type', 'imageBase64', 'fields', 'readonly', 'case', 'missingData', 'filePath', 'document'));
+>>>>>>> a485458 (Fixed errors after interview with tito ni gab)
     }
 
     /**
@@ -553,33 +558,37 @@ class DocumentController extends Controller
 
                 // Dynamically create a case if one doesn't exist
                 if (!$caseId) {
-                    $caseNo = $contentToSave['case_no'] ?? ('CAS-' . date('YmdHis'));
+                    $caseNo = $contentToSave['case_no'] ?? null;
                     
-                    // Check if case already exists by number (even if soft-deleted)
-                    $existingCase = \App\Models\LuponCase::withTrashed()->where('case_number', $caseNo)->first();
-                    
-                    if ($existingCase) {
-                        $caseId = $existingCase->id;
+                    if ($caseNo) {
+                        $existingCase = \App\Models\LuponCase::withTrashed()->where('case_number', $caseNo)->first();
+                        if ($existingCase) {
+                            return back()->withErrors([
+                                'case_no' => 'Case Number already exists in the records.'
+                            ])->withInput();
+                        }
                     } else {
-                        $complainant = $contentToSave['complainant'] ?? 'Unknown Complainant';
-                        $respondent = $contentToSave['respondent'] ?? 'Unknown Respondent';
-                        
-                        $case = \App\Models\LuponCase::create([
-                            'case_number' => $caseNo,
-                            'title' => $complainant . ' vs ' . $respondent,
-                            'complainant' => $complainant,
-                            'respondent' => $respondent,
-                            'nature_of_case' => $contentToSave['For'] ?? ucwords(str_replace(['_', '-'], ' ', $type)),
-                            'status' => 'Pending',
-                            'date_filed' => now(),
-                            'complaint_narrative' => $contentToSave['narrative'] ?? '',
-                            'admin_notes' => 'Auto-generated from Document',
-                            'document_data' => $contentToSave,
-                            'created_by' => auth()->id(),
-                        ]);
-                        $caseId = $case->id;
-                        AuditService::log('CREATE', 'Cases', "Auto-created Case #{$case->case_number} from {$type}", $caseNo);
+                        $caseNo = 'CAS-' . date('YmdHis');
                     }
+
+                    $complainant = $contentToSave['complainant'] ?? 'Unknown Complainant';
+                    $respondent = $contentToSave['respondent'] ?? 'Unknown Respondent';
+                        
+                    $case = \App\Models\LuponCase::create([
+                        'case_number' => $caseNo,
+                        'title' => $complainant . ' vs ' . $respondent,
+                        'complainant' => $complainant,
+                        'respondent' => $respondent,
+                        'nature_of_case' => $contentToSave['For'] ?? ucwords(str_replace(['_', '-'], ' ', $type)),
+                        'status' => 'Pending',
+                        'date_filed' => now(),
+                        'complaint_narrative' => $contentToSave['narrative'] ?? '',
+                        'admin_notes' => 'Auto-generated from Document',
+                        'document_data' => $contentToSave,
+                        'created_by' => auth()->id(),
+                    ]);
+                    $caseId = $case->id;
+                    AuditService::log('CREATE', 'Cases', "Auto-created Case #{$case->case_number} from {$type}", $caseNo);
                 }
 
                 $folderName = $request->input('folder_name');
@@ -597,6 +606,7 @@ class DocumentController extends Controller
                     }
                 }
 
+<<<<<<< HEAD
                 $documentId = $request->input('document_id') ?: $request->input('id');
                 $existingDoc = $documentId ? \App\Models\Document::find($documentId) : null;
 
@@ -609,6 +619,24 @@ class DocumentController extends Controller
                     ]);
                     $createdDoc = $existingDoc;
                     \App\Services\DocumentBackupService::recordVersion($createdDoc, 'edited', 'Document Form Updated & Saved');
+=======
+                $documentId = $request->input('document_id') ?: null;
+                $createdDoc = null;
+                if ($documentId) {
+                    $createdDoc = \App\Models\Document::find($documentId);
+                }
+                if (!$createdDoc && $caseId && $type) {
+                    $createdDoc = \App\Models\Document::where('case_id', $caseId)->where('type', $type)->latest()->first();
+                }
+
+                if ($createdDoc) {
+                    $createdDoc->update([
+                        'content' => $contentToSave,
+                        'folder_name' => $folderName ?: $createdDoc->folder_name,
+                        'status' => 'Issued',
+                    ]);
+                    \App\Services\DocumentBackupService::recordVersion($createdDoc, 'edited', 'Form Updated & Saved');
+>>>>>>> a485458 (Fixed errors after interview with tito ni gab)
                 } else {
                     $createdDoc = \App\Models\Document::create([
                         'case_id' => $caseId,
@@ -749,35 +777,42 @@ class DocumentController extends Controller
 
             // Dynamically create a case if one doesn't exist
             if (!$caseId) {
-                $caseNo = $contentToSave['case_no'] ?? ('CAS-' . date('YmdHis'));
+                $caseNo = $contentToSave['case_no'] ?? null;
                 
-                // Check if case already exists by number (even if soft-deleted)
-                $existingCase = \App\Models\LuponCase::withTrashed()->where('case_number', $caseNo)->first();
-                
-                if ($existingCase) {
-                    $caseId = $existingCase->id;
-                } else {
-                    $complainant = $contentToSave['complainant'] ?? 'Unknown Complainant';
-                    $respondent = $contentToSave['respondent'] ?? 'Unknown Respondent';
+                if ($caseNo) {
+                    // Check if case already exists by number
+                    $existingCase = \App\Models\LuponCase::withTrashed()->where('case_number', $caseNo)->first();
                     
-                    $case = \App\Models\LuponCase::create([
-                        'case_number' => $caseNo,
-                        'title' => $complainant . ' vs ' . $respondent,
-                        'complainant' => $complainant,
-                        'respondent' => $respondent,
-                        'nature_of_case' => $contentToSave['For'] ?? ucwords(str_replace(['_', '-'], ' ', $type)),
-                        'status' => 'Pending',
-                        'date_filed' => now(),
-                        'complaint_narrative' => $contentToSave['narrative'] ?? '',
-                        'admin_notes' => 'Auto-generated from Document',
-                        'document_data' => $contentToSave,
-                        'created_by' => auth()->id(),
-                    ]);
-                    $caseId = $case->id;
-                    AuditService::log('CREATE', 'Cases', "Auto-created Case #{$case->case_number} from {$type}", $caseNo);
+                    if ($existingCase) {
+                        return back()->withErrors([
+                            'case_no' => 'Case Number already exists in the records.'
+                        ])->withInput();
+                    }
+                } else {
+                    $caseNo = 'CAS-' . date('YmdHis');
                 }
+
+                $complainant = $contentToSave['complainant'] ?? 'Unknown Complainant';
+                $respondent = $contentToSave['respondent'] ?? 'Unknown Respondent';
+                
+                $case = \App\Models\LuponCase::create([
+                    'case_number' => $caseNo,
+                    'title' => $complainant . ' vs ' . $respondent,
+                    'complainant' => $complainant,
+                    'respondent' => $respondent,
+                    'nature_of_case' => $contentToSave['For'] ?? ucwords(str_replace(['_', '-'], ' ', $type)),
+                    'status' => 'Pending',
+                    'date_filed' => now(),
+                    'complaint_narrative' => $contentToSave['narrative'] ?? '',
+                    'admin_notes' => 'Auto-generated from Document',
+                    'document_data' => $contentToSave,
+                    'created_by' => auth()->id(),
+                ]);
+                $caseId = $case->id;
+                AuditService::log('CREATE', 'Cases', "Auto-created Case #{$case->case_number} from {$type}", $caseNo);
             }
 
+<<<<<<< HEAD
             $documentId = $request->input('document_id') ?: $request->input('id');
             $existingDocPdf = $documentId ? \App\Models\Document::find($documentId) : null;
 
@@ -789,6 +824,23 @@ class DocumentController extends Controller
                 ]);
                 $createdDocPdf = $existingDocPdf;
                 \App\Services\DocumentBackupService::recordVersion($createdDocPdf, 'edited', 'Form Content Updated & Issued');
+=======
+            $documentId = $request->input('document_id') ?: null;
+            $createdDocPdf = null;
+            if ($documentId) {
+                $createdDocPdf = \App\Models\Document::find($documentId);
+            }
+            if (!$createdDocPdf && $caseId && $type) {
+                $createdDocPdf = \App\Models\Document::where('case_id', $caseId)->where('type', $type)->latest()->first();
+            }
+
+            if ($createdDocPdf) {
+                $createdDocPdf->update([
+                    'content' => $contentToSave,
+                    'status' => 'Issued',
+                ]);
+                \App\Services\DocumentBackupService::recordVersion($createdDocPdf, 'edited', 'Form Generated & Output Updated');
+>>>>>>> a485458 (Fixed errors after interview with tito ni gab)
             } else {
                 $createdDocPdf = \App\Models\Document::create([
                     'case_id' => $caseId,
@@ -1536,15 +1588,15 @@ class DocumentController extends Controller
 
              // Construct the prompt for Gemini AI scanning (translates output into Tagalog/Filipino)
             $promptInstruction = "Analyze this scanned legal document from the Barangay Lupon Tagapamayapa. " .
-                                 "Identify and extract the following details precisely. IMPORTANT: Translate all narrative summaries, details, and nature of case into Tagalog/Filipino language. " .
+                                 "Identify and extract the following details precisely. IMPORTANT: Translate all narrative summaries and details into Tagalog/Filipino language. " .
                                  "Return your output strictly as a flat JSON object matching this schema: " .
                                  "{" .
                                  "  \"complainant\": \"Name of the complainant(s) or null\"," .
                                  "  \"respondent\": \"Name of the respondent(s) or null\"," .
                                  "  \"case_no\": \"The formal case number or null\"," .
-                                 "  \"nature_of_case\": \"The issue/reason translated in Tagalog (e.g. Paninirang-puri, Pag-aaway sa lupa, Utang, Pambubugbog). For an Affidavit of Withdrawal, set this field to exactly 'Affidavit of Withdrawal'\"," .
+                                 "  \"nature_of_case\": \"MUST be strictly either 'Complaint' or 'Affidavit of Withdrawal'\"," .
                                  "  \"summary\": \"A short, objective summary of the narrative/statement written on the page, translated into clear Tagalog/Filipino.\"," .
-                                 "  \"document_type\": \"Must be either 'complaint' (if it is a complaint form, statement of dispute, or complaint narrative) or 'affidavit_withdrawal' (if it is an affidavit of withdrawal, request for dismissal, or withdrawal statement)\"" .
+                                 "  \"document_type\": \"Must be either 'complaint' (for complaint forms/disputes) or 'affidavit_withdrawal' (for affidavit of withdrawal/request for dismissal)\"" .
                                  "}";
 
             // Send POST request to Google AI Studio with automatic fallback across verified models
@@ -1601,7 +1653,25 @@ class DocumentController extends Controller
             }
 
             $rawTextResponse = $response->json('candidates.0.content.parts.0.text');
-            $extractedData = json_decode($rawTextResponse, true);
+            $extractedData = json_decode($rawTextResponse, true) ?? [];
+
+            // Normalize nature_of_case strictly to either 'Complaint' or 'Affidavit of Withdrawal'
+            $docType = strtolower($extractedData['document_type'] ?? '');
+            $nature = strtolower($extractedData['nature_of_case'] ?? '');
+
+            if (
+                str_contains($docType, 'withdrawal') || 
+                str_contains($docType, 'affidavit') ||
+                str_contains($nature, 'withdrawal') || 
+                str_contains($nature, 'urong') ||
+                str_contains($nature, 'affidavit')
+            ) {
+                $extractedData['nature_of_case'] = 'Affidavit of Withdrawal';
+                $extractedData['document_type'] = 'affidavit_withdrawal';
+            } else {
+                $extractedData['nature_of_case'] = 'Complaint';
+                $extractedData['document_type'] = 'complaint';
+            }
 
             // Log successful upload & parse in Audit Trail
             $fileSize = round($file->getSize() / 1024, 2);
@@ -1686,15 +1756,14 @@ class DocumentController extends Controller
                 "Failed saving scanned document. Validation errors: {$errors}",
                 null
             );
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation errors: ' . $errors
-            ], 422);
+            return back()->withErrors($validator)->withInput();
         }
 
         $rawTemp = $request->input('temp_file');
         $tempPath = str_replace('\\', '/', $rawTemp);
         $fileName = basename($tempPath);
+        
+        Storage::disk('public')->makeDirectory('scans');
         $permanentPath = "scans/{$fileName}";
 
         if (Storage::disk('public')->exists($tempPath)) {
@@ -1709,6 +1778,8 @@ class DocumentController extends Controller
         } elseif (!Storage::disk('public')->exists($permanentPath)) {
             $permanentPath = $tempPath;
         }
+
+        $permanentPathUrl = str_starts_with($permanentPath, '/') ? $permanentPath : ('/storage/' . $permanentPath);
 
         try {
 
@@ -1765,7 +1836,9 @@ class DocumentController extends Controller
                     if ($case->trashed()) {
                         $case->restore();
                     }
+                    $folderName = $case->folder_name ?: ('case-' . str_pad($case->id, 3, '0', STR_PAD_LEFT));
                     $case->update([
+                        'folder_name' => $folderName,
                         'case_number' => $caseNo ?: $case->case_number,
                         'complainant' => $complainant,
                         'respondent' => $respondent,
@@ -1797,16 +1870,20 @@ class DocumentController extends Controller
                     'created_by' => auth()->id(),
                 ]);
                 $caseId = $case->id;
+                $folderName = 'case-' . str_pad($caseId, 3, '0', STR_PAD_LEFT);
+                $case->folder_name = $folderName;
+                $case->save();
                 
                 \App\Services\AuditService::log('CREATE', 'Cases', "Auto-created Case #{$caseNo} from AI scan", $caseNo);
             }
 
-            // Create Document record
+            // Create Document record attached to Case and Folder
             $document = \App\Models\Document::create([
                 'case_id' => $caseId,
+                'folder_name' => $folderName ?? ('case-' . str_pad($caseId, 3, '0', STR_PAD_LEFT)),
                 'type' => $type,
                 'status' => 'Issued',
-                'file_path' => $permanentPath,
+                'file_path' => $permanentPathUrl,
                 'content' => [
                     'complainant' => $complainant,
                     'respondent' => $respondent,
@@ -1821,9 +1898,12 @@ class DocumentController extends Controller
             \App\Services\AuditService::log('CREATE', 'Documents', "Saved scanned {$type} document for Case #{$caseId}", $caseId);
 
             return redirect()->route('cases.index')
-                ->with('success', "Scanned document and Case #{$caseNo} saved to database successfully!");
+                ->with('success', "Scanned document attached to Case #{$caseNo} successfully!");
 
         } catch (\Exception $e) {
+            if (isset($tempPath) && Storage::disk('public')->exists($tempPath)) {
+                Storage::disk('public')->delete($tempPath);
+            }
             \Log::error('AI Scan Save Error: ' . $e->getMessage());
 
             $fileName = basename($tempPath ?? 'unknown');

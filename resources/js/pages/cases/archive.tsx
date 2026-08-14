@@ -209,18 +209,18 @@ export default function ArchiveManagement({ cases, filters }: Props) {
                                     </tr>
                                 ) : (
                                     cases.data.map((item) => (
-                                        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
-                                            <td className="py-3 px-4 text-muted-foreground">
+                                        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50 border-b">
+                                            <td className="py-3 px-4 text-muted-foreground whitespace-nowrap align-middle">
                                                 {item.deleted_at ? new Date(item.deleted_at).toLocaleDateString() : 'N/A'}
                                             </td>
-                                            <td className="py-3 px-4 font-medium text-[#1c2434] dark:text-white">{item.case_number}</td>
-                                            <td className="py-3 px-4 text-muted-foreground">{item.nature_of_case}</td>
-                                            <td className="py-3 px-4 text-muted-foreground">{item.complainant}</td>
-                                            <td className="py-3 px-4 text-muted-foreground">{item.respondent}</td>
-                                            <td className="py-3 px-4 text-muted-foreground">
+                                            <td className="py-3 px-4 font-medium text-[#1c2434] dark:text-white whitespace-nowrap align-middle">{item.case_number}</td>
+                                            <td className="py-3 px-4 text-muted-foreground align-middle">{item.nature_of_case}</td>
+                                            <td className="py-3 px-4 text-muted-foreground align-middle">{item.complainant}</td>
+                                            <td className="py-3 px-4 text-muted-foreground align-middle">{item.respondent}</td>
+                                            <td className="py-3 px-4 text-muted-foreground whitespace-nowrap align-middle">
                                                 {new Date(item.date_filed).toLocaleDateString()}
                                             </td>
-                                            <td>
+                                            <td className="py-3 px-4 whitespace-nowrap text-right align-middle">
                                                 <div className="flex items-center gap-2 justify-end">
                                                     <Button variant="ghost" size="icon" title="View Details" onClick={() => window.open(`/documents/view-case/${item.id}`, '_blank')}>
                                                         <Eye className="h-4 w-4" />

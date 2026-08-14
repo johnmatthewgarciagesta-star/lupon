@@ -22,13 +22,15 @@ class ReportController extends Controller
     {
         set_time_limit(300); // 5 minutes execution time for PDF generation
         $type = $request->input('type', 'summary');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
         
         // Security Audit Log
         \App\Services\AuditService::log('EXPORT', 'System Reports', "Generated System Report ({$type})", null);
         
-        $stats = $this->getStats();
+        $stats = $this->getStats($startDate, $endDate);
 
-        $html = view('reports.pdf', compact('stats', 'type'))->render();
+        $html = view('reports.pdf', compact('stats', 'type', 'startDate', 'endDate'))->render();
 
         try {
             $browsershot = Browsershot::html($html);
@@ -58,25 +60,57 @@ class ReportController extends Controller
         }
     }
 
-    private function getStats()
+    public function checkCount(Request $request)
     {
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        $query = LuponCase::query();
+        if (!empty($startDate)) {
+            $query->whereDate('date_filed', '>=', $startDate);
+        }
+        if (!empty($endDate)) {
+            $query->whereDate('date_filed', '<=', $endDate);
+        }
+
+        return response()->json([
+            'count' => $query->count()
+        ]);
+    }
+
+    private function getStats($startDate = null, $endDate = null)
+    {
+        $query = LuponCase::query();
+
+        if (!empty($startDate)) {
+            $query->whereDate('date_filed', '>=', $startDate);
+        }
+        if (!empty($endDate)) {
+            $query->whereDate('date_filed', '<=', $endDate);
+        }
+
+        $cases = $query->get();
+
         return [
-            'total_cases' => LuponCase::count(),
-            'cases_this_month' => LuponCase::whereMonth('date_filed', Carbon::now()->month)
-                ->whereYear('date_filed', Carbon::now()->year)
-                ->count(),
-            'pending_cases' => LuponCase::whereNotIn('status', ['Resolved', 'Settled', 'Dismissed'])->count(),
-            'resolved_cases' => LuponCase::whereIn('status', ['Resolved', 'Settled', 'Dismissed'])->count(),
+            'total_cases' => $cases->count(),
+            'cases_this_month' => $cases->filter(function ($c) {
+                $d = Carbon::parse($c->date_filed);
+                return $d->month === Carbon::now()->month && $d->year === Carbon::now()->year;
+            })->count(),
+            'pending_cases' => $cases->whereNotIn('status', ['Resolved', 'Settled', 'Dismissed'])->count(),
+            'resolved_cases' => $cases->whereIn('status', ['Resolved', 'Settled', 'Dismissed'])->count(),
 
             // Group by Nature
-            'cases_by_nature' => LuponCase::select('nature_of_case', DB::raw('count(*) as count'))
-                ->groupBy('nature_of_case')
-                ->get(),
+            'cases_by_nature' => $cases->groupBy('nature_of_case')->map(function ($group, $key) {
+                return (object)[
+                    'nature_of_case' => $key ?: 'Unspecified',
+                    'count' => $group->count()
+                ];
+            })->values(),
 
             // Recent Cases for the table
-            'recent_cases' => LuponCase::latest()
-                ->take(20) // Increased for report
-                ->get()
+            'recent_cases' => $cases->sortByDesc('created_at')
+                ->take(50)
                 ->map(function ($case) {
                     return [
                         'id' => $case->id,
@@ -84,9 +118,9 @@ class ReportController extends Controller
                         'title' => $case->title,
                         'nature' => $case->nature_of_case,
                         'status' => $case->status,
-                        'date_filed' => Carbon::parse($case->date_filed)->format('M d, Y'),
+                        'date_filed' => $case->date_filed ? Carbon::parse($case->date_filed)->format('M d, Y') : 'N/A',
                     ];
-                }),
+                })->values(),
         ];
     }
 }

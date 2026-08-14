@@ -44,7 +44,7 @@ class DashboardController extends Controller
                     'raw_date_filed' => $case->date_filed,
                     'created_at' => $case->created_at ? $case->created_at->toISOString() : null,
                     'status' => $case->status,
-                    'creator' => $case->creator ? ['name' => $case->creator->name] : null,
+                    'creator' => ['name' => $case->creator ? $case->creator->name : ($case->created_by ? 'Encoder #'.$case->created_by : 'System Admin')],
                 ];
             })->values();
 
@@ -240,7 +240,7 @@ class DashboardController extends Controller
                         'id' => $doc->id,
                         'type' => $doc->type, 
                         'case_number' => $doc->case ? $doc->case->case_number : 'N/A',
-                        'created_at' => $doc->created_at->format('M d, Y'),
+                        'created_at' => $doc->created_at ? $doc->created_at->format('M d, Y') : 'N/A',
                         'status' => $doc->status,
                     ];
                 });
@@ -272,6 +272,12 @@ class DashboardController extends Controller
         } catch (\Exception $e) {
             \Log::error('Dashboard loading failed: ' . $e->getMessage());
             
+            $emptyDist = ['mediation' => 0, 'conciliation' => 0, 'arbitration' => 0, 'settled' => 0, 'dismissed' => 0, 'certified' => 0];
+            $monthDist = ['all' => $emptyDist];
+            for ($m = 1; $m <= 12; $m++) {
+                $monthDist[(string)$m] = $emptyDist;
+            }
+
             return Inertia::render('dashboard', [
                 'stats' => [
                     'total' => 0,
@@ -286,10 +292,15 @@ class DashboardController extends Controller
                     'total_current_month' => 0,
                     'by_category' => ['criminal' => 0, 'civil' => 0, 'others' => 0],
                 ],
-                'statusDistributionByMonth' => ['all' => ['mediation' => 0, 'conciliation' => 0, 'arbitration' => 0, 'settled' => 0, 'dismissed' => 0, 'certified' => 0]],
+                'statusDistributionByMonth' => $monthDist,
                 'recentCases' => [],
-                'statusDistribution' => ['settled' => 0, 'pending' => 0, 'dismissed' => 0, 'other' => 0],
+                'statusDistribution' => ['settled' => 0, 'pending' => 0, 'mediation' => 0, 'dismissed' => 0, 'certified' => 0],
                 'statusPercentages' => ['settled' => 0, 'pending' => 0, 'unresolved' => 0],
+                'outcomeStats' => [
+                    ['name' => 'Pending', 'value' => 0, 'percentage' => 0],
+                    ['name' => 'Settled', 'value' => 0, 'percentage' => 0],
+                    ['name' => 'Escalated', 'value' => 0, 'percentage' => 0],
+                ],
                 'typeStats' => [],
                 'monthlyStats' => [],
                 'documentStats' => [

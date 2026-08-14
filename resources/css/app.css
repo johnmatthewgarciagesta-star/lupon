@@ -135,9 +135,34 @@
 @layer base {
     * {
         @apply border-border;
+        caret-color: transparent;
     }
 
     body {
         @apply bg-background text-foreground;
+    }
+
+    input,
+    textarea,
+    [contenteditable="true"] {
+        caret-color: auto;
+    }
+
+    button,
+    button *,
+    [role="button"],
+    [role="button"] *,
+    input[type="button"],
+    input[type="submit"],
+    input[type="reset"],
+    a,
+    a *,
+    summary,
+    [onclick],
+    [onclick] * {
+        cursor: pointer;
+        user-select: none;
+        -webkit-user-select: none;
+        caret-color: transparent !important;
     }
 }

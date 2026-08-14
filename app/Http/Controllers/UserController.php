@@ -110,11 +110,13 @@ class UserController extends Controller
             'duty_group' => $validated['duty_group'],
         ]);
 
-        // Ensure Spatie role exists before assigning
-        \Spatie\Permission\Models\Role::firstOrCreate(['name' => $validated['role']]);
-        $user->assignRole($validated['role']);
+        $targetRole = ($validated['role'] === 'No Role' || empty($validated['role'])) ? 'Data Encoder' : $validated['role'];
 
-        AuditService::log('CREATE', 'Users', "Created new user: {$validated['name']} ({$validated['role']})", $validated['email']);
+        // Ensure Spatie role exists before assigning
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => $targetRole]);
+        $user->syncRoles([$targetRole]);
+
+        AuditService::log('CREATE', 'Users', "Created new user: {$validated['name']} ({$targetRole})", $validated['email']);
 
         return redirect()->back()->with('success', 'User created successfully.');
     }
@@ -146,9 +148,11 @@ class UserController extends Controller
 
         $user->save();
 
+        $targetRole = ($validated['role'] === 'No Role' || empty($validated['role'])) ? 'Data Encoder' : $validated['role'];
+
         // Ensure Spatie role exists before syncing
-        \Spatie\Permission\Models\Role::firstOrCreate(['name' => $validated['role']]);
-        $user->syncRoles([$validated['role']]);
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => $targetRole]);
+        $user->syncRoles([$targetRole]);
 
         AuditService::log('UPDATE', 'Users', "Updated user details: {$user->name}", $user->id);
 

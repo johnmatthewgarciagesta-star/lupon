@@ -29,6 +29,9 @@
         <p class="text-sm text-gray-600">Barangay Hall, [Barangay Name], [City/Municipality]</p>
         <div class="mt-4">
             <h2 class="text-xl font-semibold">System Report: {{ ucwords($type ?? 'Summary') }}</h2>
+            @if(!empty($startDate) || !empty($endDate))
+                <p class="text-sm text-gray-600 font-medium">Filtered Period: {{ $startDate ? date('M d, Y', strtotime($startDate)) : 'Beginning' }} to {{ $endDate ? date('M d, Y', strtotime($endDate)) : 'Present' }}</p>
+            @endif
             <p class="text-sm text-gray-500">Generated on: {{ date('F d, Y h:i A') }}</p>
         </div>
     </div>
@@ -60,11 +63,13 @@
     <div class="mb-10">
         <h3 class="text-lg font-bold border-b mb-4 pb-2">Cases by Nature</h3>
         <ul class="list-disc pl-5">
-            @foreach($stats['cases_by_nature'] as $nature)
+            @forelse($stats['cases_by_nature'] as $nature)
                 <li class="mb-1">
                     <span class="font-semibold">{{ $nature->nature_of_case }}:</span> {{ $nature->count }}
                 </li>
-            @endforeach
+            @empty
+                <p class="text-sm text-gray-500 italic">No case category data available for this period.</p>
+            @endforelse
         </ul>
     </div>
 
@@ -92,7 +97,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="py-4 text-center text-gray-500">No recent cases found.</td>
+                        <td colspan="5" class="py-6 text-center text-gray-500 font-medium italic">No matching cases found for the selected period</td>
                     </tr>
                 @endforelse
             </tbody>

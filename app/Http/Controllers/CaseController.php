@@ -54,7 +54,7 @@ class CaseController extends Controller
             }
             
             $dateParsed = null;
-            if (strtotime($cleanSearch) !== false) {
+            if (!is_numeric($cleanSearch) && preg_match('/[\/\-\.]/', $cleanSearch) && strtotime($cleanSearch) !== false) {
                 try {
                     $dateParsed = \Carbon\Carbon::parse($cleanSearch)->format('Y-m-d');
                 } catch (\Exception $e) {}
@@ -105,13 +105,20 @@ class CaseController extends Controller
             $query->where('nature_of_case', 'like', "%{$request->nature}%");
         }
 
+<<<<<<< HEAD
         // Filter by Month (ONLY if explicitly set to a specific month or 'latest', and NOT 'all')
         if ($request->filled('month') && $request->month !== 'all') {
             $monthVal = $request->input('month');
+=======
+        // Filter by Month or New Cases trigger
+        if (($request->filled('month') && $request->month !== 'all') || $request->input('filter') === 'new_cases') {
+            $monthVal = $request->input('month', 'latest');
+>>>>>>> a485458 (Fixed errors after interview with tito ni gab)
             $targetYear = \Carbon\Carbon::now()->year;
 
             if ($monthVal === 'latest') {
                 $targetMonth = \Carbon\Carbon::now()->month;
+<<<<<<< HEAD
                 $query->where(function($q) use ($targetMonth, $targetYear) {
                     $q->whereMonth('date_filed', $targetMonth)
                       ->orWhereMonth('created_at', $targetMonth);
@@ -129,6 +136,34 @@ class CaseController extends Controller
             $query->where(function($q) use ($targetMonth, $targetYear) {
                 $q->whereMonth('date_filed', $targetMonth)
                   ->orWhereMonth('created_at', $targetMonth);
+=======
+                $query->whereMonth('date_filed', $targetMonth)
+                      ->whereYear('date_filed', $targetYear);
+            } elseif (is_numeric($monthVal)) {
+                $targetMonth = (int) $monthVal;
+                $query->whereMonth('date_filed', $targetMonth)
+                      ->whereYear('date_filed', $targetYear);
+            }
+        }
+
+        // Filter by Document Type / File Association
+        if ($request->filled('doc_type') && $request->doc_type !== 'all') {
+            $docType = $request->input('doc_type');
+            $docTitle = $request->input('doc_title', '');
+
+            $query->where(function ($q) use ($docType, $docTitle) {
+                $q->whereHas('documents', function ($dq) use ($docType, $docTitle) {
+                    $dq->where('type', 'like', "%{$docType}%");
+                    if ($docTitle) {
+                        $dq->orWhere('type', 'like', "%{$docTitle}%");
+                    }
+                })
+                ->orWhere('document_data', 'like', "%{$docType}%");
+
+                if ($docTitle) {
+                    $q->orWhere('document_data', 'like', "%{$docTitle}%");
+                }
+>>>>>>> a485458 (Fixed errors after interview with tito ni gab)
             });
         }
 
@@ -164,7 +199,7 @@ class CaseController extends Controller
                 'status' => $case->status,
                 'date_filed' => $case->date_filed,
                 'created_by' => $case->created_by,
-                'creator' => $case->creator ? ['name' => $case->creator->name] : null,
+                'creator' => ['name' => $case->creator ? $case->creator->name : ($case->created_by ? 'Encoder #'.$case->created_by : 'System Admin')],
                 'documents_count' => $case->documents->count(),
                 'documents' => $case->documents->map(function ($doc) {
                     return [
@@ -181,7 +216,7 @@ class CaseController extends Controller
 
         return \Inertia\Inertia::render('cases/index', [
             'cases' => $paginated,
-            'filters' => $request->only(['search', 'status', 'nature', 'date', 'month', 'filter', 'sort_by', 'sort_order']),
+            'filters' => $request->only(['search', 'status', 'nature', 'date', 'month', 'filter', 'sort_by', 'sort_order', 'doc_type', 'doc_title']),
         ]);
     }
 
@@ -223,6 +258,27 @@ class CaseController extends Controller
         // Ibig sabihin, nakasiguro ang system na galing mismo sa authorized device ng barangay ang form submission
         // at hindi pwersahang pinasa ng hacker mula sa ibang website (Cross-Site Request Forgery).
         Log::info('Submitting Case:', $request->all());
+
+        $caseNo = trim($request->input('case_no') ?: $request->input('case_number') ?: '');
+
+        if (!empty($caseNo)) {
+            $existingCase = LuponCase::where('case_number', $caseNo)->first();
+            if ($existingCase) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Case Number already exists in the records.',
+                        'errors' => [
+                            'case_no' => ['Case Number already exists in the records.']
+                        ]
+                    ], 422);
+                }
+
+                return back()->withErrors([
+                    'case_no' => 'Case Number already exists in the records.'
+                ])->withInput();
+            }
+        }
 
         // Validate basic fields
         $validated = $request->validate([
@@ -310,6 +366,30 @@ class CaseController extends Controller
                 $case->document_data = $request->all();
             }
             $case->save();
+
+            // Sync and record version snapshot for attached Document
+            $docType = $request->input('document_type') ?? $case->nature_of_case ?? 'complaint';
+            $doc = $case->documents()->where('type', $docType)->latest()->first() 
+                ?: $case->documents()->latest()->first();
+
+            if ($doc) {
+                $mergedContent = array_merge($doc->content ?: [], $request->all());
+                $doc->content = $mergedContent;
+                $doc->save();
+                \App\Services\DocumentBackupService::recordVersion($doc, 'edited', 'Updated via Case Management');
+            } else {
+                $folderName = $case->folder_name ?: ('case-' . str_pad($case->id, 3, '0', STR_PAD_LEFT));
+                $newDoc = \App\Models\Document::create([
+                    'case_id' => $case->id,
+                    'folder_name' => $folderName,
+                    'type' => $docType,
+                    'status' => 'Issued',
+                    'content' => $request->all(),
+                    'issued_at' => now(),
+                    'created_by' => auth()->id(),
+                ]);
+                \App\Services\DocumentBackupService::recordVersion($newDoc, 'created', 'Created via Case Management Update');
+            }
 
             AuditService::log('UPDATE', 'Cases', "Updated details for Case #{$case->case_number}", $case->case_number);
 

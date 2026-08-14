@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
+        $middleware->validateCsrfTokens(except: ['notifications/*', 'notifications']);
 
         $middleware->web(append: [
             HandleAppearance::class,
@@ -31,10 +32,20 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->stopIgnoring([
             \Symfony\Component\HttpKernel\Exception\NotFoundHttpException::class,
-            \Illuminate\Session\TokenMismatchException::class
         ]);
 
+        $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, \Illuminate\Http\Request $request) {
+            if ($request->wantsJson() || $request->header('X-Inertia')) {
+                return response()->json(['message' => 'Session expired. Please reload the page.'], 419);
+            }
+            return redirect()->back()->with('error', 'Session expired. Please try again.');
+        });
+
         $exceptions->reportable(function (\Throwable $e) {
+            if ($e instanceof \Illuminate\Session\TokenMismatchException) {
+                return false;
+            }
+
             try {
                 $action = 'SYSTEM_ERROR';
                 $module = 'System Kernel';
@@ -60,10 +71,6 @@ return Application::configure(basePath: dirname(__DIR__))
                     $action = 'ACCESS_DENIED';
                     $module = 'Authentication & Security';
                     $readableMessage = 'An unauthorized access attempt was blocked by the system.';
-                } elseif ($e instanceof \Illuminate\Session\TokenMismatchException) {
-                    $action = 'CSRF_MISMATCH';
-                    $module = 'Authentication & Security';
-                    $readableMessage = 'CSRF token mismatch. The form submission expired or was sent from an untrusted source.';
                 }
 
                 $url = request()->fullUrl() ?? 'Unknown URL';

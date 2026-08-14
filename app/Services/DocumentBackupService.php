@@ -62,6 +62,44 @@ class DocumentBackupService
             }
             $document->save();
 
+            // Sync restored data back to parent LuponCase if linked
+            if ($document->case_id) {
+                $case = \App\Models\LuponCase::withTrashed()->find($document->case_id);
+                if ($case) {
+                    $snapshot = $version->content_snapshot ?: [];
+                    $updated = false;
+
+                    if (!empty($snapshot['complainant'])) {
+                        $case->complainant = $snapshot['complainant'];
+                        $updated = true;
+                    }
+                    if (!empty($snapshot['respondent'])) {
+                        $case->respondent = $snapshot['respondent'];
+                        $updated = true;
+                    }
+                    if (!empty($snapshot['nature_of_case']) || !empty($snapshot['For'])) {
+                        $case->nature_of_case = $snapshot['nature_of_case'] ?? $snapshot['For'];
+                        $updated = true;
+                    }
+                    if (!empty($snapshot['case_no'])) {
+                        $case->case_number = $snapshot['case_no'];
+                        $updated = true;
+                    }
+                    if (isset($snapshot['summary']) || isset($snapshot['narrative'])) {
+                        $case->complaint_narrative = $snapshot['summary'] ?? $snapshot['narrative'] ?? $case->complaint_narrative;
+                        $updated = true;
+                    }
+
+                    $case->document_data = $snapshot;
+                    if ($updated) {
+                        $comp = $case->complainant ?? 'Unknown';
+                        $resp = $case->respondent ?? 'Unknown';
+                        $case->title = "{$comp} vs {$resp}";
+                        $case->save();
+                    }
+                }
+            }
+
             // Record a new backup entry for restoration audit trail
             static::recordVersion($document, 'restored', "Restored back to Version #{$version->version_number}");
 

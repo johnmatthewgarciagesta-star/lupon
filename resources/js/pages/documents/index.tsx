@@ -5,8 +5,9 @@ import {
     Scale, AlertTriangle, Gavel, Handshake, Calendar, BadgeCheck, X,
     FileSignature, ClipboardCheck, UserPlus, Send, History, Trash2,
     ClipboardList, Briefcase, ShieldAlert, BadgeInfo, Edit, Upload, Loader2,
-    Folder, FolderPlus, FilePlus, ChevronDown, ChevronUp
+    Folder, FolderPlus, FilePlus, ChevronDown, ChevronUp, ShieldCheck
 } from 'lucide-react';
+import { DocumentVersionHistoryModal } from '@/components/documents/document-version-history-modal';
 
 const ICON_MAP: Record<string, any> = {
     FileSignature,
@@ -128,7 +129,7 @@ interface DocumentsProps {
 export default function Documents({ documents, stats, customTemplates, hiddenTemplates, caseFolders = [] }: DocumentsProps) {
     const { auth } = usePage<SharedData>().props;
     const isAdmin = auth?.user?.role === 'Administrator' || auth?.user?.role === 'Admin' || auth?.roles?.includes('Administrator') || auth?.roles?.includes('Admin');
-    const canEdit = !isAdmin;
+    const canEdit = true;
 
     // Search filters templates
     const [search, setSearch] = useState('');
@@ -214,6 +215,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
     
     // For submitting the final form
     const [isSaving, setIsSaving] = useState(false);
+    const [historyDoc, setHistoryDoc] = useState<{ id: number; title: string } | null>(null);
 
     // Lookup cases for linking
     const handleCaseSearch = async (val: string) => {
@@ -308,11 +310,19 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
         }
     };
 
+    const [caseNoError, setCaseNoError] = useState<string | null>(null);
+
     // Confirm and save final data to DB
     const handleSaveScanned = () => {
         if (!tempFilePath) return;
 
+        if (!complainant.trim() || !respondent.trim()) {
+            alert('Please fill in both the Complainant Name and Respondent Name before saving.');
+            return;
+        }
+
         setIsSaving(true);
+        setCaseNoError(null);
 
         router.post('/documents/store-scanned', {
             temp_file: tempFilePath,
@@ -329,9 +339,13 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                 setIsUploadModalOpen(false);
                 resetModal();
             },
-            onError: (errors) => {
+            onError: (errors: any) => {
                 setIsSaving(false);
-                alert(Object.values(errors).join('\n') || 'Failed to save scanned document.');
+                if (errors.case_no) {
+                    setCaseNoError(Array.isArray(errors.case_no) ? errors.case_no[0] : errors.case_no);
+                } else {
+                    alert(Object.values(errors).join('\n') || 'Failed to save scanned document.');
+                }
             }
         });
     };
@@ -523,7 +537,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                                             variant="ghost"
                                                             size="icon"
                                                             className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                                            onClick={() => window.open(doc.file_path || `/documents/view/${doc.id}`, '_blank')}
+                                                            onClick={() => window.open(`/documents/view/${doc.id}`, '_blank')}
                                                         >
                                                             <Eye className="h-3 w-3" />
                                                         </Button>
@@ -590,22 +604,17 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                 {filteredTemplates.map((template: Template, idx) => {
                                     const fillHref = template.isCustom ? `/documents/fill-custom/${template.id}` : `/documents/create/${template.type}`;
                                     const editHref = template.isCustom ? `/documents/edit-template/${template.id}` : `/documents/edit-standard/${template.type}`;
+                                    const isViewOnly = template.isEditable === false || (template.isCustom && (template as any).content?.is_view_only);
+                                    const canFill = !isAdmin && !isViewOnly;
+
                                     return (
                                         <div
                                             key={template.isCustom ? `custom-${template.id}` : template.type}
                                             onClick={() => {
-                                                if (!canEdit) {
-                                                    const natureFilter = template.isCustom ? template.title : template.description;
-                                                    router.visit(`/cases?nature=${encodeURIComponent(natureFilter)}`);
+                                                if (canFill) {
+                                                    window.location.href = fillHref;
                                                 } else {
-                                                    if (template.isEditable === false || (template.isCustom && (template as any).content?.is_view_only)) {
-                                                        const pdfUrl = template.isCustom 
-                                                            ? `/storage/${(template as any).file_path}`
-                                                            : `/forms/${template.type}.pdf`;
-                                                        window.open(pdfUrl, '_blank');
-                                                    } else {
-                                                        window.open(fillHref, '_blank');
-                                                    }
+                                                    router.visit(`/cases?doc_type=${encodeURIComponent(template.type)}&doc_title=${encodeURIComponent(template.title)}`);
                                                 }
                                             }}
                                             className="flex flex-col justify-between p-4 rounded-lg border bg-card hover:border-[#dd8b11]/30 hover:bg-[#dd8b11]/5 dark:hover:bg-[#dd8b11]/10 transition-all group cursor-pointer relative shadow-sm hover:shadow-md"
@@ -617,34 +626,16 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center justify-between gap-2">
                                                         <p className="text-sm font-bold leading-tight group-hover:text-[#dd8b11] transition-colors truncate">{template.title}</p>
-                                                        {(template.isEditable === false || (template.isCustom && (template as any).content?.is_view_only)) && (
-                                                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground whitespace-nowrap shrink-0">View Only</span>
-                                                        )}
                                                     </div>
                                                     <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{template.description}</p>
                                                 </div>
                                             </div>
 
-                                            {canEdit && (
-                                                <div className="flex items-center justify-between pt-3 mt-3 border-t border-border/50">
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            if (template.isEditable === false || (template.isCustom && (template as any).content?.is_view_only)) {
-                                                                const pdfUrl = template.isCustom 
-                                                                    ? `/storage/${(template as any).file_path}`
-                                                                    : `/forms/${template.type}.pdf`;
-                                                                window.open(pdfUrl, '_blank');
-                                                            } else {
-                                                                window.open(fillHref, '_blank');
-                                                            }
-                                                        }}
-                                                        className="inline-flex items-center justify-center rounded bg-[#dd8b11] text-white px-3 py-1 text-[11px] font-bold tracking-wide hover:bg-[#c47c0f] transition-colors uppercase shadow-xs"
-                                                        title={template.isEditable === false || (template.isCustom && (template as any).content?.is_view_only) ? "View Template" : "Fill Out Form"}
-                                                    >
-                                                        {template.isEditable === false || (template.isCustom && (template as any).content?.is_view_only) ? "View Form" : "Fill Out Form"}
-                                                    </button>
-                                                    <div className="flex items-center gap-1">
+                                            <div className="flex items-center justify-between pt-3 mt-3 border-t border-border/50">
+                                                <span className="text-[11px] text-muted-foreground group-hover:text-[#dd8b11] transition-colors font-medium">
+                                                    {canFill ? 'Click to fill form' : 'Click to view cases'}
+                                                </span>
+                                                <div className="flex items-center gap-1">
                                                         {!(template.isEditable === false || (template.isCustom && (template as any).content?.is_view_only)) && (
                                                             <a
                                                                 href={editHref}
@@ -675,7 +666,6 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                                         </button>
                                                     </div>
                                                 </div>
-                                            )}
                                         </div>
                                     );
                                 })}
@@ -831,6 +821,14 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                                     </td>
                                                     <td className="px-4 py-3">
                                                         <div className="flex justify-end gap-2">
+                                                            <button
+                                                                onClick={() => setHistoryDoc({ id: doc.id, title: getTemplateTitle(doc.type) || doc.type })}
+                                                                title="Security Revision History & Recovery"
+                                                                className="inline-flex items-center justify-center rounded-md h-9 px-2 text-xs font-medium hover:bg-emerald-50 text-emerald-600 hover:text-emerald-700 dark:hover:bg-emerald-950/40 transition-colors gap-1 border border-emerald-300 dark:border-emerald-800"
+                                                            >
+                                                                <ShieldCheck className="h-4 w-4" />
+                                                                History
+                                                            </button>
                                                             <a
                                                                 href={`/documents/view/${doc.id}`}
                                                                 target="_blank"
@@ -965,7 +963,15 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                     <select
                                         id="doc-type"
                                         value={docType}
-                                        onChange={(e) => setDocType(e.target.value)}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setDocType(val);
+                                            if (val === 'affidavit_withdrawal') {
+                                                setNatureOfCase('Affidavit of Withdrawal');
+                                            } else {
+                                                setNatureOfCase('Complaint');
+                                            }
+                                        }}
                                         className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                                     >
                                         <option value="complaint">Complaint Form (KP Form 7)</option>
@@ -979,10 +985,16 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                     <Input
                                         id="case-number"
                                         value={caseNo}
-                                        onChange={(e) => setCaseNo(e.target.value)}
-                                        className="h-9 text-xs"
+                                        onChange={(e) => {
+                                            setCaseNo(e.target.value);
+                                            setCaseNoError(null);
+                                        }}
+                                        className={`h-9 text-xs ${caseNoError ? 'border-red-500 ring-1 ring-red-500 bg-red-50/20' : ''}`}
                                         required
                                     />
+                                    {caseNoError && (
+                                        <p className="text-xs text-red-600 font-semibold mt-1">{caseNoError}</p>
+                                    )}
                                 </div>
 
                                 {/* Complainant */}
@@ -1012,13 +1024,24 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                 {/* Nature of Case */}
                                 <div className="space-y-1.5 col-span-2">
                                     <Label htmlFor="nature-of-case" className="text-xs font-semibold">Nature of Case</Label>
-                                    <Input
+                                    <select
                                         id="nature-of-case"
                                         value={natureOfCase}
-                                        onChange={(e) => setNatureOfCase(e.target.value)}
-                                        className="h-9 text-xs"
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setNatureOfCase(val);
+                                            if (val === 'Affidavit of Withdrawal') {
+                                                setDocType('affidavit_withdrawal');
+                                            } else {
+                                                setDocType('complaint');
+                                            }
+                                        }}
+                                        className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                                         required
-                                    />
+                                    >
+                                        <option value="Complaint">Complaint</option>
+                                        <option value="Affidavit of Withdrawal">Affidavit of Withdrawal</option>
+                                    </select>
                                 </div>
 
                                 {/* Summary */}
@@ -1046,7 +1069,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                 </Button>
                                 <Button
                                     onClick={handleSaveScanned}
-                                    disabled={isSaving || !complainant || !respondent}
+                                    disabled={isSaving}
                                     className="h-9 text-xs bg-[#dd8b11] hover:bg-[#c47c0f] text-white flex items-center"
                                 >
                                     {isSaving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
@@ -1209,6 +1232,15 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                     )}
                 </DialogContent>
             </Dialog>
+
+            {/* Document Security Revision History Modal */}
+            <DocumentVersionHistoryModal
+                isOpen={!!historyDoc}
+                onClose={() => setHistoryDoc(null)}
+                documentId={historyDoc?.id ?? null}
+                documentTitle={historyDoc?.title || 'Document'}
+                canEdit={canEdit}
+            />
 
             </div>
         </AppLayout>

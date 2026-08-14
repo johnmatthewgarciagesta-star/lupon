@@ -15,7 +15,8 @@ import {
     File as FileIcon,
     Search,
     Loader2,
-    Edit3
+    Edit3,
+    AlertCircle
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { EditCaseStatusDialog } from '@/components/cases/edit-case-status-dialog';
@@ -121,11 +122,30 @@ export default function Reports({ stats }: { stats: any }) {
     ];
 
     const [reportType, setReportType] = useState('summary');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [matchingCount, setMatchingCount] = useState<number | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [searchCaseNo, setSearchCaseNo] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [editingCaseForStatus, setEditingCaseForStatus] = useState<any>(null);
+
+    useEffect(() => {
+        const checkMatching = async () => {
+            try {
+                let url = `/api/reports/check-count?`;
+                if (startDate) url += `start_date=${encodeURIComponent(startDate)}&`;
+                if (endDate) url += `end_date=${encodeURIComponent(endDate)}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                setMatchingCount(data.count);
+            } catch (e) {
+                console.error('Failed to check matching cases:', e);
+            }
+        };
+        checkMatching();
+    }, [startDate, endDate]);
 
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
@@ -155,8 +175,11 @@ export default function Reports({ stats }: { stats: any }) {
     const handleGenerate = () => {
         setIsGenerating(true);
         // Use window.location for file download
-        window.location.href = `/reports/generate?type=${reportType}`;
-        // Reset loading state after a short delay (since download doesn't trigger page load)
+        let url = `/reports/generate?type=${reportType}`;
+        if (startDate) url += `&start_date=${startDate}`;
+        if (endDate) url += `&end_date=${endDate}`;
+        window.location.href = url;
+        // Reset loading state after a short delay
         setTimeout(() => setIsGenerating(false), 3000);
     };
 
@@ -241,29 +264,57 @@ export default function Reports({ stats }: { stats: any }) {
                             <CardTitle>Generate Report</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="flex gap-4">
-                                <div className="flex-1">
-                                    <Select value={reportType} onValueChange={setReportType}>
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="summary">Case Summary</SelectItem>
-                                            <SelectItem value="nature">Nature of Cases</SelectItem>
-                                            <SelectItem value="status">Status Report</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <Button
-                                    onClick={handleGenerate}
-                                    disabled={isGenerating}
-                                    className="bg-[#1c2434] hover:bg-[#2c3a4f] text-white">
-                                    {isGenerating ? (
-                                        <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                                    ) : (
-                                        <FileText className="mr-2 h-4 w-4" />
-                                    )}
-                                    Generate PDF
-                                </Button>
+                            <div className="space-y-2">
+                                <label className="text-xs font-semibold uppercase text-muted-foreground">Report Type</label>
+                                <Select value={reportType} onValueChange={setReportType}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="summary">Case Summary</SelectItem>
+                                        <SelectItem value="nature">Nature of Cases</SelectItem>
+                                        <SelectItem value="status">Status Report</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <label className="text-xs font-medium text-muted-foreground">Start Date (Optional)</label>
+                                    <input 
+                                        type="date"
+                                        value={startDate}
+                                        onChange={(e) => setStartDate(e.target.value)}
+                                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-medium text-muted-foreground">End Date (Optional)</label>
+                                    <input 
+                                        type="date"
+                                        value={endDate}
+                                        onChange={(e) => setEndDate(e.target.value)}
+                                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs"
+                                    />
+                                </div>
+                            </div>
+
+                            {matchingCount === 0 && (
+                                <div className="flex items-center gap-2.5 p-3 rounded-lg bg-amber-500/10 border border-amber-300 dark:border-amber-700/60 text-amber-800 dark:text-amber-300 text-xs font-semibold">
+                                    <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                                    <span>No matching cases found for the selected period.</span>
+                                </div>
+                            )}
+
+                            <Button
+                                onClick={handleGenerate}
+                                disabled={isGenerating}
+                                className="w-full bg-[#1c2434] hover:bg-[#2c3a4f] text-white h-9 text-xs">
+                                {isGenerating ? (
+                                    <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                ) : (
+                                    <FileText className="mr-2 h-4 w-4" />
+                                )}
+                                Generate PDF Report
+                            </Button>
                         </CardContent>
                     </Card>
 

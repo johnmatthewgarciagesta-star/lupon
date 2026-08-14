@@ -81,8 +81,10 @@ function SidebarProvider({
         _setOpen(openState)
       }
 
-      // This sets the cookie to keep the sidebar state.
-      document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+      // Store sidebar state in localStorage instead of HTTP cookie
+      if (typeof window !== "undefined") {
+        localStorage.setItem(SIDEBAR_COOKIE_NAME, String(openState))
+      }
     },
     [setOpenProp, open]
   )
