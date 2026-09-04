@@ -65,7 +65,7 @@ class ReportController extends Controller
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
 
-        $query = LuponCase::query();
+        $query = LuponCase::withTrashed();
         if (!empty($startDate)) {
             $query->whereDate('date_filed', '>=', $startDate);
         }
@@ -80,7 +80,7 @@ class ReportController extends Controller
 
     private function getStats($startDate = null, $endDate = null)
     {
-        $query = LuponCase::query();
+        $query = LuponCase::withTrashed();
 
         if (!empty($startDate)) {
             $query->whereDate('date_filed', '>=', $startDate);
@@ -91,13 +91,29 @@ class ReportController extends Controller
 
         $cases = $query->get();
 
+        $nowMonth = Carbon::now()->month;
+        $nowYear = Carbon::now()->year;
+
+        // Recent cases: Cases filed this month (or sorted recent if custom date filter applied)
+        $thisMonthCases = $cases->filter(function ($c) use ($nowMonth, $nowYear) {
+            if (!$c->date_filed) return false;
+            $d = Carbon::parse($c->date_filed);
+            return $d->month === $nowMonth && $d->year === $nowYear;
+        });
+
+        // If filtering by specific date range or if no cases this month, fallback to filtered cases set
+        $recentCasesCollection = (!empty($startDate) || !empty($endDate) || $thisMonthCases->isEmpty()) 
+            ? $cases->sortByDesc('created_at')->take(50)
+            : $thisMonthCases->sortByDesc('created_at');
+
         return [
             'total_cases' => $cases->count(),
-            'cases_this_month' => $cases->filter(function ($c) {
+            'cases_this_month' => $cases->filter(function ($c) use ($nowMonth, $nowYear) {
+                if (!$c->date_filed) return false;
                 $d = Carbon::parse($c->date_filed);
-                return $d->month === Carbon::now()->month && $d->year === Carbon::now()->year;
+                return $d->month === $nowMonth && $d->year === $nowYear;
             })->count(),
-            'pending_cases' => $cases->whereNotIn('status', ['Resolved', 'Settled', 'Dismissed'])->count(),
+            'pending_cases' => $cases->whereNotIn('status', ['Resolved', 'Settled', 'Dismissed'])->whereNull('deleted_at')->count(),
             'resolved_cases' => $cases->whereIn('status', ['Resolved', 'Settled', 'Dismissed'])->count(),
 
             // Group by Nature
@@ -108,16 +124,19 @@ class ReportController extends Controller
                 ];
             })->values(),
 
-            // Recent Cases for the table
-            'recent_cases' => $cases->sortByDesc('created_at')
-                ->take(50)
-                ->map(function ($case) {
+            // Recent Cases (Cases filed this month or matching period)
+            'recent_cases' => $recentCasesCollection->map(function ($case) {
+                    $statusStr = $case->status;
+                    if ($case->trashed()) {
+                        $statusStr = $statusStr ? "{$statusStr} (Archived)" : 'Archived';
+                    }
                     return [
                         'id' => $case->id,
                         'case_number' => $case->case_number,
                         'title' => $case->title,
                         'nature' => $case->nature_of_case,
-                        'status' => $case->status,
+                        'status' => $statusStr,
+                        'is_archived' => $case->trashed(),
                         'date_filed' => $case->date_filed ? Carbon::parse($case->date_filed)->format('M d, Y') : 'N/A',
                     ];
                 })->values(),

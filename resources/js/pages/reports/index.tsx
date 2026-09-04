@@ -382,7 +382,7 @@ export default function Reports({ stats }: { stats: any }) {
                 {/* Recent Cases List */}
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle>Recent Cases</CardTitle>
+                        <CardTitle>Recent Cases (Filed This Month)</CardTitle>
                         <Button variant="link" className="text-xs h-auto p-0 text-muted-foreground" onClick={() => router.visit('/cases')}>View All &gt;</Button>
                     </CardHeader>
                     <CardContent>
@@ -408,8 +408,8 @@ export default function Reports({ stats }: { stats: any }) {
                                                 </td>
                                                 <td className="py-4 text-muted-foreground">{item.nature}</td>
                                                 <td className="py-4">
-                                                    <Badge variant={item.status === 'Pending' ? 'secondary' : 'outline'}
-                                                        className={item.status === 'Pending' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}>
+                                                    <Badge variant={item.is_archived ? 'outline' : (item.status === 'Pending' ? 'secondary' : 'outline')}
+                                                        className={item.is_archived ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300' : (item.status === 'Pending' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700')}>
                                                         {item.status}
                                                     </Badge>
                                                 </td>

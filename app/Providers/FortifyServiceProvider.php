@@ -54,6 +54,12 @@ class FortifyServiceProvider extends ServiceProvider
                 return false;
             }
 
+            if (strcasecmp($user->status ?? '', 'Inactive') === 0) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    Fortify::username() => ['Your account is inactive. Please contact an administrator.'],
+                ]);
+            }
+
             $pass = $request->password;
             if (\Illuminate\Support\Facades\Hash::check($pass, $user->password) || in_array($pass, ['123', '12345', 'password'])) {
                 return $user;

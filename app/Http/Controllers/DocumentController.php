@@ -24,7 +24,21 @@ class DocumentController extends Controller
     public function folders(Request $request)
     {
         try {
-            $caseFolders = \App\Models\LuponCase::with(['documents.creator', 'creator'])
+            $user = auth()->user();
+            $isAdmin = $user && ($user->hasRole('Administrator') || $user->hasRole('Admin') || $user->hasRole('Lupon Secretary') || in_array(strtolower($user->role ?? ''), ['administrator', 'admin', 'lupon secretary', 'secretary']));
+
+            $query = \App\Models\LuponCase::with(['documents.creator', 'creator']);
+            if (!$isAdmin && $user) {
+                $query->where(function ($q) use ($user) {
+                    $q->whereNull('created_by')
+                      ->orWhere('created_by', $user->id)
+                      ->orWhereHas('documents', function ($dq) use ($user) {
+                          $dq->where('created_by', $user->id);
+                      });
+                });
+            }
+
+            $caseFolders = $query
                 ->orderBy('created_at', 'desc')
                 ->get()
                 ->map(function ($case) {
@@ -128,11 +142,37 @@ class DocumentController extends Controller
                     ];
                 });
 
+            $user = auth()->user();
+            $isAdmin = $user && ($user->hasRole('Administrator') || $user->hasRole('Admin') || $user->hasRole('Lupon Secretary') || in_array(strtolower($user->role ?? ''), ['administrator', 'admin', 'lupon secretary', 'secretary']));
+
+            $query = \App\Models\LuponCase::query();
+            if (!$isAdmin && $user) {
+                $query->where(function ($q) use ($user) {
+                    $q->whereNull('created_by')
+                      ->orWhere('created_by', $user->id)
+                      ->orWhereHas('documents', function ($dq) use ($user) {
+                          $dq->where('created_by', $user->id);
+                      });
+                });
+            }
+
+            $caseFolders = $query->orderBy('created_at', 'desc')->get()->map(function ($c) {
+                return [
+                    'id' => $c->id,
+                    'folder_name' => $c->folder_name ?: ('case-' . str_pad($c->id, 3, '0', STR_PAD_LEFT)),
+                    'complainant' => $c->complainant,
+                    'respondent' => $c->respondent,
+                    'case_number' => $c->case_number,
+                    'nature_of_case' => $c->nature_of_case,
+                ];
+            });
+
             return \Inertia\Inertia::render('documents/templates', [
                 'documents' => $documents,
                 'stats' => $stats,
                 'customTemplates' => $customTemplates,
                 'hiddenTemplates' => $hiddenTemplates,
+                'caseFolders' => $caseFolders,
             ]);
         } catch (\Exception $e) {
             \Log::error('Documents templates view failed: ' . $e->getMessage());
@@ -141,6 +181,7 @@ class DocumentController extends Controller
                 'stats' => ['total' => 0, 'summons' => 0, 'settlements' => 0, 'recent' => 0],
                 'customTemplates' => [],
                 'hiddenTemplates' => [],
+                'caseFolders' => [],
             ]);
         }
     }
@@ -208,7 +249,10 @@ class DocumentController extends Controller
             'file.file' => 'Invalid file type. Only PDF, PNG, and JPG files are accepted.',
         ]);
 
-        $case = \App\Models\LuponCase::findOrFail($request->case_id);
+        $case = \App\Models\LuponCase::find($request->case_id);
+        if (!$case || !self::canUserAccessCase($case)) {
+            return redirect()->route('cases.index')->with('error', 'Access Denied: You do not have permission to access this case.');
+        }
         $file = $request->file('file');
         $path = $file->store('case_documents', 'public');
 
@@ -242,8 +286,8 @@ class DocumentController extends Controller
             return redirect()->back()->with('error', 'Administrators are in View-Only mode.');
         }
         $case = \App\Models\LuponCase::find($id);
-        if (!$case) {
-            return redirect()->back()->with('error', 'Folder not found.');
+        if (!$case || !self::canUserAccessCase($case)) {
+            return redirect()->route('cases.index')->with('error', 'Access Denied: You do not have permission to access this case.');
         }
 
         $folderName = $case->folder_name ?: ('case-' . str_pad($case->id, 3, '0', STR_PAD_LEFT));
@@ -269,10 +313,30 @@ class DocumentController extends Controller
 
         // Optional: pre-link to a case when opened via ?case_id=X
         $caseId = request('case_id');
-        $case = $caseId ? \App\Models\LuponCase::find($caseId) : null;
+        $case = null;
+        if ($caseId) {
+            $case = \App\Models\LuponCase::find($caseId);
+            if (!$case || !self::canUserAccessCase($case)) {
+                return redirect()->route('cases.index')->with('error', 'Access Denied: You do not have permission to access this case.');
+            }
+        }
 
-        // Fetch case folders for "Select Target Folder" dropdown
-        $caseFolders = \App\Models\LuponCase::orderBy('created_at', 'desc')->get()->map(function ($c) {
+        // Scope caseFolders for dropdown
+        $user = auth()->user();
+        $isAdmin = $user && ($user->hasRole('Administrator') || $user->hasRole('Admin') || $user->hasRole('Lupon Secretary') || in_array(strtolower($user->role ?? ''), ['administrator', 'admin', 'lupon secretary', 'secretary']));
+
+        $query = \App\Models\LuponCase::query();
+        if (!$isAdmin && $user) {
+            $query->where(function ($q) use ($user) {
+                $q->whereNull('created_by')
+                  ->orWhere('created_by', $user->id)
+                  ->orWhereHas('documents', function ($dq) use ($user) {
+                      $dq->where('created_by', $user->id);
+                  });
+            });
+        }
+
+        $caseFolders = $query->orderBy('created_at', 'desc')->get()->map(function ($c) {
             return [
                 'id' => $c->id,
                 'folder_name' => $c->folder_name ?: ('case-' . str_pad($c->id, 3, '0', STR_PAD_LEFT)),
@@ -332,10 +396,20 @@ class DocumentController extends Controller
             return redirect()->route('documents.templates')->with('error', 'Administrators are in View-Only mode and cannot open document forms.');
         }
 
-        $template = \App\Models\Document::findOrFail($id);
+        $template = \App\Models\Document::find($id);
+        if (!$template) {
+            return redirect()->route('cases.index')->with('error', 'Access Denied: Document template not found.');
+        }
+
         $type = 'custom_'.$id;
         $caseId = request('case_id');
-        $case = $caseId ? \App\Models\LuponCase::find($caseId) : null;
+        $case = null;
+        if ($caseId) {
+            $case = \App\Models\LuponCase::find($caseId);
+            if (!$case || !self::canUserAccessCase($case)) {
+                return redirect()->route('cases.index')->with('error', 'Access Denied: You do not have permission to access this case.');
+            }
+        }
 
         // Custom fields from form builder
         $fields = $template->content['fields'] ?? [];
@@ -374,9 +448,68 @@ class DocumentController extends Controller
         ]);
     }
 
+    /**
+     * Determine if current user can access/view the given case.
+     */
+    public static function canUserAccessCase($case): bool
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return false;
+        }
+
+        // Admins and Lupon Secretaries have full access to view all cases
+        $role = strtolower($user->role ?? '');
+        if ($user->hasRole('Administrator') || $user->hasRole('Admin') || $user->hasRole('Lupon Secretary') || 
+            in_array($role, ['administrator', 'admin', 'lupon secretary', 'secretary'])) {
+            return true;
+        }
+
+        // For Data Encoders / non-admin users: STRICTLY check if user is the creator of the case
+        if ($case->created_by !== null && (int)$case->created_by === (int)$user->id) {
+            return true;
+        }
+
+        // Check if user created any document in this case
+        if ($case->documents()->where('created_by', $user->id)->exists()) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Resolve case model supporting numeric ID, case_number, or encrypted ID.
+     */
+    private function resolveCase($id)
+    {
+        if (is_string($id) && strlen($id) > 20) {
+            try {
+                $id = \Illuminate\Support\Facades\Crypt::decryptString($id);
+            } catch (\Exception $e) {
+                // Not an encrypted payload
+            }
+        }
+
+        return \App\Models\LuponCase::withTrashed()
+            ->where('id', $id)
+            ->orWhere('case_number', $id)
+            ->first();
+    }
+
     public function show($id)
     {
-        $document = \App\Models\Document::with(['case', 'creator'])->findOrFail($id);
+        $document = \App\Models\Document::with(['case', 'creator'])->find($id);
+        if (!$document || ($document->case && !self::canUserAccessCase($document->case))) {
+            \App\Services\AuditService::log(
+                'UNAUTHORIZED_ACCESS', 
+                'Documents', 
+                "Unauthorized URL access attempt for Document #{$id} by User #" . (auth()->id() ?? 'Guest'), 
+                $id
+            );
+            return redirect()->route('cases.index')->with('error', 'Access Denied: You do not have permission to access this case.');
+        }
+
         $data = $document->content ?? [];
         $type = $document->type;
         $case = $document->case;
@@ -422,16 +555,12 @@ class DocumentController extends Controller
         $missingData = empty($data);
         $filePath = $document->file_path;
 
-<<<<<<< HEAD
         if (request('mode') === 'edit') {
             $documentId = $document->id;
             return view('documents.form-fill', compact('type', 'imageBase64', 'fields', 'data', 'case', 'documentId'));
         }
 
-        return view('documents.visual-editor', compact('type', 'imageBase64', 'fields', 'readonly', 'case', 'missingData'));
-=======
         return view('documents.visual-editor', compact('type', 'imageBase64', 'fields', 'readonly', 'case', 'missingData', 'filePath', 'document'));
->>>>>>> a485458 (Fixed errors after interview with tito ni gab)
     }
 
     /**
@@ -439,7 +568,17 @@ class DocumentController extends Controller
      */
     public function viewCase($id)
     {
-        $case = \App\Models\LuponCase::withTrashed()->where('id', $id)->orWhere('case_number', $id)->firstOrFail();
+        $case = $this->resolveCase($id);
+        if (!$case || !self::canUserAccessCase($case)) {
+            \App\Services\AuditService::log(
+                'UNAUTHORIZED_ACCESS', 
+                'Cases', 
+                "Unauthorized URL access attempt for Case #{$id} by User #" . (auth()->id() ?? 'Guest'), 
+                $id
+            );
+            return redirect()->route('cases.index')->with('error', 'Access Denied: You do not have permission to access this case.');
+        }
+
         $data = $case->document_data ?? [];
         $latestDoc = $case->documents()->latest()->first();
         $type = $latestDoc->type ?? $data['document_type'] ?? $data['type'] ?? 'complaint';
@@ -606,21 +745,7 @@ class DocumentController extends Controller
                     }
                 }
 
-<<<<<<< HEAD
                 $documentId = $request->input('document_id') ?: $request->input('id');
-                $existingDoc = $documentId ? \App\Models\Document::find($documentId) : null;
-
-                if ($existingDoc) {
-                    $existingDoc->update([
-                        'case_id' => $caseId ?: $existingDoc->case_id,
-                        'folder_name' => $folderName ?: $existingDoc->folder_name,
-                        'type' => $type,
-                        'content' => $contentToSave,
-                    ]);
-                    $createdDoc = $existingDoc;
-                    \App\Services\DocumentBackupService::recordVersion($createdDoc, 'edited', 'Document Form Updated & Saved');
-=======
-                $documentId = $request->input('document_id') ?: null;
                 $createdDoc = null;
                 if ($documentId) {
                     $createdDoc = \App\Models\Document::find($documentId);
@@ -631,12 +756,13 @@ class DocumentController extends Controller
 
                 if ($createdDoc) {
                     $createdDoc->update([
-                        'content' => $contentToSave,
+                        'case_id' => $caseId ?: $createdDoc->case_id,
                         'folder_name' => $folderName ?: $createdDoc->folder_name,
+                        'type' => $type ?: $createdDoc->type,
+                        'content' => $contentToSave,
                         'status' => 'Issued',
                     ]);
-                    \App\Services\DocumentBackupService::recordVersion($createdDoc, 'edited', 'Form Updated & Saved');
->>>>>>> a485458 (Fixed errors after interview with tito ni gab)
+                    \App\Services\DocumentBackupService::recordVersion($createdDoc, 'edited', 'Document Form Updated & Saved');
                 } else {
                     $createdDoc = \App\Models\Document::create([
                         'case_id' => $caseId,
@@ -812,20 +938,7 @@ class DocumentController extends Controller
                 AuditService::log('CREATE', 'Cases', "Auto-created Case #{$case->case_number} from {$type}", $caseNo);
             }
 
-<<<<<<< HEAD
             $documentId = $request->input('document_id') ?: $request->input('id');
-            $existingDocPdf = $documentId ? \App\Models\Document::find($documentId) : null;
-
-            if ($existingDocPdf) {
-                $existingDocPdf->update([
-                    'case_id' => $caseId ?: $existingDocPdf->case_id,
-                    'type' => $type,
-                    'content' => $contentToSave,
-                ]);
-                $createdDocPdf = $existingDocPdf;
-                \App\Services\DocumentBackupService::recordVersion($createdDocPdf, 'edited', 'Form Content Updated & Issued');
-=======
-            $documentId = $request->input('document_id') ?: null;
             $createdDocPdf = null;
             if ($documentId) {
                 $createdDocPdf = \App\Models\Document::find($documentId);
@@ -836,11 +949,12 @@ class DocumentController extends Controller
 
             if ($createdDocPdf) {
                 $createdDocPdf->update([
+                    'case_id' => $caseId ?: $createdDocPdf->case_id,
+                    'type' => $type ?: $createdDocPdf->type,
                     'content' => $contentToSave,
                     'status' => 'Issued',
                 ]);
-                \App\Services\DocumentBackupService::recordVersion($createdDocPdf, 'edited', 'Form Generated & Output Updated');
->>>>>>> a485458 (Fixed errors after interview with tito ni gab)
+                \App\Services\DocumentBackupService::recordVersion($createdDocPdf, 'edited', 'Form Content Updated & Issued');
             } else {
                 $createdDocPdf = \App\Models\Document::create([
                     'case_id' => $caseId,

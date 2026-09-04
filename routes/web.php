@@ -57,6 +57,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Case Lookup API
         Route::get('/api/cases/lookup', [App\Http\Controllers\CaseController::class, 'lookup'])->name('api.cases.lookup');
+
+        // Real-Time Philippine Time API (Asia/Manila, UTC+8)
+        Route::get('/api/philippine-time', function () {
+            $now = \Carbon\Carbon::now('Asia/Manila');
+            return response()->json([
+                'iso' => $now->toIso8601String(),
+                'date' => $now->format('Y-m-d'),
+                'formatted_date' => $now->format('F d, Y'),
+                'short_date' => $now->format('m/d/Y'),
+                'day_name' => $now->format('l'),
+                'year' => $now->year,
+                'month' => $now->month,
+                'day' => $now->day,
+                'time' => $now->format('h:i:s A'),
+                'timezone' => 'Asia/Manila (PST, UTC+8)',
+            ]);
+        })->name('api.philippine-time');
     });
 
     // Encoder and Admin Routes (Editing cases, documents, etc.)

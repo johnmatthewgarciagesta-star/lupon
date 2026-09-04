@@ -112,6 +112,41 @@ interface Props {
     };
 }
 
+function formatDateWithoutShift(dateStr?: string | null) {
+    if (!dateStr) return 'N/A';
+    const cleanDate = dateStr.split('T')[0];
+    const parts = cleanDate.split('-');
+    if (parts.length === 3 && parts[0].length === 4) {
+        const year = Number(parts[0]);
+        const month = Number(parts[1]) - 1;
+        const day = Number(parts[2]);
+        const localDate = new Date(year, month, day);
+        return localDate.toLocaleDateString(undefined, { month: '2-digit', day: '2-digit', year: 'numeric' });
+    }
+    const d = new Date(dateStr);
+    return !isNaN(d.getTime()) ? d.toLocaleDateString(undefined, { month: '2-digit', day: '2-digit', year: 'numeric' }) : dateStr;
+}
+
+function normalizeDateToISO(val: string): string {
+    if (!val) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+    const parts = val.split(/[\/\-]/);
+    if (parts.length === 3) {
+        if (parts[2].length === 4) {
+            const m = parts[0].padStart(2, '0');
+            const d = parts[1].padStart(2, '0');
+            const y = parts[2];
+            return `${y}-${m}-${d}`;
+        } else if (parts[0].length === 4) {
+            const y = parts[0];
+            const m = parts[1].padStart(2, '0');
+            const d = parts[2].padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+    }
+    return val;
+}
+
 export default function CaseManagement({ cases, filters }: Props) {
     const { auth } = usePage<{ auth: { user: { role: string } } }>().props;
     const isAdmin = auth?.user?.role === 'Administrator' || auth?.user?.role === 'Admin';
@@ -134,6 +169,42 @@ export default function CaseManagement({ cases, filters }: Props) {
     const [month, setMonth] = useState(initialMonth);
     const [sortField, setSortField] = useState(filters.sort_by || (initialMonth !== 'all' ? 'date_filed' : 'created_at'));
     const [sortOrder, setSortOrder] = useState(filters.sort_order || 'desc');
+    const [philippineTime, setPhilippineTime] = useState<{ date: string; formatted_date: string; short_date?: string; day_name: string; time: string } | null>(null);
+
+    useEffect(() => {
+        setDate(filters.date || '');
+        setMonth(filters.month || (filters.filter === 'new_cases' ? 'latest' : 'all'));
+        setStatus(filters.status || 'all');
+        setNature(filters.nature || 'all');
+        setSearch(filters.search || '');
+    }, [filters.date, filters.month, filters.status, filters.nature, filters.search, filters.filter]);
+
+    useEffect(() => {
+        const fetchPHTime = async () => {
+            try {
+                const res = await fetch('/api/philippine-time');
+                if (res.ok) {
+                    const data = await res.json();
+                    setPhilippineTime(data);
+                } else {
+                    const pubRes = await fetch('https://timeapi.io/api/time/current/zone?timeZone=Asia/Manila');
+                    if (pubRes.ok) {
+                        const pubData = await pubRes.json();
+                        setPhilippineTime({
+                            date: `${pubData.year}-${String(pubData.month).padStart(2, '0')}-${String(pubData.day).padStart(2, '0')}`,
+                            formatted_date: `${new Date(pubData.year, pubData.month - 1, pubData.day).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`,
+                            short_date: `${String(pubData.month).padStart(2, '0')}/${String(pubData.day).padStart(2, '0')}/${pubData.year}`,
+                            day_name: pubData.dayOfWeek || '',
+                            time: pubData.time || '',
+                        });
+                    }
+                }
+            } catch (e) {
+                console.warn('Philippine time sync:', e);
+            }
+        };
+        fetchPHTime();
+    }, []);
 
     // Case Drawer & Edit Status state
     const [selectedCaseForDrawer, setSelectedCaseForDrawer] = useState<Case | null>(null);
@@ -155,11 +226,58 @@ export default function CaseManagement({ cases, filters }: Props) {
         updateSearch(e.target.value);
     };
 
+    const applyDateFilter = useCallback(
+        debounce((isoDate: string) => {
+            router.get(
+                '/cases',
+                {
+                    search,
+                    status,
+                    nature,
+                    date: isoDate,
+                    month: isoDate ? 'all' : month,
+                    sort_by: sortField,
+                    sort_order: sortOrder,
+                    ...(filters.doc_type ? { doc_type: filters.doc_type } : {}),
+                    ...(filters.doc_title ? { doc_title: filters.doc_title } : {}),
+                },
+                { preserveState: true, replace: true }
+            );
+        }, 300),
+        [search, status, nature, month, sortField, sortOrder, filters.doc_type, filters.doc_title]
+    );
+
+    const handleDateInputChange = (val: string) => {
+        const isoVal = normalizeDateToISO(val);
+        setDate(isoVal);
+        if (isoVal) {
+            setMonth('all');
+        }
+        applyDateFilter(isoVal);
+    };
+
     const handleFilterChange = (key: string, value: string) => {
+        let newMonth = month;
+        let newDate = date;
         if (key === 'status') setStatus(value);
         if (key === 'nature') setNature(value);
-        if (key === 'date') setDate(value);
-        if (key === 'month') setMonth(value);
+        if (key === 'date') {
+            const isoDate = normalizeDateToISO(value);
+            setDate(isoDate);
+            newDate = isoDate;
+            if (isoDate) {
+                newMonth = 'all';
+                setMonth('all');
+            }
+        }
+        if (key === 'month') {
+            setMonth(value);
+            newMonth = value;
+            if (value !== 'all') {
+                setDate('');
+                newDate = '';
+            }
+        }
 
         router.get(
             '/cases',
@@ -167,10 +285,12 @@ export default function CaseManagement({ cases, filters }: Props) {
                 search,
                 status: key === 'status' ? value : status,
                 nature: key === 'nature' ? value : nature,
-                date: key === 'date' ? value : date,
-                month: key === 'month' ? value : month,
+                date: newDate,
+                month: newMonth,
                 sort_by: sortField,
                 sort_order: sortOrder,
+                ...(filters.doc_type ? { doc_type: filters.doc_type } : {}),
+                ...(filters.doc_title ? { doc_title: filters.doc_title } : {}),
             },
             { preserveState: true, replace: true }
         );
@@ -334,15 +454,38 @@ export default function CaseManagement({ cases, filters }: Props) {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    Date Filed
-                                </label>
+                                <div className="flex items-center justify-between">
+                                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                        Date Filed
+                                    </label>
+                                    {date && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDateInputChange('')}
+                                            className="text-[11px] text-amber-600 dark:text-amber-400 hover:underline font-semibold"
+                                        >
+                                            Clear
+                                        </button>
+                                    )}
+                                </div>
                                 <Input
                                     type="date"
                                     value={date}
-                                    onChange={(e) => handleFilterChange('date', e.target.value)}
-                                    className={date ? "w-full" : "w-full text-muted-foreground"}
+                                    onChange={(e) => handleDateInputChange(e.target.value)}
+                                    className={date ? "w-full font-semibold" : "w-full text-muted-foreground"}
                                 />
+                                {philippineTime && (
+                                    <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-0.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDateInputChange(philippineTime.date)}
+                                            className="text-[10px] font-semibold text-[#dd8b11] hover:underline"
+                                            title="Click to filter by today's official Philippine date"
+                                        >
+                                            🇵🇭 PH Today: {philippineTime.short_date || philippineTime.date}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -442,9 +585,7 @@ export default function CaseManagement({ cases, filters }: Props) {
                                     cases.data.map((item, index) => {
                                         const folderName = item.folder_name || `case-${String(item.id).padStart(3, '0')}`;
                                         const docCount = item.documents_count || (item.documents ? item.documents.length : 0);
-                                        const formattedDate = item.date_filed && !isNaN(new Date(item.date_filed).getTime())
-                                            ? new Date(item.date_filed).toLocaleDateString()
-                                            : (item.date_filed || 'N/A');
+                                        const formattedDate = formatDateWithoutShift(item.date_filed);
                                         const encoderName = item.creator?.name || (item.created_by ? `Encoder #${item.created_by}` : 'System Admin');
 
                                         return (

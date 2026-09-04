@@ -93,6 +93,15 @@ interface Template {
     content?: any;
 }
 
+interface CaseFolder {
+    id: number;
+    case_number?: string;
+    folder_name: string;
+    complainant?: string;
+    respondent?: string;
+    nature_of_case?: string;
+}
+
 interface DocumentsProps {
     documents: Document[];
     stats: {
@@ -103,12 +112,13 @@ interface DocumentsProps {
     };
     customTemplates: any[];
     hiddenTemplates?: string[];
+    caseFolders?: CaseFolder[];
 }
 
-export default function DocumentsTemplates({ documents, stats, customTemplates, hiddenTemplates }: DocumentsProps) {
+export default function DocumentsTemplates({ documents, stats, customTemplates, hiddenTemplates, caseFolders = [] }: DocumentsProps) {
     const { auth } = usePage<SharedData>().props;
-    const isAdmin = auth?.user?.role === 'Administrator' || auth?.user?.role === 'Admin' || auth?.roles?.includes('Administrator') || auth?.roles?.includes('Admin');
-    const canEdit = true;
+    const isAdmin = auth?.user?.role === 'Administrator' || auth?.user?.role === 'Admin' || auth?.roles?.includes('Administrator') || auth?.roles?.includes('Admin') || (auth?.user?.email && auth.user.email.toLowerCase() === 'kataru@gmail.com');
+    const canEdit = !isAdmin;
 
     // Search filters templates
     const [search, setSearch] = useState('');
@@ -138,6 +148,39 @@ export default function DocumentsTemplates({ documents, stats, customTemplates, 
     
     // For submitting the final form
     const [isSaving, setIsSaving] = useState(false);
+
+    // ─── Case Folder Management States ────────────────────────────────────────
+    const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
+    const [newFolderName, setNewFolderName] = useState('');
+    const [newFolderCaseNo, setNewFolderCaseNo] = useState('');
+    const [newFolderComplainant, setNewFolderComplainant] = useState('');
+    const [newFolderRespondent, setNewFolderRespondent] = useState('');
+    const [newFolderNature, setNewFolderNature] = useState('');
+    const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+
+    const handleCreateFolderSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newFolderName.trim()) return;
+        setIsCreatingFolder(true);
+        router.post('/documents/create-folder', {
+            folder_name: newFolderName,
+            case_number: newFolderCaseNo,
+            complainant: newFolderComplainant,
+            respondent: newFolderRespondent,
+            nature_of_case: newFolderNature,
+        }, {
+            onSuccess: () => {
+                setIsCreateFolderModalOpen(false);
+                setNewFolderName('');
+                setNewFolderCaseNo('');
+                setNewFolderComplainant('');
+                setNewFolderRespondent('');
+                setNewFolderNature('');
+                setIsCreatingFolder(false);
+            },
+            onError: () => setIsCreatingFolder(false)
+        });
+    };
 
     // Lookup cases for linking
     const handleCaseSearch = async (val: string) => {
@@ -361,7 +404,7 @@ export default function DocumentsTemplates({ documents, stats, customTemplates, 
                                 </button>
                             )}
                         </div>
-                        {/* Upload Scan (AI) & Add Document buttons */}
+                        {/* Upload Scan (AI), Add Folder & Add Document buttons */}
                         {canEdit && (
                             <div className="flex items-center gap-2">
                                 <Button
@@ -370,6 +413,13 @@ export default function DocumentsTemplates({ documents, stats, customTemplates, 
                                 >
                                     <Upload className="mr-2 h-4 w-4" />
                                     Upload Scan (AI)
+                                </Button>
+                                <Button
+                                    onClick={() => setIsCreateFolderModalOpen(true)}
+                                    className="h-9 bg-[#dd8b11] hover:bg-[#c47c0f] text-white"
+                                >
+                                    <FolderPlus className="mr-2 h-4 w-4" />
+                                    Add Folder
                                 </Button>
                                 <Link href="/documents/new">
                                     <Button id="add-document-btn" className="h-9 bg-[#dd8b11] hover:bg-[#c47c0f] text-white">
@@ -415,16 +465,20 @@ export default function DocumentsTemplates({ documents, stats, customTemplates, 
                                     const fillHref = template.isCustom ? `/documents/fill-custom/${template.id}` : `/documents/create/${template.type}`;
                                     const editHref = template.isCustom ? `/documents/edit-template/${template.id}` : `/documents/edit-standard/${template.type}`;
                                     const isViewOnly = template.isEditable === false || (template.isCustom && (template as any).content?.is_view_only);
-                                    const canFill = !isAdmin && !isViewOnly;
+                                    const pdfUrl = template.isCustom 
+                                        ? ((template as any).file_path?.startsWith('/storage/') ? (template as any).file_path : `/storage/${(template as any).file_path}`)
+                                        : `/forms/${template.type}.pdf`;
 
                                     return (
                                         <div
                                             key={template.isCustom ? `custom-${template.id}` : template.type}
                                             onClick={() => {
-                                                if (canFill) {
-                                                    window.location.href = fillHref;
-                                                } else {
+                                                if (isAdmin) {
                                                     router.visit(`/cases?doc_type=${encodeURIComponent(template.type)}&doc_title=${encodeURIComponent(template.title)}`);
+                                                } else if (isViewOnly) {
+                                                    window.open(pdfUrl, '_blank');
+                                                } else {
+                                                    window.location.href = fillHref;
                                                 }
                                             }}
                                             className="flex flex-col justify-between p-4 rounded-lg border bg-card hover:border-[#dd8b11]/30 hover:bg-[#dd8b11]/5 dark:hover:bg-[#dd8b11]/10 transition-all group cursor-pointer relative shadow-sm hover:shadow-md"
@@ -436,6 +490,9 @@ export default function DocumentsTemplates({ documents, stats, customTemplates, 
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center justify-between gap-2">
                                                         <p className="text-sm font-bold leading-tight group-hover:text-[#dd8b11] transition-colors truncate">{template.title}</p>
+                                                        {isViewOnly && (
+                                                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground whitespace-nowrap shrink-0">View Only</span>
+                                                        )}
                                                     </div>
                                                     <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{template.description}</p>
                                                 </div>
@@ -443,10 +500,23 @@ export default function DocumentsTemplates({ documents, stats, customTemplates, 
 
                                             <div className="flex items-center justify-between pt-3 mt-3 border-t border-border/50">
                                                 <span className="text-[11px] text-muted-foreground group-hover:text-[#dd8b11] transition-colors font-medium">
-                                                    {canFill ? 'Click to fill form' : 'Click to view cases'}
+                                                    {isAdmin ? 'Click to view cases' : (isViewOnly ? 'Click to view form' : 'Click to fill form')}
                                                 </span>
                                                 <div className="flex items-center gap-1">
-                                                        {!(template.isEditable === false || (template.isCustom && (template as any).content?.is_view_only)) && (
+                                                        {isViewOnly && !isAdmin && (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    window.open(pdfUrl, '_blank');
+                                                                }}
+                                                                className="inline-flex items-center justify-center rounded bg-[#dd8b11] text-white px-2.5 py-1 text-[11px] font-bold tracking-wide hover:bg-[#c47c0f] transition-colors uppercase shadow-xs gap-1"
+                                                                title="View Document Template"
+                                                            >
+                                                                <Eye className="h-3 w-3" />
+                                                                <span>View Form</span>
+                                                            </button>
+                                                        )}
+                                                        {!isViewOnly && (
                                                             <a
                                                                 href={editHref}
                                                                 onClick={e => e.stopPropagation()}
@@ -703,27 +773,68 @@ export default function DocumentsTemplates({ documents, stats, customTemplates, 
                                 </Button>
                             </div>
 
-                            {/* Optional Case Search/Linker */}
+                            {/* Link to Existing Case Folder */}
                             <div className="space-y-1.5 relative">
-                                <Label htmlFor="case-search-input" className="text-xs font-semibold">Link to Existing Case (Optional)</Label>
-                                <Input
-                                    id="case-search-input"
-                                    value={caseSearch}
-                                    onChange={(e) => handleCaseSearch(e.target.value)}
-                                    placeholder="Search by case number or party name..."
-                                    className="h-9 text-xs"
-                                />
-                                {caseSuggestions.length > 0 && (
-                                    <div className="absolute left-0 right-0 z-50 mt-1 max-h-40 overflow-y-auto bg-popover border rounded-md shadow-lg text-xs">
-                                        {caseSuggestions.map((c) => (
-                                            <div
-                                                key={c.id}
-                                                onClick={() => selectCase(c)}
-                                                className="px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground border-b last:border-0"
-                                            >
-                                                <span className="font-semibold">{c.case_number}</span> - {c.title} ({c.nature_of_case})
-                                            </div>
-                                        ))}
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="case-folder-select" className="text-xs font-semibold flex items-center gap-1.5">
+                                        <Folder className="h-3.5 w-3.5 text-[#dd8b11]" />
+                                        <span>Link to Existing Case Folder (Optional)</span>
+                                    </Label>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setIsCreateFolderModalOpen(true)}
+                                        className="h-6 text-[11px] font-semibold text-[#dd8b11] hover:text-[#c47c0f] hover:bg-amber-50 dark:hover:bg-amber-950/40 px-2 flex items-center gap-1"
+                                    >
+                                        <FolderPlus className="h-3.5 w-3.5" />
+                                        <span>+ Add Folder</span>
+                                    </Button>
+                                </div>
+
+                                <select
+                                    id="case-folder-select"
+                                    value={caseId || ''}
+                                    onChange={(e) => {
+                                        const selectedId = e.target.value ? Number(e.target.value) : null;
+                                        if (!selectedId) {
+                                            setCaseId(null);
+                                            setCaseSearch('');
+                                            return;
+                                        }
+                                        const folder = (caseFolders ?? []).find(f => f.id === selectedId);
+                                        if (folder) {
+                                            setCaseId(folder.id);
+                                            if (folder.case_number) setCaseNo(folder.case_number);
+                                            if (folder.complainant) setComplainant(folder.complainant);
+                                            if (folder.respondent) setRespondent(folder.respondent);
+                                            if (folder.nature_of_case) setNatureOfCase(folder.nature_of_case);
+                                            setCaseSearch(`${folder.folder_name} (${folder.case_number || 'No Case #'}) - ${folder.complainant} vs. ${folder.respondent}`);
+                                        }
+                                    }}
+                                    className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                >
+                                    <option value="">-- Select an Existing Case Folder --</option>
+                                    {(caseFolders ?? []).map((f) => (
+                                        <option key={f.id} value={f.id}>
+                                            📁 {f.folder_name} {f.case_number ? `(${f.case_number})` : ''} - {f.complainant || 'Party'} vs. {f.respondent || 'Party'}
+                                        </option>
+                                    ))}
+                                </select>
+
+                                {caseId && (
+                                    <div className="flex items-center justify-between mt-1 px-2.5 py-1.5 bg-amber-500/10 border border-amber-300/40 rounded text-xs">
+                                        <span className="font-medium text-[#dd8b11] flex items-center gap-1 truncate">
+                                            <Folder className="h-3.5 w-3.5 shrink-0" />
+                                            Linked to Folder: <strong className="ml-1 font-bold">{caseSearch || `Folder #${caseId}`}</strong>
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setCaseId(null); setCaseSearch(''); }}
+                                            className="text-xs text-red-500 font-medium hover:underline shrink-0 ml-2"
+                                        >
+                                            Unlink
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -852,6 +963,96 @@ export default function DocumentsTemplates({ documents, stats, customTemplates, 
                     )}
                 </DialogContent>
             </Dialog>
+
+            {/* ── Create Case Folder Modal ── */}
+            <Dialog open={isCreateFolderModalOpen} onOpenChange={setIsCreateFolderModalOpen}>
+                <DialogContent className="sm:max-w-md p-6">
+                    <DialogHeader>
+                        <DialogTitle className="text-lg font-bold flex items-center gap-2 text-foreground">
+                            <FolderPlus className="h-5 w-5 text-[#dd8b11]" />
+                            Create Case Document Folder
+                        </DialogTitle>
+                        <DialogDescription className="text-xs">
+                            Define a dedicated folder repository (e.g. <strong className="text-foreground">case-026</strong>) to store all related KP forms and uploaded files.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <form onSubmit={handleCreateFolderSubmit} className="space-y-4 mt-2">
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold">Folder Name / ID (e.g., case-026)</Label>
+                            <Input
+                                placeholder="e.g., case-026"
+                                value={newFolderName}
+                                onChange={(e) => setNewFolderName(e.target.value)}
+                                className="h-9 text-xs"
+                                required
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold">Case Number (Optional)</Label>
+                            <Input
+                                placeholder="e.g., KP-2026-0026"
+                                value={newFolderCaseNo}
+                                onChange={(e) => setNewFolderCaseNo(e.target.value)}
+                                className="h-9 text-xs"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-semibold">Complainant Name</Label>
+                                <Input
+                                    placeholder="Juan Dela Cruz"
+                                    value={newFolderComplainant}
+                                    onChange={(e) => setNewFolderComplainant(e.target.value)}
+                                    className="h-9 text-xs"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-semibold">Respondent Name</Label>
+                                <Input
+                                    placeholder="Pedro Santos"
+                                    value={newFolderRespondent}
+                                    onChange={(e) => setNewFolderRespondent(e.target.value)}
+                                    className="h-9 text-xs"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold">Nature of Dispute / Case Type</Label>
+                            <Input
+                                placeholder="e.g., Boundary Dispute / Amicable Settlement"
+                                value={newFolderNature}
+                                onChange={(e) => setNewFolderNature(e.target.value)}
+                                className="h-9 text-xs"
+                            />
+                        </div>
+
+                        <DialogFooter className="pt-2 flex gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsCreateFolderModalOpen(false)}
+                                disabled={isCreatingFolder}
+                                className="h-9 text-xs"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={isCreatingFolder}
+                                className="h-9 text-xs bg-[#dd8b11] hover:bg-[#c47c0f] text-white flex items-center"
+                            >
+                                {isCreatingFolder && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                                Create Folder
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
             {/* Document Security Revision History Modal */}
             <DocumentVersionHistoryModal
                 isOpen={!!historyDoc}

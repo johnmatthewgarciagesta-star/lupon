@@ -16,6 +16,18 @@ class HandleInertiaRequests extends Middleware
      */
     protected $rootView = 'app';
 
+    public function handle(Request $request, \Closure $next)
+    {
+        if ($request->user() && strcasecmp($request->user()->status ?? '', 'Inactive') === 0) {
+            \Illuminate\Support\Facades\Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return redirect()->route('login')->with('error', 'Your account is inactive. Please contact an administrator.');
+        }
+
+        return parent::handle($request, $next);
+    }
+
     /**
      * Determines the current asset version.
      *
@@ -46,16 +58,14 @@ class HandleInertiaRequests extends Middleware
                 'roles' => $request->user() ? $request->user()->getRoleNames() : [],
                 'permissions' => $request->user() ? $request->user()->getAllPermissions()->pluck('name') : [],
             ],
-<<<<<<< HEAD
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
+                'warning' => fn () => $request->session()->get('warning'),
+                'info' => fn () => $request->session()->get('info'),
                 'message' => fn () => $request->session()->get('message'),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
-=======
-            'sidebarOpen' => true,
->>>>>>> a485458 (Fixed errors after interview with tito ni gab)
         ];
     }
 }

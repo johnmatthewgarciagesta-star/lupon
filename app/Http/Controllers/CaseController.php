@@ -36,12 +36,23 @@ class CaseController extends Controller
 
     public function index(Request $request)
     {
-        // Auto-archive cases from prior months when a new month arrives
-        static::checkMonthlyRolloverAutoArchive();
+        // Auto-archive disabled to keep all cases visible on the main cases page
+        $user = auth()->user();
+        $isAdmin = $user && ($user->hasRole('Administrator') || $user->hasRole('Admin') || $user->hasRole('Lupon Secretary') || in_array(strtolower($user->role ?? ''), ['administrator', 'admin', 'lupon secretary', 'secretary']));
 
         $query = LuponCase::with(['documents.creator', 'creator']);
 
-        // Search across case_number, folder_name, title, complainant, respondent, nature_of_case, status, date_filed
+        if (!$isAdmin && $user) {
+            $query->where(function ($q) use ($user) {
+                $q->whereNull('created_by')
+                  ->orWhere('created_by', $user->id)
+                  ->orWhereHas('documents', function ($dq) use ($user) {
+                      $dq->where('created_by', $user->id);
+                  });
+            });
+        }
+
+        // Search
         if ($request->filled('search')) {
             $search = $request->input('search');
             $cleanSearch = trim($search, '/ ');
@@ -97,7 +108,18 @@ class CaseController extends Controller
 
         // Filter by Date
         if ($request->filled('date')) {
-            $query->whereDate('date_filed', $request->date);
+            $rawDate = trim($request->date);
+            $cleanDate = str_replace('-', '/', $rawDate);
+            if (strtotime($cleanDate) !== false) {
+                $dateVal = date('Y-m-d', strtotime($cleanDate));
+            } else {
+                $dateVal = $rawDate;
+            }
+
+            $query->where(function ($q) use ($dateVal) {
+                $q->whereDate('date_filed', $dateVal)
+                  ->orWhereDate('created_at', $dateVal);
+            });
         }
 
         // Filter by Nature / Case Type
@@ -105,38 +127,13 @@ class CaseController extends Controller
             $query->where('nature_of_case', 'like', "%{$request->nature}%");
         }
 
-<<<<<<< HEAD
-        // Filter by Month (ONLY if explicitly set to a specific month or 'latest', and NOT 'all')
-        if ($request->filled('month') && $request->month !== 'all') {
-            $monthVal = $request->input('month');
-=======
-        // Filter by Month or New Cases trigger
-        if (($request->filled('month') && $request->month !== 'all') || $request->input('filter') === 'new_cases') {
+        // Filter by Month or New Cases trigger (only if date filter is NOT specified)
+        if (!$request->filled('date') && (($request->filled('month') && $request->month !== 'all') || $request->input('filter') === 'new_cases')) {
             $monthVal = $request->input('month', 'latest');
->>>>>>> a485458 (Fixed errors after interview with tito ni gab)
             $targetYear = \Carbon\Carbon::now()->year;
 
-            if ($monthVal === 'latest') {
+            if ($monthVal === 'latest' || $request->input('filter') === 'new_cases') {
                 $targetMonth = \Carbon\Carbon::now()->month;
-<<<<<<< HEAD
-                $query->where(function($q) use ($targetMonth, $targetYear) {
-                    $q->whereMonth('date_filed', $targetMonth)
-                      ->orWhereMonth('created_at', $targetMonth);
-                });
-            } elseif (is_numeric($monthVal)) {
-                $targetMonth = (int) $monthVal;
-                $query->where(function($q) use ($targetMonth, $targetYear) {
-                    $q->whereMonth('date_filed', $targetMonth)
-                      ->orWhereMonth('created_at', $targetMonth);
-                });
-            }
-        } elseif ($request->input('filter') === 'new_cases') {
-            $targetMonth = \Carbon\Carbon::now()->month;
-            $targetYear = \Carbon\Carbon::now()->year;
-            $query->where(function($q) use ($targetMonth, $targetYear) {
-                $q->whereMonth('date_filed', $targetMonth)
-                  ->orWhereMonth('created_at', $targetMonth);
-=======
                 $query->whereMonth('date_filed', $targetMonth)
                       ->whereYear('date_filed', $targetYear);
             } elseif (is_numeric($monthVal)) {
@@ -163,12 +160,11 @@ class CaseController extends Controller
                 if ($docTitle) {
                     $q->orWhere('document_data', 'like', "%{$docTitle}%");
                 }
->>>>>>> a485458 (Fixed errors after interview with tito ni gab)
             });
         }
 
         // Sort
-        $defaultSort = ($request->filled('month') && $request->month !== 'all') ? 'date_filed' : 'created_at';
+        $defaultSort = ($request->filled('month') || $request->input('filter') === 'new_cases') ? 'date_filed' : 'created_at';
         $sortField = $request->input('sort_by', $defaultSort);
         $sortOrder = $request->input('sort_order', 'desc');
         
@@ -214,9 +210,17 @@ class CaseController extends Controller
             ];
         });
 
+        $filters = $request->only(['search', 'status', 'nature', 'date', 'month', 'filter', 'sort_by', 'sort_order', 'doc_type', 'doc_title']);
+        if (!empty($filters['date'])) {
+            $cleanD = str_replace('-', '/', trim($filters['date']));
+            if (strtotime($cleanD) !== false) {
+                $filters['date'] = date('Y-m-d', strtotime($cleanD));
+            }
+        }
+
         return \Inertia\Inertia::render('cases/index', [
             'cases' => $paginated,
-            'filters' => $request->only(['search', 'status', 'nature', 'date', 'month', 'filter', 'sort_by', 'sort_order', 'doc_type', 'doc_title']),
+            'filters' => $filters,
         ]);
     }
 
@@ -328,7 +332,19 @@ class CaseController extends Controller
         Log::info('Updating Case:', $request->all());
 
         try {
-            $case = LuponCase::findOrFail($id);
+            $case = LuponCase::find($id);
+            if (!$case || !\App\Http\Controllers\DocumentController::canUserAccessCase($case)) {
+                AuditService::log(
+                    'UNAUTHORIZED_ACCESS',
+                    'Cases',
+                    "Unauthorized modification attempt for Case #{$id} by User #" . (auth()->id() ?? 'Guest'),
+                    $id
+                );
+                if ($request->expectsJson()) {
+                    return response()->json(['error' => 'Access Denied: You do not have permission to access this case.'], 403);
+                }
+                return redirect()->route('cases.index')->with('error', 'Access Denied: You do not have permission to access this case.');
+            }
 
             // Update fields if present (allow partial updates)
             if ($request->has('case_no')) {
@@ -412,7 +428,16 @@ class CaseController extends Controller
     public function destroy($id)
     {
         try {
-            $case = LuponCase::findOrFail($id);
+            $case = LuponCase::find($id);
+            if (!$case || !\App\Http\Controllers\DocumentController::canUserAccessCase($case)) {
+                AuditService::log(
+                    'UNAUTHORIZED_ACCESS',
+                    'Cases',
+                    "Unauthorized deletion attempt for Case #{$id} by User #" . (auth()->id() ?? 'Guest'),
+                    $id
+                );
+                return redirect()->route('cases.index')->with('error', 'Access Denied: You do not have permission to access this case.');
+            }
             $case->delete(); // Soft delete
 
             AuditService::log('DELETE', 'Cases', "Archived Case #{$case->case_number}", $case->case_number);
@@ -429,7 +454,17 @@ class CaseController extends Controller
     public function restore($id)
     {
         try {
-            $case = LuponCase::onlyTrashed()->findOrFail($id);
+            $case = LuponCase::onlyTrashed()->find($id);
+            if (!$case || !\App\Http\Controllers\DocumentController::canUserAccessCase($case)) {
+                AuditService::log(
+                    'UNAUTHORIZED_ACCESS',
+                    'Cases',
+                    "Unauthorized restore attempt for Case #{$id} by User #" . (auth()->id() ?? 'Guest'),
+                    $id
+                );
+                return redirect()->route('cases.index')->with('error', 'Access Denied: You do not have permission to access this case.');
+            }
+
             $case->restore();
             $case->touch(); // Refresh updated_at timestamp so monthly rollover auto-archive respects manual restoration
 
@@ -462,16 +497,56 @@ class CaseController extends Controller
     }
     public function lookup(Request $request)
     {
-        $search = $request->input('search');
+        $search = trim($request->input('search', ''));
 
         if (empty($search)) {
             return response()->json([]);
         }
 
-        $cases = LuponCase::withTrashed()
-            ->where('case_number', 'like', "%{$search}%")
-            ->orWhere('title', 'like', "%{$search}%")
-            ->take(5)
+        $user = auth()->user();
+        $isAdmin = $user && ($user->hasRole('Administrator') || $user->hasRole('Admin') || $user->hasRole('Lupon Secretary') || in_array(strtolower($user->role ?? ''), ['administrator', 'admin', 'lupon secretary', 'secretary']));
+
+        $query = LuponCase::withTrashed();
+
+        if (!$isAdmin && $user) {
+            $query->where(function ($q) use ($user) {
+                $q->whereNull('created_by')
+                  ->orWhere('created_by', $user->id)
+                  ->orWhereHas('documents', function ($dq) use ($user) {
+                      $dq->where('created_by', $user->id);
+                  });
+            });
+        }
+
+        $isCasSearch = stripos($search, 'cas') === 0;
+
+        $query->where(function ($q) use ($search, $isCasSearch) {
+            $q->where('case_number', 'like', "{$search}%")
+              ->orWhere('case_number', 'like', "%-{$search}%")
+              ->orWhere('case_number', 'like', "%/{$search}%")
+              ->orWhere('title', 'like', "%{$search}%")
+              ->orWhere('complainant', 'like', "%{$search}%")
+              ->orWhere('respondent', 'like', "%{$search}%");
+
+            if ($isCasSearch) {
+                $q->orWhere('case_number', 'like', "%{$search}%");
+            } elseif (strlen($search) >= 4 && is_numeric($search)) {
+                $q->orWhereYear('date_filed', (int) $search);
+            }
+        });
+
+        if (!$isCasSearch) {
+            // Exclude internal timestamped CAS-... placeholders when searching for specific numbers/years like 2026
+            $query->where('case_number', 'not like', 'CAS-%');
+        }
+
+        $cases = $query->orderByRaw("CASE 
+                WHEN case_number LIKE '{$search}%' THEN 1 
+                WHEN case_number LIKE '%-{$search}%' THEN 2 
+                ELSE 3 
+            END")
+            ->orderBy('date_filed', 'desc')
+            ->take(10)
             ->get(['id', 'case_number', 'title', 'status', 'nature_of_case']);
 
         return response()->json($cases);

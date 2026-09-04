@@ -45,8 +45,8 @@ interface FoldersProps {
 
 export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
     const { auth } = usePage<SharedData>().props;
-    const isAdmin = auth?.user?.role === 'Administrator' || auth?.user?.role === 'Admin' || auth?.roles?.includes('Administrator') || auth?.roles?.includes('Admin');
-    const canEdit = true;
+    const isAdmin = auth?.user?.role === 'Administrator' || auth?.user?.role === 'Admin' || auth?.roles?.includes('Administrator') || auth?.roles?.includes('Admin') || (auth?.user?.email && auth.user.email.toLowerCase() === 'kataru@gmail.com');
+    const canEdit = !isAdmin;
 
     // Search filter for folders
     const [search, setSearch] = useState('');
@@ -210,10 +210,10 @@ export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
                         {canEdit && (
                             <Button
                                 onClick={() => setIsCreateFolderModalOpen(true)}
-                                className="h-9 bg-amber-600 hover:bg-amber-700 text-white font-semibold shadow-sm"
+                                className="h-9 bg-[#dd8b11] hover:bg-[#c47c0f] text-white font-semibold shadow-xs"
                             >
                                 <FolderPlus className="mr-2 h-4 w-4" />
-                                + Create Case Folder
+                                Add Folder
                             </Button>
                         )}
                     </div>

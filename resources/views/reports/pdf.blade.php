@@ -75,7 +75,7 @@
 
     <!-- Recent Cases Table -->
     <div>
-        <h3 class="text-lg font-bold border-b mb-4 pb-2">Recent Cases</h3>
+        <h3 class="text-lg font-bold border-b mb-4 pb-2">Recent Cases (Filed This Month)</h3>
         <table class="w-full text-left text-sm border-collapse">
             <thead>
                 <tr class="bg-gray-100 border-b">
