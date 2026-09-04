@@ -21,7 +21,6 @@ return new class extends Migration
             $table->timestamp('issued_at')->nullable();
             $table->softDeletes();
             $table->timestamps();
-            $table->softDeletes();
         });
     }
 
