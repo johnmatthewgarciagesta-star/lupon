@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { DocumentVersionHistoryModal } from '@/components/documents/document-version-history-modal';
 import { useMemo, useState } from 'react';
+import { useLiveSync } from '@/hooks/use-live-sync';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,6 +48,9 @@ export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
     const { auth } = usePage<SharedData>().props;
     const isAdmin = auth?.user?.role === 'Administrator' || auth?.user?.role === 'Admin' || auth?.roles?.includes('Administrator') || auth?.roles?.includes('Admin') || (auth?.user?.email && auth.user.email.toLowerCase() === 'kataru@gmail.com');
     const canEdit = !isAdmin;
+
+    // Real-time sync for case folders and documents
+    useLiveSync(5000, ['caseFolders']);
 
     // Search filter for folders
     const [search, setSearch] = useState('');

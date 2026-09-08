@@ -931,6 +931,129 @@
             transition: width 0.1s;
         }
 
+        /* ===== CONFIRMATION MODAL ===== */
+        .confirm-modal-overlay {
+            display: none;
+            position: fixed !important;
+            inset: 0 !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background: rgba(15, 23, 42, 0.72) !important;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            z-index: 999999 !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 20px;
+            box-sizing: border-box;
+            animation: confirmFadeIn 0.18s ease-out;
+        }
+
+        .confirm-modal-overlay.active {
+            display: flex !important;
+        }
+
+        .confirm-modal-card {
+            background: #ffffff;
+            border-radius: 20px;
+            max-width: 440px;
+            width: 100%;
+            padding: 28px 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.06);
+            text-align: center;
+            animation: confirmPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes confirmFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes confirmPopIn {
+            from { transform: scale(0.92); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .confirm-modal-icon-wrap {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #eff6ff;
+            color: #0B57D0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            border: 1px solid #dbeafe;
+        }
+
+        .confirm-modal-icon-wrap.warning {
+            background: #fffbeb;
+            color: #d97706;
+            border-color: #fef3c7;
+        }
+
+        .confirm-modal-title {
+            font-size: 19px;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0 0 8px;
+        }
+
+        .confirm-modal-desc {
+            font-size: 13.5px;
+            color: #64748b;
+            line-height: 1.5;
+            margin: 0 0 24px;
+        }
+
+        .confirm-modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .btn-modal-cancel {
+            flex: 1;
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+            padding: 11px 16px;
+            border-radius: 12px;
+            font-size: 13.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.18s;
+        }
+
+        .btn-modal-cancel:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        .btn-modal-confirm {
+            flex: 1;
+            background: #0B57D0;
+            color: #ffffff;
+            border: none;
+            padding: 11px 16px;
+            border-radius: 12px;
+            font-size: 13.5px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(11, 87, 208, 0.25);
+            transition: all 0.18s;
+        }
+
+        .btn-modal-confirm:hover {
+            background: #0842a0;
+            box-shadow: 0 6px 16px rgba(11, 87, 208, 0.35);
+        }
+
         /* ===== RESPONSIVE ===== */
         @media (max-width: 600px) {
             .container { padding: 16px 10px 100px; }
@@ -958,6 +1081,7 @@
             /* Hide ALL page chrome */
             .scroll-progress,
             .loader-overlay,
+            .confirm-modal-overlay,
             .page-header,
             .case-banner,
             .title-card,
@@ -1039,6 +1163,31 @@
     <div class="loader-spinner"></div>
     <div class="loader-text">Generating PDF...</div>
     <div class="loader-subtext">Please wait, your document is being prepared</div>
+</div>
+
+<!-- Save Form Confirmation Modal -->
+<div class="confirm-modal-overlay" id="confirmSaveModal" style="display:none; position:fixed !important; inset:0 !important; top:0 !important; left:0 !important; right:0 !important; bottom:0 !important; width:100vw !important; height:100vh !important; background:rgba(15, 23, 42, 0.72) !important; backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); z-index:999999 !important; align-items:center !important; justify-content:center !important; padding:20px; box-sizing:border-box;" onclick="if(event.target === this) closeConfirmModal();">
+    <div class="confirm-modal-card" style="background:#ffffff !important; border-radius:20px; max-width:440px; width:100%; padding:28px 24px; box-shadow:0 25px 50px -12px rgba(0, 0, 0, 0.35); text-align:center; position:relative; z-index:1000000; box-sizing:border-box;">
+        <div class="confirm-modal-icon-wrap" id="confirmModalIcon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+        </div>
+        <h3 class="confirm-modal-title" id="confirmModalTitle">Are you sure you want to save the form?</h3>
+        <p class="confirm-modal-desc" id="confirmModalDesc">
+            Please check that all filled details are correct before saving. You can review your inputs or proceed with saving to the system.
+        </p>
+        <div class="confirm-modal-actions">
+            <button type="button" class="btn-modal-cancel" onclick="closeConfirmModal()">
+                Review Again
+            </button>
+            <button type="button" class="btn-modal-confirm" id="confirmModalActionBtn" onclick="executePendingAction()">
+                Yes, Save Form
+            </button>
+        </div>
+    </div>
 </div>
 
 <!-- Header -->
@@ -1540,21 +1689,97 @@
     updateFilledCount(); // Initial count
 
     // ============================
+    // CONFIRMATION MODAL LOGIC
+    // ============================
+    let pendingFormAction = null;
+
+    function openConfirmModal(action) {
+        pendingFormAction = action;
+        const modal = document.getElementById('confirmSaveModal');
+        const title = document.getElementById('confirmModalTitle');
+        const desc = document.getElementById('confirmModalDesc');
+        const actionBtn = document.getElementById('confirmModalActionBtn');
+        const iconWrap = document.getElementById('confirmModalIcon');
+
+        if (action === 'save_only') {
+            title.innerText = 'Are you sure you want to save the form?';
+            desc.innerText = 'Please review all filled-in details to ensure there are no mistakes before saving to the database.';
+            actionBtn.innerText = 'Yes, Save Form';
+            actionBtn.style.background = '#0B57D0';
+            if (iconWrap) iconWrap.className = 'confirm-modal-icon-wrap';
+        } else if (action === 'submit_pdf') {
+            title.innerText = 'Generate & Save Document?';
+            desc.innerText = 'This will generate the official document PDF and save the record to the database. Are you sure you want to proceed?';
+            actionBtn.innerText = 'Yes, Generate PDF';
+            actionBtn.style.background = '#0B57D0';
+            if (iconWrap) iconWrap.className = 'confirm-modal-icon-wrap';
+        }
+
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+        } else {
+            const msg = (action === 'save_only')
+                ? 'Are you sure you want to save the form? Please review all details to make sure there are no mistakes.'
+                : 'Are you sure you want to generate & save this document?';
+            if (confirm(msg)) {
+                executePendingAction();
+            }
+        }
+    }
+
+    function closeConfirmModal() {
+        pendingFormAction = null;
+        const modal = document.getElementById('confirmSaveModal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+        }
+    }
+
+    function executePendingAction() {
+        const action = pendingFormAction;
+        closeConfirmModal();
+        if (action === 'save_only') {
+            doSaveFormOnly();
+        } else if (action === 'submit_pdf') {
+            doSubmitFormNow();
+        }
+    }
+
+    // Close on Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeConfirmModal();
+        }
+    });
+
+    // ============================
     // SUBMIT FORM → Generate PDF
     // ============================
     function submitFormNow() {
+        openConfirmModal('submit_pdf');
+    }
+
+    function doSubmitFormNow() {
+        // Ensure action is preview for PDF generation
+        const actionInput = document.querySelector('input[name="action"]');
+        if (actionInput) actionInput.value = 'preview';
+
         // Set layout overrides
-        document.getElementById('layout-overrides').value = JSON.stringify(buildLayoutOverrides());
+        const overridesEl = document.getElementById('layout-overrides');
+        if (overridesEl) overridesEl.value = JSON.stringify(buildLayoutOverrides());
 
         // Show loader
-        document.getElementById('loaderOverlay').classList.add('active');
+        const loader = document.getElementById('loaderOverlay');
+        if (loader) loader.classList.add('active');
 
         // Submit form (opens PDF in new tab)
         document.getElementById('doc-form').submit();
 
         // Hide overlay after a bit
         setTimeout(() => {
-            document.getElementById('loaderOverlay').classList.remove('active');
+            if (loader) loader.classList.remove('active');
         }, 5000);
     }
 
@@ -1562,11 +1787,20 @@
     // SAVE FORM ONLY
     // ============================
     function saveFormOnly() {
-        document.getElementById('layout-overrides').value = JSON.stringify(buildLayoutOverrides());
-        document.querySelector('input[name="action"]').value = 'save_only';
+        openConfirmModal('save_only');
+    }
 
-        document.getElementById('loaderOverlay').classList.add('active');
-        document.querySelector('.loader-text').innerText = 'Saving...';
+    function doSaveFormOnly() {
+        const overridesEl = document.getElementById('layout-overrides');
+        if (overridesEl) overridesEl.value = JSON.stringify(buildLayoutOverrides());
+
+        const actionInput = document.querySelector('input[name="action"]');
+        if (actionInput) actionInput.value = 'save_only';
+
+        const loader = document.getElementById('loaderOverlay');
+        const loaderText = document.querySelector('.loader-text');
+        if (loader) loader.classList.add('active');
+        if (loaderText) loaderText.innerText = 'Saving...';
 
         const form = document.getElementById('doc-form');
         const formData = new FormData(form);
@@ -1580,20 +1814,20 @@
         })
         .then(response => response.json())
         .then(data => {
-            document.getElementById('loaderOverlay').classList.remove('active');
-            document.querySelector('.loader-text').innerText = 'Generating PDF...'; // reset loader text
-            if(data.success) {
-                alert('Success! ' + data.message);
+            if (loader) loader.classList.remove('active');
+            if (loaderText) loaderText.innerText = 'Generating PDF...'; // reset loader text
+            if (data && data.success) {
+                alert('Success! ' + (data.message || 'Document saved successfully.'));
                 window.location.href = '/cases';
             } else {
-                alert('Error: ' + data.message);
-                document.querySelector('input[name="action"]').value = 'preview'; // restore default
+                alert('Error: ' + ((data && data.message) ? data.message : 'Could not save form.'));
+                if (actionInput) actionInput.value = 'preview'; // restore default
             }
         })
         .catch(err => {
-            document.getElementById('loaderOverlay').classList.remove('active');
-            document.querySelector('.loader-text').innerText = 'Generating PDF...'; // reset loader text
-            document.querySelector('input[name="action"]').value = 'preview'; // restore default
+            if (loader) loader.classList.remove('active');
+            if (loaderText) loaderText.innerText = 'Generating PDF...'; // reset loader text
+            if (actionInput) actionInput.value = 'preview'; // restore default
             console.error(err);
             alert('Failed to save document. Please try again.');
         });

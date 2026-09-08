@@ -19,6 +19,7 @@ import {
     AlertCircle
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useLiveSync } from '@/hooks/use-live-sync';
 import { EditCaseStatusDialog } from '@/components/cases/edit-case-status-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -114,6 +115,9 @@ const recentReports = [
 ];
 
 export default function Reports({ stats }: { stats: any }) {
+    // Real-time background sync for reports statistics
+    useLiveSync(5000, ['stats']);
+
     const breadcrumbs = [
         {
             title: 'Reports',

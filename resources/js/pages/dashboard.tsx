@@ -26,6 +26,7 @@ import {
     ChevronUp
 } from 'lucide-react';
 import { useState } from 'react';
+import { useLiveSync } from '@/hooks/use-live-sync';
 import { EditCaseStatusDialog } from '@/components/cases/edit-case-status-dialog';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { Badge } from '@/components/ui/badge';
@@ -142,6 +143,20 @@ export default function Dashboard({
     const userRole = auth?.user?.role || (auth?.roles && auth.roles[0]) || '';
     const canEdit = true;
     const isAdmin = userRole === 'Administrator' || userRole === 'Admin';
+
+    // Auto-refresh metrics, recent cases, and recent documents in real-time
+    useLiveSync(5000, [
+        'stats',
+        'latestMonthCases',
+        'caseOverview',
+        'recentCases',
+        'documentStats',
+        'monthlyStats',
+        'statusDistribution',
+        'outcomeStats',
+        'typeStats',
+        'statusDistributionByMonth',
+    ]);
 
     const currentMonthNum = String(new Date().getMonth() + 1);
 

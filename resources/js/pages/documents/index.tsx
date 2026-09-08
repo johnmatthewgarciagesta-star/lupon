@@ -28,7 +28,8 @@ const ICON_MAP: Record<string, any> = {
     Send,
     FileCheck
 };
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useLiveSync } from '@/hooks/use-live-sync';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -112,6 +113,13 @@ interface CaseFolder {
     }>;
 }
 
+interface AiQuota {
+    used: number;
+    limit: number;
+    isExceeded: boolean;
+    resets_at?: string;
+}
+
 interface DocumentsProps {
     documents: Document[];
     stats: {
@@ -123,13 +131,26 @@ interface DocumentsProps {
     customTemplates: any[];
     hiddenTemplates: string[];
     caseFolders?: CaseFolder[];
+    aiQuota?: AiQuota;
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-export default function Documents({ documents, stats, customTemplates, hiddenTemplates, caseFolders = [] }: DocumentsProps) {
+export default function Documents({ documents, stats, customTemplates, hiddenTemplates, caseFolders = [], aiQuota }: DocumentsProps) {
     const { auth } = usePage<SharedData>().props;
     const isAdmin = auth?.user?.role === 'Administrator' || auth?.user?.role === 'Admin' || auth?.roles?.includes('Administrator') || auth?.roles?.includes('Admin') || (auth?.user?.email && auth.user.email.toLowerCase() === 'kataru@gmail.com');
     const canEdit = !isAdmin;
+
+    // Real-time sync for documents list, custom templates, stats, and quota
+    useLiveSync(5000, ['documents', 'stats', 'customTemplates', 'caseFolders', 'aiQuota']);
+
+    // Quota state for weekly AI scans
+    const [quotaState, setQuotaState] = useState<AiQuota>(aiQuota || { used: 0, limit: 20, isExceeded: false });
+
+    useEffect(() => {
+        if (aiQuota) {
+            setQuotaState(aiQuota);
+        }
+    }, [aiQuota]);
 
     // Search filters templates
     const [search, setSearch] = useState('');
@@ -285,6 +306,16 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                 throw new Error(`Server returned an invalid response (Status ${res.status}). Please verify that your uploaded file size does not exceed the server's upload limit.`);
             }
 
+            if (result.quota_exceeded || res.status === 429) {
+                if (result.quota) {
+                    setQuotaState(result.quota);
+                } else {
+                    setQuotaState(prev => ({ ...prev, isExceeded: true, used: 20 }));
+                }
+                setScanError(result.message || 'Weekly AI upload limit reached (20/20 files used). Please manually fill up your complaint or affidavit of withdrawal form.');
+                return;
+            }
+
             if (res.ok && result.success) {
                 setTempFilePath(result.temp_file);
                 const data = result.data || {};
@@ -318,6 +349,10 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
 
         if (!complainant.trim() || !respondent.trim()) {
             alert('Please fill in both the Complainant Name and Respondent Name before saving.');
+            return;
+        }
+
+        if (!confirm('Are you sure you want to save this document to the database? Please review the entered details to ensure there are no mistakes.')) {
             return;
         }
 
@@ -907,24 +942,122 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                         </DialogDescription>
                     </DialogHeader>
 
-                    {/* Step 1: Upload File or Show Spinner */}
+                    {/* Step 1: Upload File or Show Quota Limit Fallback / Spinner */}
                     {!tempFilePath && !isScanning && (
-                        <div className="flex flex-col items-center justify-center border-2 border-dashed border-muted-foreground/20 rounded-lg p-8 hover:bg-muted/30 transition-colors cursor-pointer relative min-h-[200px]">
-                            <input
-                                type="file"
-                                accept="image/*,.pdf,application/pdf"
-                                onChange={handleFileUpload}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            />
-                            <Upload className="h-10 w-10 text-muted-foreground/60 mb-4" />
-                            <p className="text-sm font-semibold mb-1">Click to upload scanned document or image</p>
-                            <p className="text-xs text-muted-foreground">PDF, PNG, JPG, or JPEG up to 15MB</p>
-                            {scanError && (
-                                <p className="text-xs text-red-500 mt-4 text-center bg-red-50 dark:bg-red-950/20 px-3 py-2 rounded-md border border-red-200 dark:border-red-900/30">
-                                    {scanError}
-                                </p>
-                            )}
-                        </div>
+                        quotaState.isExceeded ? (
+                            /* ── When Weekly AI Scan Limit is Reached: Fallback Manual Fill-Up Options ── */
+                            <div className="space-y-4 py-2">
+                                <div className="p-4 bg-amber-500/10 border border-amber-500/30 dark:bg-amber-950/30 rounded-xl space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-sm">
+                                            <AlertTriangle className="h-5 w-5 text-[#dd8b11]" />
+                                            <span>Weekly AI Upload Limit Reached</span>
+                                        </div>
+                                        <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 border-amber-300 font-bold text-xs">
+                                            {quotaState.used} / {quotaState.limit} Scans Used
+                                        </Badge>
+                                    </div>
+                                    <p className="text-xs text-amber-900/80 dark:text-amber-200/80 leading-relaxed">
+                                        The maximum weekly capacity of 20 scanned files for AI document extraction has been reached. AI scanning will automatically reset {quotaState.resets_at ? `on ${quotaState.resets_at}` : 'at the start of next week'}.
+                                    </p>
+                                </div>
+
+                                {scanError && (
+                                    <div className="p-3 bg-red-500/10 border border-red-200 text-red-700 dark:text-red-400 rounded-md text-xs font-medium">
+                                        {scanError}
+                                    </div>
+                                )}
+
+                                <div className="rounded-xl border bg-card p-4 space-y-3 shadow-xs">
+                                    <div>
+                                        <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                                            <FileSignature className="h-4 w-4 text-[#dd8b11]" />
+                                            Manually Fill Up Your Document (Second Option)
+                                        </h4>
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                            Since AI scanning is at maximum capacity, choose a form below to manually encode and generate your document:
+                                        </p>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                                        {/* Manual Complaint Form Card */}
+                                        <div className="border rounded-lg p-3.5 bg-background hover:border-[#dd8b11]/60 hover:shadow-xs transition-all flex flex-col justify-between">
+                                            <div className="space-y-1.5">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="p-2 bg-amber-500/10 rounded-md text-[#dd8b11]">
+                                                        <FileText className="h-4 w-4" />
+                                                    </div>
+                                                    <Badge variant="secondary" className="text-[10px] font-semibold">
+                                                        KP Form No. 7
+                                                    </Badge>
+                                                </div>
+                                                <h5 className="text-xs font-bold text-foreground">Complaint Form</h5>
+                                                <p className="text-[11px] text-muted-foreground line-clamp-2">
+                                                    Manually enter complainant, respondent, and formal complaint statement.
+                                                </p>
+                                            </div>
+                                            <Button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsUploadModalOpen(false);
+                                                    router.visit('/documents/create/complaint');
+                                                }}
+                                                className="w-full mt-3 bg-[#dd8b11] hover:bg-[#c47c0f] text-white text-xs font-semibold h-8"
+                                            >
+                                                Manually Fill Up Complaint
+                                            </Button>
+                                        </div>
+
+                                        {/* Manual Affidavit of Withdrawal Card */}
+                                        <div className="border rounded-lg p-3.5 bg-background hover:border-[#dd8b11]/60 hover:shadow-xs transition-all flex flex-col justify-between">
+                                            <div className="space-y-1.5">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="p-2 bg-slate-500/10 rounded-md text-slate-700 dark:text-slate-300">
+                                                        <FileMinus className="h-4 w-4" />
+                                                    </div>
+                                                    <Badge variant="secondary" className="text-[10px] font-semibold">
+                                                        Withdrawal
+                                                    </Badge>
+                                                </div>
+                                                <h5 className="text-xs font-bold text-foreground">Affidavit of Withdrawal</h5>
+                                                <p className="text-[11px] text-muted-foreground line-clamp-2">
+                                                    Manually input sworn statement to withdraw or dismiss an active complaint.
+                                                </p>
+                                            </div>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() => {
+                                                    setIsUploadModalOpen(false);
+                                                    router.visit('/documents/create/affidavit_withdrawal');
+                                                }}
+                                                className="w-full mt-3 border-[#dd8b11]/40 text-[#dd8b11] hover:bg-amber-500/10 text-xs font-semibold h-8"
+                                            >
+                                                Manually Fill Up Affidavit
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            /* ── Normal State (< 20 Scans): Standard Drag-and-Drop File Upload (Manual buttons strictly hidden) ── */
+                            <div className="flex flex-col items-center justify-center border-2 border-dashed border-muted-foreground/20 rounded-lg p-8 hover:bg-muted/30 transition-colors cursor-pointer relative min-h-[200px]">
+                                <input
+                                    type="file"
+                                    accept="image/*,.pdf,application/pdf"
+                                    onChange={handleFileUpload}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                                <Upload className="h-10 w-10 text-muted-foreground/60 mb-4" />
+                                <p className="text-sm font-semibold mb-1">Click to upload scanned document or image</p>
+                                <p className="text-xs text-muted-foreground">PDF, PNG, JPG, or JPEG up to 15MB</p>
+                                {scanError && (
+                                    <p className="text-xs text-red-500 mt-4 text-center bg-red-50 dark:bg-red-950/20 px-3 py-2 rounded-md border border-red-200 dark:border-red-900/30">
+                                        {scanError}
+                                    </p>
+                                )}
+                            </div>
+                        )
                     )}
 
                     {/* Loading State during AI parsing */}

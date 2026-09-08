@@ -40,6 +40,7 @@ export default function BackupSettings() {
         setRestoreErrorMsg(null);
         setRestoreSuccessMsg(null);
 
+        // Prompt user confirmation
         if (!confirm(`Are you sure you want to restore database records from file "${file.name}"? Existing records will be updated.`)) {
             if (fileInputRef.current) fileInputRef.current.value = '';
             return;
@@ -64,6 +65,9 @@ export default function BackupSettings() {
                     setRestoreSuccessMsg(flashSucc);
                     setRestoreErrorMsg(null);
                     setTimeout(() => setRestoreSuccessMsg(null), 6000);
+                } else {
+                    setRestoreErrorMsg('Database restore could not be confirmed by the server.');
+                    setRestoreSuccessMsg(null);
                 }
             },
             onError: (errs) => {
@@ -78,7 +82,7 @@ export default function BackupSettings() {
     };
 
     const displayError = restoreErrorMsg || flash?.error || errors?.backup_file;
-    const displaySuccess = restoreSuccessMsg || flash?.success;
+    const displaySuccess = !displayError && (restoreSuccessMsg || (!flash?.error ? flash?.success : null));
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>

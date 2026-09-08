@@ -25,6 +25,7 @@ import {
     Edit3
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { useLiveSync } from '@/hooks/use-live-sync';
 import { EditCaseStatusDialog } from '@/components/cases/edit-case-status-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -151,6 +152,9 @@ export default function CaseManagement({ cases, filters }: Props) {
     const { auth } = usePage<{ auth: { user: { role: string } } }>().props;
     const isAdmin = auth?.user?.role === 'Administrator' || auth?.user?.role === 'Admin';
     const canEdit = true;
+
+    // Real-time background sync for cases list
+    useLiveSync(5000, ['cases']);
 
     const breadcrumbs = [
         {

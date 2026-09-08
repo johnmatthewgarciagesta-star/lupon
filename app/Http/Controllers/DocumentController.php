@@ -21,6 +21,35 @@ class DocumentController extends Controller
         return $user->hasRole('Administrator') || $user->hasRole('Admin') || strcasecmp($user->role ?? '', 'Administrator') === 0 || strcasecmp($user->role ?? '', 'Admin') === 0;
     }
 
+    /**
+     * Get weekly AI document scanning quota and usage status.
+     * Maximum capacity: 20 scanned files per week (Philippine Time).
+     */
+    private function getAiScanQuota(): array
+    {
+        $startOfWeek = now('Asia/Manila')->startOfWeek();
+        $weeklyLimit = 20;
+
+        $weeklyScanCount = \App\Models\Document::where('created_at', '>=', $startOfWeek)
+            ->where(function ($q) {
+                $q->where('file_path', 'like', 'scans/%')
+                  ->orWhere('content->is_scanned', true);
+            })
+            ->count();
+
+        $cacheKey = 'gemini_quota_exceeded_' . now('Asia/Manila')->format('o_W');
+        $isApiQuotaBlocked = (bool) \Illuminate\Support\Facades\Cache::get($cacheKey, false);
+
+        $isExceeded = ($weeklyScanCount >= $weeklyLimit) || $isApiQuotaBlocked;
+
+        return [
+            'used' => $weeklyScanCount,
+            'limit' => $weeklyLimit,
+            'isExceeded' => $isExceeded,
+            'resets_at' => now('Asia/Manila')->endOfWeek()->setTime(23, 59, 59)->format('l, F j, Y g:i A'),
+        ];
+    }
+
     public function folders(Request $request)
     {
         try {
@@ -173,6 +202,7 @@ class DocumentController extends Controller
                 'customTemplates' => $customTemplates,
                 'hiddenTemplates' => $hiddenTemplates,
                 'caseFolders' => $caseFolders,
+                'aiQuota' => $this->getAiScanQuota(),
             ]);
         } catch (\Exception $e) {
             \Log::error('Documents templates view failed: ' . $e->getMessage());
@@ -182,6 +212,7 @@ class DocumentController extends Controller
                 'customTemplates' => [],
                 'hiddenTemplates' => [],
                 'caseFolders' => [],
+                'aiQuota' => ['used' => 0, 'limit' => 20, 'isExceeded' => false],
             ]);
         }
     }
@@ -1669,6 +1700,25 @@ class DocumentController extends Controller
             ], 400);
         }
 
+        // Check weekly AI scanning quota limit (20 files/week)
+        $quota = $this->getAiScanQuota();
+        if ($quota['isExceeded']) {
+            $fileSize = round($file->getSize() / 1024, 2);
+            $mimeType = $file->getMimeType();
+            AuditService::log(
+                'UPLOAD_FAILED',
+                'Documents',
+                "Failed scanned document upload: {$fileName} (Size: {$fileSize} KB, Type: {$mimeType}). Reason: Weekly AI scan capacity reached ({$quota['used']}/{$quota['limit']}).",
+                null
+            );
+            return response()->json([
+                'success' => false,
+                'quota_exceeded' => true,
+                'quota' => $quota,
+                'message' => "Weekly AI upload limit reached ({$quota['used']}/{$quota['limit']} files used this week). Please manually fill up your complaint or affidavit of withdrawal form."
+            ], 429);
+        }
+
         try {
             // Store temporarily in scans/temp
             $tempPath = $file->store('scans/temp', 'public');
@@ -1723,6 +1773,7 @@ class DocumentController extends Controller
 
             $response = null;
             $lastErrorMsg = '';
+            $hasQuotaError = false;
 
             foreach ($modelsToTry as $geminiModel) {
                 $res = \Illuminate\Support\Facades\Http::withHeaders([
@@ -1754,6 +1805,7 @@ class DocumentController extends Controller
                 $errBody = $res->json();
                 $statusCode = $res->status();
                 if ($statusCode === 429) {
+                    $hasQuotaError = true;
                     $retryDelay = $errBody['error']['details'][2]['retryDelay'] ?? 'a few seconds';
                     $lastErrorMsg = "Gemini API rate limit / quota exceeded for model {$geminiModel}. Please wait {$retryDelay} before retrying.";
                 } else {
@@ -1763,6 +1815,15 @@ class DocumentController extends Controller
 
             if (!$response || $response->failed()) {
                 Storage::disk('public')->delete($tempPath);
+                if ($hasQuotaError) {
+                    \Illuminate\Support\Facades\Cache::put('gemini_quota_exceeded_' . now('Asia/Manila')->format('o_W'), true, now('Asia/Manila')->endOfWeek());
+                    return response()->json([
+                        'success' => false,
+                        'quota_exceeded' => true,
+                        'quota' => $this->getAiScanQuota(),
+                        'message' => 'Google Gemini AI scanning capacity has been reached for this week. Please manually fill up your complaint or affidavit of withdrawal form.'
+                    ], 429);
+                }
                 throw new \Exception($lastErrorMsg ?: "Gemini API request failed.");
             }
 

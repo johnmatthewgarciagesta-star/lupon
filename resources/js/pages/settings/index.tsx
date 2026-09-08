@@ -98,6 +98,8 @@ export default function SettingsPage({ initialDeadline }: { initialDeadline?: st
                 } else if (flashSucc) {
                     setRestoreMsg({ type: 'success', text: flashSucc });
                     setTimeout(() => setRestoreMsg(null), 6000);
+                } else {
+                    setRestoreMsg({ type: 'error', text: 'Database restore could not be confirmed by the server.' });
                 }
             },
             onError: (errs) => {
