@@ -68,7 +68,7 @@ RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 
 # Copy package files for npm caching
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci || npm install
 
 # Copy entire application
 COPY . .
