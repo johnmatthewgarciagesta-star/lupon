@@ -13,25 +13,20 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create Roles
-        \Spatie\Permission\Models\Role::create(['name' => 'Admin']);
-        \Spatie\Permission\Models\Role::create(['name' => 'Encoder']);
+        $this->call(AdminSeeder::class);
 
-        $admin = User::factory()->create([
-            'name' => 'Admin User',
-            'email' => 'admin@gmail.com',
-            'password' => bcrypt('12345'),
-            'role' => 'Admin',
-        ]);
-        $admin->assignRole('Admin');
+        $encoder = User::firstOrNew(['email' => 'encoder@gmail.com']);
+        $encoder->name = 'Encoder User';
+        $encoder->password = bcrypt('12345');
+        $encoder->status = 'Active';
+        $encoder->email_verified_at = $encoder->email_verified_at ?? now();
+        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'role')) {
+            $encoder->role = 'Data Encoder';
+        }
+        $encoder->save();
 
-        $encoder = User::factory()->create([
-            'name' => 'Encoder User',
-            'email' => 'encoder@gmail.com',
-            'password' => bcrypt('12345'),
-            'role' => 'Encoder',
-        ]);
-        $encoder->assignRole('Encoder');
+        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'Encoder', 'guard_name' => 'web']);
+        $encoder->syncRoles(['Data Encoder', 'Encoder']);
 
         $this->call(MockDataSeeder::class);
     }
