@@ -12,7 +12,10 @@ jobs:
       - name: Deploy Application
         shell: powershell
         run: |
+          $ErrorActionPreference = 'Stop'
           $env:Path = "C:\Users\USER\.config\herd\bin;" + $env:Path
+          $env:COMPOSER_NO_BLOCKING = "1"
+          $env:COMPOSER_NO_AUDIT = "1"
           Set-Location "c:\Users\USER\Herd\lupon"
           Write-Host "--- Git fetch origin ---"
           git fetch origin
@@ -21,7 +24,7 @@ jobs:
           Write-Host "--- Composer install ---"
           composer install --no-interaction --prefer-dist
           Write-Host "--- Composer update ---"
-          composer update --no-interaction
+          composer update --no-interaction --no-blocking
           Write-Host "--- NPM install ---"
           npm install
           Write-Host "--- NPM run build ---"
