@@ -1,0 +1,33 @@
+name: Deploy to Local Herd
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Deploy Application
+        shell: powershell
+        run: |
+          $env:Path = "C:\Users\USER\.config\herd\bin;" + $env:Path
+          Set-Location "c:\Users\USER\Herd\lupon"
+          Write-Host "--- Git fetch origin ---"
+          git fetch origin
+          Write-Host "--- Git reset hard to origin/main ---"
+          git reset --hard origin/main
+          Write-Host "--- Composer install ---"
+          composer install --no-interaction --prefer-dist
+          Write-Host "--- Composer update ---"
+          composer update --no-interaction
+          Write-Host "--- NPM install ---"
+          npm install
+          Write-Host "--- NPM run build ---"
+          npm run build
+          Write-Host "--- PHP artisan migrate ---"
+          php artisan migrate --force
+          Write-Host "--- PHP artisan optimize:clear ---"
+          php artisan optimize:clear
+          Write-Host "Deployment completed successfully!"
