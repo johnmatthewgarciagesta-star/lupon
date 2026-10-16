@@ -1293,6 +1293,7 @@
                 'hearing_date'      => 'Hearing Date & Time',
                 'hearing_date_time' => 'Hearing Date & Time',
                 'hearing_schedule'  => 'Hearing Schedule',
+                'hearing_time'      => 'Hearing Time (12-Hour AM/PM)',
                 'served_personal'   => 'Served Personally',
                 'served_substituted'=> 'Served via Substitution',
                 'scan_content'      => 'Statement / Content',
@@ -1320,6 +1321,7 @@
                 'award_details' => 'State the decision or award granted by the Pangkat',
                 'hearing_date'  => 'e.g. February 28, 2026 at 9:00 AM',
                 'hearing_date_time' => 'e.g. February 28, 2026 at 9:00 AM',
+                'hearing_time'  => 'e.g. 9:00 AM',
                 'cert_body'     => 'Enter the full certification text',
                 'pangkat_names' => 'List each member on a new line',
             ];
@@ -1334,6 +1336,12 @@
             </div>
         </div>
 
+        @php
+            $renderedSplitHearing = false;
+            $renderedNextHearing = false;
+            $renderedFailureHearing = false;
+        @endphp
+
         @foreach($mainFields as $field)
             @php
                 $fieldName = $field['name'] ?? 'field_' . $loop->index;
@@ -1345,7 +1353,78 @@
                 $isTextarea = isset($field['type']) && $field['type'] === 'textarea';
                 $isCheckbox = isset($field['type']) && $field['type'] === 'checkbox';
                 $isDate = isset($field['type']) && $field['type'] === 'date';
+
+                $isHearingTime = ($fieldName === 'hearing_time' || str_contains($fieldName, 'hearing_time'));
+                $isHearingDateTime = in_array($fieldName, ['hearing_date', 'hearing_date_time', 'hearing_schedule', 'hearing_info']) 
+                    || (str_contains($fieldName, 'hearing') && (str_contains($fieldName, 'date') || str_contains($fieldName, 'sched')));
+
+                $isSplitHearingPart = in_array($fieldName, ['hearing_month', 'hearing_day', 'hearing_year']);
+                $isNextHearingPart = in_array($fieldName, ['next_hearing_date', 'next_hearing_year']);
+                $isFailureHearingPart = in_array($fieldName, ['failure_day', 'failure_month', 'failure_year']);
             @endphp
+
+            @if($isSplitHearingPart && !$renderedSplitHearing)
+                @php $renderedSplitHearing = true; @endphp
+                <div class="form-card" style="border-left: 4px solid #2563eb;">
+                    <div class="question-card-inner">
+                        <div class="question-label">
+                            📅 Hearing Date (Calendar Style) <span class="required-star">*</span>
+                        </div>
+                        <div class="question-hint">Select the scheduled hearing date on the calendar to automatically populate Month, Day, and Year below</div>
+                        <div class="input-wrap">
+                            <input
+                                type="date"
+                                class="form-input"
+                                id="hearing-split-date-picker"
+                                style="cursor: pointer; color: var(--text-primary); font-weight: 500;"
+                                onchange="applySplitHearingDate(this.value)"
+                            >
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            @if($isNextHearingPart && !$renderedNextHearing)
+                @php $renderedNextHearing = true; @endphp
+                <div class="form-card" style="border-left: 4px solid #2563eb;">
+                    <div class="question-card-inner">
+                        <div class="question-label">
+                            📅 Next Hearing Date (Calendar Style) <span class="required-star">*</span>
+                        </div>
+                        <div class="question-hint">Select the next scheduled hearing date on the calendar to automatically populate Date and Year below</div>
+                        <div class="input-wrap">
+                            <input
+                                type="date"
+                                class="form-input"
+                                id="next-hearing-date-picker"
+                                style="cursor: pointer; color: var(--text-primary); font-weight: 500;"
+                                onchange="applyNextHearingDate(this.value)"
+                            >
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            @if($isFailureHearingPart && !$renderedFailureHearing)
+                @php $renderedFailureHearing = true; @endphp
+                <div class="form-card" style="border-left: 4px solid #f59e0b;">
+                    <div class="question-card-inner">
+                        <div class="question-label">
+                            📅 Date of Missed Hearing (Calendar Style) <span class="required-star">*</span>
+                        </div>
+                        <div class="question-hint">Select the date when the party failed to appear to automatically populate Day, Month, and Year below</div>
+                        <div class="input-wrap">
+                            <input
+                                type="date"
+                                class="form-input"
+                                id="failure-hearing-date-picker"
+                                style="cursor: pointer; color: var(--text-primary); font-weight: 500;"
+                                onchange="applyFailureHearingDate(this.value)"
+                            >
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             @if($isCheckbox)
             <div class="form-card">
@@ -1382,6 +1461,120 @@
                 </div>
             </div>
 
+            @elseif($isHearingTime)
+            <div class="form-card" id="card-{{ $fieldName }}">
+                <div class="question-card-inner">
+                    <div class="question-label">
+                        ⏰ {{ str_contains(strtolower($label), 'military') ? 'Hearing Time (12-Hour AM/PM)' : $label }}
+                        <span class="required-star">*</span>
+                    </div>
+                    <div class="question-hint">Select the scheduled hearing time in 12-hour format with AM and PM</div>
+                    <div class="input-wrap">
+                        <input type="hidden" name="{{ $fieldName }}" id="field-{{ $fieldName }}" value="{{ $fieldDefault }}" class="form-input">
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 4px;">
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.5px;">Hour</span>
+                                <select id="hearing-hour-{{ $fieldName }}" class="form-input hearing-select" style="width: auto; min-width: 85px; cursor: pointer; font-weight: 600;" onchange="update12HourTimeField('{{ $fieldName }}')">
+                                    <option value="">Hour</option>
+                                    @for($h = 1; $h <= 12; $h++)
+                                        <option value="{{ $h }}">{{ $h }}</option>
+                                    @endfor
+                                </select>
+                            </div>
+                            <span style="font-weight: 700; font-size: 20px; color: var(--text-secondary); margin-top: 16px;">:</span>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.5px;">Minute</span>
+                                <select id="hearing-minute-{{ $fieldName }}" class="form-input hearing-select" style="width: auto; min-width: 85px; cursor: pointer; font-weight: 600;" onchange="update12HourTimeField('{{ $fieldName }}')">
+                                    <option value="">Minute</option>
+                                    @for($m = 0; $m < 60; $m++)
+                                        @php $mStr = str_pad($m, 2, '0', STR_PAD_LEFT); @endphp
+                                        <option value="{{ $mStr }}">{{ $mStr }}</option>
+                                    @endfor
+                                </select>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.5px;">AM / PM</span>
+                                <select id="hearing-ampm-{{ $fieldName }}" class="form-input hearing-select" style="width: auto; min-width: 85px; cursor: pointer; font-weight: 700; color: #2563eb;" onchange="update12HourTimeField('{{ $fieldName }}')">
+                                    <option value="AM">AM</option>
+                                    <option value="PM">PM</option>
+                                </select>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 4px; margin-left: 8px;">
+                                <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.5px;">Selected Time</span>
+                                <div id="hearing-time-display-{{ $fieldName }}" style="padding: 10px 14px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; font-size: 14px; font-weight: 700; color: #1d4ed8; min-width: 110px; text-align: center;">
+                                    {{ $fieldDefault ?: 'Not selected' }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @elseif($isHearingDateTime)
+            <div class="form-card" id="card-{{ $fieldName }}">
+                <div class="question-card-inner">
+                    <div class="question-label">
+                        📅 {{ $label }}
+                        <span class="required-star">*</span>
+                    </div>
+                    <div class="question-hint">Select the hearing date on the calendar and choose the 12-hour time (AM/PM)</div>
+                    <div class="input-wrap">
+                        <input type="hidden" name="{{ $fieldName }}" id="field-{{ $fieldName }}" value="{{ $fieldDefault }}" class="form-input">
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                            <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+                                <!-- Calendar Date Picker -->
+                                <div style="flex: 1; min-width: 240px;">
+                                    <span style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.5px; margin-bottom: 4px;">
+                                        📅 Hearing Date (Calendar)
+                                    </span>
+                                    <input
+                                        type="date"
+                                        class="form-input"
+                                        id="date-picker-{{ $fieldName }}"
+                                        style="cursor: pointer; color: var(--text-primary); font-weight: 500;"
+                                        onchange="updateCombinedHearingDateTime('{{ $fieldName }}')"
+                                    >
+                                </div>
+
+                                <!-- 12-Hour Time Picker -->
+                                <div>
+                                    <span style="display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.5px; margin-bottom: 4px;">
+                                        ⏰ Hearing Time (12-Hour AM/PM)
+                                    </span>
+                                    <div style="display: flex; gap: 6px; align-items: center;">
+                                        <select id="time-hour-{{ $fieldName }}" class="form-input hearing-select" style="width: auto; min-width: 75px; cursor: pointer; font-weight: 600;" onchange="updateCombinedHearingDateTime('{{ $fieldName }}')">
+                                            <option value="">Hour</option>
+                                            @for($h = 1; $h <= 12; $h++)
+                                                <option value="{{ $h }}">{{ $h }}</option>
+                                            @endfor
+                                        </select>
+                                        <span style="font-weight: 700; font-size: 18px; color: var(--text-secondary);">:</span>
+                                        <select id="time-min-{{ $fieldName }}" class="form-input hearing-select" style="width: auto; min-width: 75px; cursor: pointer; font-weight: 600;" onchange="updateCombinedHearingDateTime('{{ $fieldName }}')">
+                                            <option value="">Min</option>
+                                            @for($m = 0; $m < 60; $m++)
+                                                @php $mStr = str_pad($m, 2, '0', STR_PAD_LEFT); @endphp
+                                                <option value="{{ $mStr }}">{{ $mStr }}</option>
+                                            @endfor
+                                        </select>
+                                        <select id="time-ampm-{{ $fieldName }}" class="form-input hearing-select" style="width: auto; min-width: 75px; cursor: pointer; font-weight: 700; color: #2563eb;" onchange="updateCombinedHearingDateTime('{{ $fieldName }}')">
+                                            <option value="AM">AM</option>
+                                            <option value="PM">PM</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Live Formatted Document Text Display -->
+                            <div style="padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Document Text:</span>
+                                <span id="date-time-display-{{ $fieldName }}" style="font-size: 14px; font-weight: 700; color: #0f172a;">
+                                    {{ $fieldDefault ?: 'Select date & time above' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             @elseif($isDate)
             <div class="form-card">
@@ -1394,7 +1587,7 @@
                         <div class="question-hint">{{ $hint }}</div>
                     @endif
                     <div class="input-wrap">
-                        <input type="hidden" name="{{ $fieldName }}" id="field-{{ $fieldName }}" value="{{ $fieldDefault }}">
+                        <input type="hidden" name="{{ $fieldName }}" id="field-{{ $fieldName }}" value="{{ $fieldDefault }}" class="form-input">
                         <input
                             type="date"
                             class="form-input"
@@ -1406,7 +1599,9 @@
                                     var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
                                     var formatted = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
                                     document.getElementById('field-{{ $fieldName }}').value = formatted;
-                                    this.nextElementSibling && (this.nextElementSibling.textContent = formatted);
+                                    var disp = document.getElementById('date-display-{{ $fieldName }}');
+                                    if (disp) disp.textContent = formatted;
+                                    document.getElementById('field-{{ $fieldName }}').dispatchEvent(new Event('input', { bubbles: true }));
                                 }
                             "
                         >
@@ -1653,6 +1848,270 @@
         }
     }
 
+    // ============================
+    // 12-HOUR TIME (AM/PM) & CALENDAR HEARING CONTROLS
+    // ============================
+    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+    function getOrdinalDay(day) {
+        const d = parseInt(day, 10);
+        if (isNaN(d)) return day;
+        if (d > 3 && d < 21) return d + 'th';
+        switch (d % 10) {
+            case 1:  return d + 'st';
+            case 2:  return d + 'nd';
+            case 3:  return d + 'rd';
+            default: return d + 'th';
+        }
+    }
+
+    function update12HourTimeField(fieldName) {
+        const hEl = document.getElementById('hearing-hour-' + fieldName);
+        const mEl = document.getElementById('hearing-minute-' + fieldName);
+        const apEl = document.getElementById('hearing-ampm-' + fieldName);
+        const targetInput = document.getElementById('field-' + fieldName);
+        const displayEl = document.getElementById('hearing-time-display-' + fieldName);
+
+        if (!hEl || !targetInput) return;
+
+        const hour = hEl.value;
+        const minute = (mEl && mEl.value !== '') ? mEl.value : '00';
+        const ampm = (apEl && apEl.value) ? apEl.value : 'AM';
+
+        if (hour) {
+            const formattedTime = hour + ':' + minute + ' ' + ampm;
+            targetInput.value = formattedTime;
+            if (displayEl) {
+                displayEl.textContent = formattedTime;
+                displayEl.style.color = '#1d4ed8';
+            }
+        } else {
+            targetInput.value = '';
+            if (displayEl) {
+                displayEl.textContent = 'Not selected';
+                displayEl.style.color = '#64748b';
+            }
+        }
+
+        updatePreview(fieldName, targetInput.value);
+        targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function updateCombinedHearingDateTime(fieldName) {
+        const dateEl = document.getElementById('date-picker-' + fieldName);
+        const hEl = document.getElementById('time-hour-' + fieldName);
+        const mEl = document.getElementById('time-min-' + fieldName);
+        const apEl = document.getElementById('time-ampm-' + fieldName);
+        const targetInput = document.getElementById('field-' + fieldName);
+        const displayEl = document.getElementById('date-time-display-' + fieldName);
+
+        if (!targetInput) return;
+
+        let dateStr = '';
+        if (dateEl && dateEl.value) {
+            const d = new Date(dateEl.value + 'T00:00:00');
+            if (!isNaN(d)) {
+                dateStr = MONTH_NAMES[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+            }
+        }
+
+        let timeStr = '';
+        if (hEl && hEl.value) {
+            const hour = hEl.value;
+            const minute = (mEl && mEl.value !== '') ? mEl.value : '00';
+            const ampm = (apEl && apEl.value) ? apEl.value : 'AM';
+            timeStr = hour + ':' + minute + ' ' + ampm;
+        }
+
+        let combined = '';
+        if (dateStr && timeStr) {
+            combined = dateStr + ' at ' + timeStr;
+        } else if (dateStr) {
+            combined = dateStr;
+        } else if (timeStr) {
+            combined = timeStr;
+        }
+
+        targetInput.value = combined;
+        if (displayEl) {
+            displayEl.textContent = combined || 'Select date & time above';
+            displayEl.style.color = combined ? '#0f172a' : '#64748b';
+        }
+
+        updatePreview(fieldName, targetInput.value);
+        targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function applySplitHearingDate(val) {
+        if (!val) return;
+        const d = new Date(val + 'T00:00:00');
+        if (isNaN(d)) return;
+
+        const dayStr = getOrdinalDay(d.getDate());
+        const monthStr = MONTH_NAMES[d.getMonth()];
+        const yearStr = d.getFullYear().toString();
+
+        const df = document.getElementById('field-hearing_day');
+        const mf = document.getElementById('field-hearing_month');
+        const yf = document.getElementById('field-hearing_year');
+
+        if (df) { df.value = dayStr; updatePreview('hearing_day', dayStr); df.dispatchEvent(new Event('input', { bubbles: true })); }
+        if (mf) { mf.value = monthStr; updatePreview('hearing_month', monthStr); mf.dispatchEvent(new Event('input', { bubbles: true })); }
+        if (yf) { yf.value = yearStr; updatePreview('hearing_year', yearStr); yf.dispatchEvent(new Event('input', { bubbles: true })); }
+    }
+
+    function applyNextHearingDate(val) {
+        if (!val) return;
+        const d = new Date(val + 'T00:00:00');
+        if (isNaN(d)) return;
+
+        const dateStr = MONTH_NAMES[d.getMonth()] + ' ' + d.getDate();
+        const yearStr = d.getFullYear().toString();
+
+        const nd = document.getElementById('field-next_hearing_date');
+        const ny = document.getElementById('field-next_hearing_year');
+
+        if (nd) { nd.value = dateStr; updatePreview('next_hearing_date', dateStr); nd.dispatchEvent(new Event('input', { bubbles: true })); }
+        if (ny) { ny.value = yearStr; updatePreview('next_hearing_year', yearStr); ny.dispatchEvent(new Event('input', { bubbles: true })); }
+    }
+
+    function applyFailureHearingDate(val) {
+        if (!val) return;
+        const d = new Date(val + 'T00:00:00');
+        if (isNaN(d)) return;
+
+        const dayStr = getOrdinalDay(d.getDate());
+        const monthStr = MONTH_NAMES[d.getMonth()];
+        const yearStr = d.getFullYear().toString();
+
+        const df = document.getElementById('field-failure_day');
+        const mf = document.getElementById('field-failure_month');
+        const yf = document.getElementById('field-failure_year');
+
+        if (df) { df.value = dayStr; updatePreview('failure_day', dayStr); df.dispatchEvent(new Event('input', { bubbles: true })); }
+        if (mf) { mf.value = monthStr; updatePreview('failure_month', monthStr); mf.dispatchEvent(new Event('input', { bubbles: true })); }
+        if (yf) { yf.value = yearStr; updatePreview('failure_year', yearStr); yf.dispatchEvent(new Event('input', { bubbles: true })); }
+    }
+
+    function initAllHearingControls() {
+        // 1. Initialize dedicated 12-hour time fields
+        document.querySelectorAll('[id^="hearing-hour-"]').forEach(hEl => {
+            const fieldName = hEl.id.replace('hearing-hour-', '');
+            const targetInput = document.getElementById('field-' + fieldName);
+            if (!targetInput || !targetInput.value.trim()) return;
+
+            const val = targetInput.value.trim();
+            const mEl = document.getElementById('hearing-minute-' + fieldName);
+            const apEl = document.getElementById('hearing-ampm-' + fieldName);
+
+            // Pattern A: "9:00 AM", "09:30 PM", "9:00am"
+            let match = val.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+            if (match) {
+                hEl.value = parseInt(match[1], 10);
+                if (mEl) mEl.value = match[2];
+                if (apEl) apEl.value = match[3].toUpperCase();
+                update12HourTimeField(fieldName);
+                return;
+            }
+
+            // Pattern B: "14:30" (24-hour military)
+            match = val.match(/^(\d{1,2}):(\d{2})$/);
+            if (match) {
+                let h = parseInt(match[1], 10);
+                const m = match[2];
+                const ap = h >= 12 ? 'PM' : 'AM';
+                h = h % 12 || 12;
+                hEl.value = h;
+                if (mEl) mEl.value = m;
+                if (apEl) apEl.value = ap;
+                update12HourTimeField(fieldName);
+                return;
+            }
+
+            // Pattern C: "1000", "0900" (4-digit military)
+            match = val.match(/^(\d{2})(\d{2})$/);
+            if (match) {
+                let h = parseInt(match[1], 10);
+                const m = match[2];
+                const ap = h >= 12 ? 'PM' : 'AM';
+                h = h % 12 || 12;
+                hEl.value = h;
+                if (mEl) mEl.value = m;
+                if (apEl) apEl.value = ap;
+                update12HourTimeField(fieldName);
+                return;
+            }
+        });
+
+        // 2. Initialize combined hearing date & time fields
+        document.querySelectorAll('[id^="date-picker-hearing_"], [id^="date-picker-first_session_"], [id^="date-picker-field_"]').forEach(dateEl => {
+            const fieldName = dateEl.id.replace('date-picker-', '');
+            const targetInput = document.getElementById('field-' + fieldName);
+            if (!targetInput || !targetInput.value.trim()) return;
+
+            const val = targetInput.value.trim();
+            const hEl = document.getElementById('time-hour-' + fieldName);
+            const mEl = document.getElementById('time-min-' + fieldName);
+            const apEl = document.getElementById('time-ampm-' + fieldName);
+
+            // Extract time part: "at 9:00 AM" or "9:00 AM"
+            const timeMatch = val.match(/at\s+(\d{1,2}):(\d{2})\s*(AM|PM)/i) || val.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+            if (timeMatch && hEl) {
+                hEl.value = parseInt(timeMatch[1], 10);
+                if (mEl) mEl.value = timeMatch[2];
+                if (apEl) apEl.value = timeMatch[3].toUpperCase();
+            }
+
+            // Extract date part: remove "at ..."
+            const cleanDate = val.replace(/at\s+\d{1,2}:\d{2}\s*(AM|PM).*/i, '').trim();
+            if (cleanDate) {
+                const parsed = new Date(cleanDate);
+                if (!isNaN(parsed) && parsed.getFullYear() > 1900) {
+                    const y = parsed.getFullYear();
+                    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+                    const d = String(parsed.getDate()).padStart(2, '0');
+                    dateEl.value = `${y}-${m}-${d}`;
+                }
+            }
+
+            updateCombinedHearingDateTime(fieldName);
+        });
+
+        // 3. Pre-fill split hearing date picker if values already present
+        const sMonth = document.getElementById('field-hearing_month');
+        const sDay = document.getElementById('field-hearing_day');
+        const sYear = document.getElementById('field-hearing_year');
+        const splitPicker = document.getElementById('hearing-split-date-picker');
+        if (splitPicker && sMonth && sDay && sYear && sMonth.value && sDay.value) {
+            const mIdx = MONTH_NAMES.findIndex(m => m.toLowerCase() === sMonth.value.trim().toLowerCase());
+            const dNum = parseInt(sDay.value.replace(/\D/g, ''), 10);
+            let yNum = parseInt(sYear.value.replace(/\D/g, ''), 10);
+            if (yNum < 100) yNum += 2000;
+            if (mIdx >= 0 && dNum > 0 && yNum > 1900) {
+                const mStr = String(mIdx + 1).padStart(2, '0');
+                const dStr = String(dNum).padStart(2, '0');
+                splitPicker.value = `${yNum}-${mStr}-${dStr}`;
+            }
+        }
+
+        // 4. Pre-fill next hearing date picker
+        const nDate = document.getElementById('field-next_hearing_date');
+        const nYear = document.getElementById('field-next_hearing_year');
+        const nextPicker = document.getElementById('next-hearing-date-picker');
+        if (nextPicker && nDate && nYear && nDate.value && nYear.value) {
+            const parsed = new Date(nDate.value + ' ' + nYear.value);
+            if (!isNaN(parsed) && parsed.getFullYear() > 1900) {
+                const y = parsed.getFullYear();
+                const m = String(parsed.getMonth() + 1).padStart(2, '0');
+                const d = String(parsed.getDate()).padStart(2, '0');
+                nextPicker.value = `${y}-${m}-${d}`;
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', initAllHearingControls);
+    setTimeout(initAllHearingControls, 100);
+
     // Attach live preview listeners
     document.querySelectorAll('.form-input, .form-textarea').forEach(input => {
         const name = input.name;
@@ -1861,6 +2320,23 @@
         document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
             cb.checked = false;
             updatePreview(cb.name, '');
+        });
+        document.querySelectorAll('select.hearing-select').forEach(sel => {
+            sel.value = '';
+        });
+        document.querySelectorAll('input[type="date"]').forEach(d => {
+            d.value = '';
+        });
+        document.querySelectorAll('[id^="hearing-time-display-"]').forEach(el => {
+            el.textContent = 'Not selected';
+            el.style.color = '#64748b';
+        });
+        document.querySelectorAll('[id^="date-time-display-"]').forEach(el => {
+            el.textContent = 'Select date & time above';
+            el.style.color = '#64748b';
+        });
+        document.querySelectorAll('[id^="date-display-"]').forEach(el => {
+            el.textContent = '';
         });
         updateFilledCount();
     }

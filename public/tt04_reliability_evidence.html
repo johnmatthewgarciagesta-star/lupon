@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TT-04 System Reliability Evidence - Lupon CMS</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 28px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .evidence-card {
+      width: 1340px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border-bottom: 2px solid #06b6d4;
+      padding: 24px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-titles h1 {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge-test {
+      background: #0891b2;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      letter-spacing: 0.05em;
+    }
+
+    .header-titles p {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+
+    .header-meta {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .meta-box {
+      text-align: right;
+    }
+
+    .meta-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .meta-value {
+      font-size: 13px;
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+
+    .status-badge {
+      background: #059669;
+      color: #ecfdf5;
+      border: 1px solid #10b981;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Comparison Dual Screens */
+    .visual-comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      padding: 28px 32px;
+      background: #0f172a;
+    }
+
+    .panel {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      padding: 12px 16px;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-pill-cyan {
+      background: #164e63;
+      color: #67e8f9;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+
+    .browser-frame {
+      background: #090d16;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .browser-bar {
+      background: #334155;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .browser-dots {
+      display: flex;
+      gap: 5px;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+    }
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+
+    .browser-url {
+      background: #1e293b;
+      color: #cbd5e1;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 5px;
+      flex: 1;
+      border: 1px solid #475569;
+    }
+
+    .browser-body {
+      height: 380px;
+      background: #0b1120;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .browser-body img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top center;
+    }
+
+    .panel-footer {
+      padding: 12px 16px;
+      background: #1e293b;
+      border-top: 1px solid #334155;
+      font-size: 11.5px;
+      color: #94a3b8;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(6, 182, 212, 0.15);
+      color: #22d3ee;
+      border: 1px solid rgba(6, 182, 212, 0.3);
+    }
+
+    /* Checklist & Table Section */
+    .table-section {
+      padding: 0 32px 28px 32px;
+      background: #0f172a;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #94a3b8;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #1e293b;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #334155;
+    }
+
+    th {
+      background: #334155;
+      color: #e2e8f0;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 10px 14px;
+      text-align: left;
+    }
+
+    td {
+      padding: 10px 14px;
+      font-size: 12px;
+      border-bottom: 1px solid #293548;
+      color: #cbd5e1;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .check-cell {
+      font-family: 'JetBrains Mono', monospace;
+      color: #34d399;
+      font-weight: 700;
+    }
+
+    .ratio-cell {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+
+    .status-pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 11px;
+      background: #064e3b;
+      color: #34d399;
+      border: 1px solid #059669;
+    }
+
+    .reliability-note {
+      margin-top: 14px;
+      background: rgba(30, 41, 59, 0.7);
+      border-left: 3px solid #06b6d4;
+      padding: 12px 16px;
+      border-radius: 0 6px 6px 0;
+      font-size: 11.5px;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+
+    .reliability-note strong {
+      color: #e2e8f0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="evidence-card">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-titles">
+        <h1>
+          <span class="badge-test">TT-04</span>
+          OBJECTIVE TECHNICAL TESTING EVIDENCE: SYSTEM RELIABILITY
+        </h1>
+        <p>Project: Lupon Tagapamayapa Case Management System (Barangay 183)</p>
+      </div>
+      <div class="header-meta">
+        <div class="meta-box">
+          <div class="meta-label">Execution Date</div>
+          <div class="meta-value">October 16, 2026</div>
+        </div>
+        <div class="meta-box">
+          <div class="meta-label">Testers</div>
+          <div class="meta-value">J.M. Gesta & C.G. Fontejon</div>
+        </div>
+        <div class="status-badge">
+          ✓ ACCEPTED
+        </div>
+      </div>
+    </div>
+
+    <!-- Visual Evidence: Active Cases vs Archived Cases Lifecycle -->
+    <div class="visual-comparison">
+      <!-- Left: Active Case Addition & Mutation Table -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-pill-cyan">LIFECYCLE 1-3</span>
+            Active Case Management & Document Attachment
+          </div>
+          <span style="font-size: 11px; color: #94a3b8;">Operations: Add, Update, Upload</span>
+        </div>
+        <div class="browser-frame">
+          <div class="browser-bar">
+            <div class="browser-dots">
+              <div class="dot dot-red"></div>
+              <div class="dot dot-yellow"></div>
+              <div class="dot dot-green"></div>
+            </div>
+            <div class="browser-url">http://lupon.test/cases — Active Case Ledger</div>
+          </div>
+          <div class="browser-body">
+            <img src="/tt04_active_cases.png" alt="Active Case Management Ledger">
+          </div>
+        </div>
+        <div class="panel-footer">
+          <span>Observed: <strong>All records rendered with folder IDs & attachments</strong></span>
+          <span class="footer-badge">15 / 15 ATTEMPTS PASSED</span>
+        </div>
+      </div>
+
+      <!-- Right: Archive & Restoration Isolation -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-pill-cyan">LIFECYCLE 4-5</span>
+            Case Archival Isolation & Reversible Restoration
+          </div>
+          <span style="font-size: 11px; color: #94a3b8;">Operations: Archive, Restore</span>
+        </div>
+        <div class="browser-frame">
+          <div class="browser-bar">
+            <div class="browser-dots">
+              <div class="dot dot-red"></div>
+              <div class="dot dot-yellow"></div>
+              <div class="dot dot-green"></div>
+            </div>
+            <div class="browser-url">http://lupon.test/cases/archive — Soft-Delete Isolation</div>
+          </div>
+          <div class="browser-body">
+            <img src="/tt04_archive_cases.png" alt="Archived Cases View">
+          </div>
+        </div>
+        <div class="panel-footer">
+          <span>Observed: <strong>Reversible soft-delete, zero accidental data purge</strong></span>
+          <span class="footer-badge">10 / 10 ATTEMPTS PASSED</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5x5 Repetition Matrix Table -->
+    <div class="table-section">
+      <div class="section-title">
+        <span>5-Repetition Reliability Matrix & Stress Consistency Checklist</span>
+        <span style="font-size: 11px; color: #64748b; font-weight: normal;">Planned Count: 5 Repetitions &times; 5 Core Operations = 25 Executed Trials</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Tested Operation</th>
+            <th>Rep 1</th>
+            <th>Rep 2</th>
+            <th>Rep 3</th>
+            <th>Rep 4</th>
+            <th>Rep 5</th>
+            <th>Success / Total</th>
+            <th>Unintended Duplicates</th>
+            <th>Data Loss Rate</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>1. Case Addition</strong> (POST /cases)</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="ratio-cell">5 / 5 (100%)</td>
+            <td>0</td>
+            <td>0.00%</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><strong>2. Case Updating</strong> (PUT /cases/{id})</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="ratio-cell">5 / 5 (100%)</td>
+            <td>0</td>
+            <td>0.00%</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><strong>3. Document Upload</strong> (POST /documents/upload)</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="ratio-cell">5 / 5 (100%)</td>
+            <td>0</td>
+            <td>0.00%</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><strong>4. Case Archiving</strong> (POST /cases/{id}/archive)</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="ratio-cell">5 / 5 (100%)</td>
+            <td>0</td>
+            <td>0.00%</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><strong>5. Case Restoration</strong> (POST /cases/{id}/restore)</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="check-cell">✓ Pass</td>
+            <td class="ratio-cell">5 / 5 (100%)</td>
+            <td>0</td>
+            <td>0.00%</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="reliability-note">
+        <strong>Database Consistency & Zero-Defect Reliability:</strong> Across all 25 executed repetition trials, the Lupon CMS demonstrated 100% operational success with zero unexpected system errors, zero database collision anomalies, zero unintended duplicate records, and zero data corruption. Relational foreign key bindings between cases, uploaded document files, and audit logs remained fully intact through repeated archival and restoration cycles.
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

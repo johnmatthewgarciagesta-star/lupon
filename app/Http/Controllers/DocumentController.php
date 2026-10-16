@@ -108,11 +108,7 @@ class DocumentController extends Controller
     public function templates(Request $request)
     {
         try {
-            $query = \App\Models\Document::with(['case', 'creator'])
-                ->where(function ($q) {
-                    $q->whereNull('content->is_scanned')
-                      ->orWhere('content->is_scanned', false);
-                });
+            $query = \App\Models\Document::with(['case', 'creator']);
 
             if ($request->filled('search')) {
                 $search = $request->input('search');
@@ -134,6 +130,8 @@ class DocumentController extends Controller
                     'case_id' => $doc->case_id,
                     'case_number' => $doc->case ? $doc->case->case_number : null,
                     'creator' => $doc->creator ? ['name' => $doc->creator->name] : null,
+                    'file_path' => $doc->file_path,
+                    'is_scanned' => !empty($doc->content['is_scanned']),
                 ];
             });
 
@@ -545,6 +543,17 @@ class DocumentController extends Controller
         $type = $document->type;
         $case = $document->case;
 
+        // If the document is linked to a case, merge with case's document_data so all fields are available
+        if ($case && is_array($case->document_data)) {
+            $data = array_merge($case->document_data, $data);
+        }
+        if (empty($data['narrative']) && !empty($data['body_text'])) {
+            $data['narrative'] = $data['body_text'];
+        }
+        if (empty($data['For']) && !empty($data['nature_of_case'])) {
+            $data['For'] = $data['nature_of_case'];
+        }
+
         // I-log sa Audit Trail kapag binuksan ang dokumento
         $sessionKey = 'viewed_document_' . $id;
         if (!session()->has($sessionKey)) {
@@ -584,14 +593,13 @@ class DocumentController extends Controller
         $imageBase64 = $this->generateBackgroundImage($type);
         $readonly = request('mode') !== 'edit';
         $missingData = empty($data);
-        $filePath = $document->file_path;
 
         if (request('mode') === 'edit') {
             $documentId = $document->id;
             return view('documents.form-fill', compact('type', 'imageBase64', 'fields', 'data', 'case', 'documentId'));
         }
 
-        return view('documents.visual-editor', compact('type', 'imageBase64', 'fields', 'readonly', 'case', 'missingData', 'filePath', 'document'));
+        return view('documents.templates.print', compact('type', 'imageBase64', 'fields', 'data', 'case', 'document'));
     }
 
     /**
@@ -2059,13 +2067,7 @@ class DocumentController extends Controller
                 'type' => $type,
                 'status' => 'Issued',
                 'file_path' => $permanentPathUrl,
-                'content' => [
-                    'complainant' => $complainant,
-                    'respondent' => $respondent,
-                    'case_no' => $caseNo,
-                    'body_text' => $summary,
-                    'is_scanned' => true
-                ],
+                'content' => $docContentMap,
                 'issued_at' => now(),
                 'created_by' => auth()->id(),
             ]);
@@ -2175,7 +2177,7 @@ class DocumentController extends Controller
                 ['id' => 'complainant',    'type' => 'text', 'label' => 'Complainant Name',   'required' => true],
                 ['id' => 'respondent',     'type' => 'text', 'label' => 'Respondent Name',    'required' => true],
                 ['id' => 'For',            'type' => 'text', 'label' => 'Nature of Case',    'required' => true],
-                ['id' => 'hearing_info',   'type' => 'text', 'label' => 'Hearing Date/Time', 'required' => false],
+                ['id' => 'hearing_info',   'type' => 'date', 'label' => 'Hearing Date/Time (12-Hour AM/PM)', 'required' => false],
                 ['id' => 'made_this_day',  'type' => 'text', 'label' => 'Day',        'required' => false],
                 ['id' => 'made_this_month', 'type' => 'text', 'label' => 'Month',      'required' => false],
                 ['id' => 'made_this_year',  'type' => 'text', 'label' => 'Year',       'required' => false],

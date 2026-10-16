@@ -152,6 +152,22 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
         }
     }, [aiQuota]);
 
+    // Network connectivity state for AI scan fallback
+    const [isOffline, setIsOffline] = useState<boolean>(typeof navigator !== 'undefined' ? !navigator.onLine : false);
+
+    useEffect(() => {
+        const handleOnline = () => setIsOffline(false);
+        const handleOffline = () => setIsOffline(true);
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
+
     // Search filters templates
     const [search, setSearch] = useState('');
     // Filter for recent docs table only
@@ -220,6 +236,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
     const [scanError, setScanError] = useState<string | null>(null);
+    const [scanAttempts, setScanAttempts] = useState(0);
     const [tempFilePath, setTempFilePath] = useState<string | null>(null);
     
     // Editable review fields
@@ -270,6 +287,16 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
         const file = e.target.files?.[0];
         if (!file) return;
 
+        // Reset file input value so re-selecting the same file triggers onChange
+        e.target.value = '';
+
+        // Proactive offline check
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            setIsOffline(true);
+            setScanError('No internet connection detected. Gemini AI optical scanning requires network access. Please use manual form entry below.');
+            return;
+        }
+
         setIsScanning(true);
         setScanError(null);
 
@@ -317,8 +344,23 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
             }
 
             if (res.ok && result.success) {
-                setTempFilePath(result.temp_file);
                 const data = result.data || {};
+
+                // Verify that the AI actually extracted readable content
+                const hasReadableText = Boolean(
+                    (data.complainant && data.complainant.trim()) ||
+                    (data.respondent && data.respondent.trim()) ||
+                    (data.case_no && data.case_no.trim()) ||
+                    (data.summary && data.summary.trim())
+                );
+
+                if (!hasReadableText) {
+                    throw new Error('The AI was unable to read or recognize any legible text from the uploaded document. Please check the scan quality or enter details manually.');
+                }
+
+                // Successful read — reset failed attempts
+                setScanAttempts(0);
+                setTempFilePath(result.temp_file);
                 
                 // Pre-fill editable inputs with AI-extracted values
                 setComplainant(data.complainant || '');
@@ -332,10 +374,31 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                     setDocType(data.document_type);
                 }
             } else {
-                setScanError(result.message || 'Failed to scan the document. Please try again.');
+                const rawMsg = result.message || 'Failed to scan the document. Please try again.';
+                if (rawMsg.includes('Could not resolve host') || rawMsg.includes('cURL error') || rawMsg.includes('Internet connection required') || rawMsg.includes('Failed to fetch')) {
+                    setIsOffline(true);
+                    throw new Error('Internet connection required for Gemini AI metadata extraction. Please check your network or enter data manually.');
+                } else {
+                    throw new Error(rawMsg);
+                }
             }
         } catch (err: any) {
-            setScanError('An error occurred during scanning: ' + err.message);
+            const nextAttempts = scanAttempts + 1;
+            setScanAttempts(nextAttempts);
+
+            const msg = err?.message || '';
+            if (
+                (typeof navigator !== 'undefined' && !navigator.onLine) ||
+                msg.includes('Failed to fetch') ||
+                msg.includes('NetworkError') ||
+                msg.includes('Could not resolve host') ||
+                msg.includes('network')
+            ) {
+                setIsOffline(true);
+                setScanError('Internet connection required for Gemini AI metadata extraction. Please check your network or enter data manually.');
+            } else {
+                setScanError(msg || 'An error occurred during scanning.');
+            }
         } finally {
             setIsScanning(false);
         }
@@ -372,7 +435,8 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
             onSuccess: () => {
                 setIsSaving(false);
                 setIsUploadModalOpen(false);
-                resetModal();
+                setScanAttempts(0);
+                resetModal(true);
             },
             onError: (errors: any) => {
                 setIsSaving(false);
@@ -386,7 +450,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
     };
 
     // Reset all states
-    const resetModal = () => {
+    const resetModal = (resetAttempts = false) => {
         setTempFilePath(null);
         setScanError(null);
         setCaseId(null);
@@ -400,6 +464,10 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
         setSummary('');
         setIsScanning(false);
         setIsSaving(false);
+        setIsOffline(typeof navigator !== 'undefined' ? !navigator.onLine : false);
+        if (resetAttempts) {
+            setScanAttempts(0);
+        }
     };
 
     const breadcrumbs = [{ title: 'Documents', href: '/documents' }];
@@ -928,6 +996,10 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
             <Dialog open={isUploadModalOpen} onOpenChange={(open) => {
                 if (!open) {
                     resetModal();
+                } else {
+                    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+                        setIsOffline(true);
+                    }
                 }
                 setIsUploadModalOpen(open);
             }}>
@@ -942,25 +1014,72 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                         </DialogDescription>
                     </DialogHeader>
 
-                    {/* Step 1: Upload File or Show Quota Limit Fallback / Spinner */}
+                    {/* Step 1: Upload File or Show Quota Limit / Offline Fallback / Spinner */}
                     {!tempFilePath && !isScanning && (
-                        quotaState.isExceeded ? (
-                            /* ── When Weekly AI Scan Limit is Reached: Fallback Manual Fill-Up Options ── */
+                        (quotaState.isExceeded || isOffline || scanAttempts >= 3) ? (
+                            /* ── When Weekly AI Scan Limit is Reached OR System is Offline OR 3+ Failed Tries: Fallback Manual Fill-Up Options ── */
                             <div className="space-y-4 py-2">
-                                <div className="p-4 bg-amber-500/10 border border-amber-500/30 dark:bg-amber-950/30 rounded-xl space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-sm">
-                                            <AlertTriangle className="h-5 w-5 text-[#dd8b11]" />
-                                            <span>Weekly AI Upload Limit Reached</span>
+                                {isOffline && !quotaState.isExceeded ? (
+                                    <div className="p-4 bg-amber-500/10 border border-amber-500/30 dark:bg-amber-950/30 rounded-xl space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-sm">
+                                                <AlertTriangle className="h-5 w-5 text-[#dd8b11]" />
+                                                <span>Offline Mode Detected</span>
+                                            </div>
+                                            <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 border-amber-300 font-bold text-xs">
+                                                No Internet
+                                            </Badge>
                                         </div>
-                                        <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 border-amber-300 font-bold text-xs">
-                                            {quotaState.used} / {quotaState.limit} Scans Used
-                                        </Badge>
+                                        <p className="text-xs text-amber-900/80 dark:text-amber-200/80 leading-relaxed">
+                                            Gemini AI optical scanning requires an active internet connection. Since your connection is currently offline, you can manually enter your complaint or affidavit details below.
+                                        </p>
                                     </div>
-                                    <p className="text-xs text-amber-900/80 dark:text-amber-200/80 leading-relaxed">
-                                        The maximum weekly capacity of 20 scanned files for AI document extraction has been reached. AI scanning will automatically reset {quotaState.resets_at ? `on ${quotaState.resets_at}` : 'at the start of next week'}.
-                                    </p>
-                                </div>
+                                ) : quotaState.isExceeded ? (
+                                    <div className="p-4 bg-amber-500/10 border border-amber-500/30 dark:bg-amber-950/30 rounded-xl space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-sm">
+                                                <AlertTriangle className="h-5 w-5 text-[#dd8b11]" />
+                                                <span>Weekly AI Upload Limit Reached</span>
+                                            </div>
+                                            <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 border-amber-300 font-bold text-xs">
+                                                {quotaState.used} / {quotaState.limit} Scans Used
+                                            </Badge>
+                                        </div>
+                                        <p className="text-xs text-amber-900/80 dark:text-amber-200/80 leading-relaxed">
+                                            The maximum weekly capacity of 20 scanned files for AI document extraction has been reached. AI scanning will automatically reset {quotaState.resets_at ? `on ${quotaState.resets_at}` : 'at the start of next week'}.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    /* ── 3+ Failed / Rejected Upload Tries Fallback Banner ── */
+                                    <div className="p-4 bg-amber-500/10 border border-amber-500/30 dark:bg-amber-950/30 rounded-xl space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-sm">
+                                                <AlertTriangle className="h-5 w-5 text-[#dd8b11]" />
+                                                <span>AI Scan Unsuccessful ({scanAttempts} Tries Reached)</span>
+                                            </div>
+                                            <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 border-amber-300 font-bold text-xs">
+                                                {scanAttempts} Failed Tries
+                                            </Badge>
+                                        </div>
+                                        <p className="text-xs text-amber-900/80 dark:text-amber-200/80 leading-relaxed">
+                                            The AI scanner was unable to read or parse your uploaded document after {scanAttempts} attempts. Please choose a form below to manually enter your complaint or affidavit details.
+                                        </p>
+                                        <div className="pt-1 flex items-center gap-3">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setScanAttempts(0);
+                                                    setScanError(null);
+                                                }}
+                                                className="h-7 text-xs border-[#dd8b11]/50 text-[#dd8b11] hover:bg-amber-500/10 font-medium"
+                                            >
+                                                Retry Upload Scan
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {scanError && (
                                     <div className="p-3 bg-red-500/10 border border-red-200 text-red-700 dark:text-red-400 rounded-md text-xs font-medium">
@@ -972,10 +1091,14 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                     <div>
                                         <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
                                             <FileSignature className="h-4 w-4 text-[#dd8b11]" />
-                                            Manually Fill Up Your Document (Second Option)
+                                            Manually Fill Up Your Document (Manual Option)
                                         </h4>
                                         <p className="text-xs text-muted-foreground mt-0.5">
-                                            Since AI scanning is at maximum capacity, choose a form below to manually encode and generate your document:
+                                            {isOffline && !quotaState.isExceeded
+                                                ? 'Since the system is offline, choose a form below to manually encode and generate your document:'
+                                                : scanAttempts >= 3
+                                                    ? 'Since the AI scanner failed to read the document after 3 tries, choose a form below to manually encode and generate your document:'
+                                                    : 'Since AI scanning is at maximum capacity, choose a form below to manually encode and generate your document:'}
                                         </p>
                                     </div>
 
@@ -1052,9 +1175,15 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                 <p className="text-sm font-semibold mb-1">Click to upload scanned document or image</p>
                                 <p className="text-xs text-muted-foreground">PDF, PNG, JPG, or JPEG up to 15MB</p>
                                 {scanError && (
-                                    <p className="text-xs text-red-500 mt-4 text-center bg-red-50 dark:bg-red-950/20 px-3 py-2 rounded-md border border-red-200 dark:border-red-900/30">
-                                        {scanError}
-                                    </p>
+                                    <div className="text-xs text-red-500 mt-4 text-center bg-red-50 dark:bg-red-950/20 px-3 py-2 rounded-md border border-red-200 dark:border-red-900/30 space-y-1">
+                                        <div>{scanError}</div>
+                                        {scanAttempts > 0 && scanAttempts < 3 && (
+                                            <div className="text-[11px] text-amber-700 dark:text-amber-400 font-semibold flex items-center justify-center gap-1.5 pt-0.5">
+                                                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                                                <span>Failed attempt {scanAttempts} of 3. If AI reading fails 3 times, manual document entry will be activated automatically.</span>
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                             </div>
                         )
