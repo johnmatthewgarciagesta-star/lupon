@@ -14,21 +14,30 @@ class RolePermissionController extends Controller
      */
     public function index()
     {
-        $allowedRoles = ['Administrator', 'Data Encoder'];
+        try {
+            $allowedRoles = ['Administrator', 'Data Encoder'];
 
-        foreach ($allowedRoles as $roleName) {
-            Role::firstOrCreate(['name' => $roleName]);
+            foreach ($allowedRoles as $roleName) {
+                Role::firstOrCreate(['name' => $roleName]);
+            }
+
+            $roles = Role::with('permissions')
+                ->whereIn('name', $allowedRoles)
+                ->get();
+            $permissions = Permission::all();
+
+            return response()->json([
+                'roles' => $roles,
+                'permissions' => $permissions,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('RolePermission index failed: ' . $e->getMessage());
+            return response()->json([
+                'roles' => [],
+                'permissions' => [],
+                'message' => 'An error has occurred while retrieving roles and permissions.',
+            ], 500);
         }
-
-        $roles = Role::with('permissions')
-            ->whereIn('name', $allowedRoles)
-            ->get();
-        $permissions = Permission::all();
-
-        return response()->json([
-            'roles' => $roles,
-            'permissions' => $permissions,
-        ]);
     }
 
     /**
@@ -36,15 +45,20 @@ class RolePermissionController extends Controller
      */
     public function update(Request $request, Role $role)
     {
-        $validated = $request->validate([
-            'permissions' => 'array',
-            'permissions.*' => 'string|exists:permissions,name',
-        ]);
+        try {
+            $validated = $request->validate([
+                'permissions' => 'array',
+                'permissions.*' => 'string|exists:permissions,name',
+            ]);
 
-        $role->syncPermissions($validated['permissions'] ?? []);
+            $role->syncPermissions($validated['permissions'] ?? []);
 
-        AuditService::log('UPDATE', 'Roles & Permissions', "Updated permissions for role: {$role->name}", $role->id);
+            AuditService::log('UPDATE', 'Roles & Permissions', "Updated permissions for role: {$role->name}", $role->id);
 
-        return redirect()->back()->with('success', 'Role permissions updated successfully.');
+            return redirect()->back()->with('success', 'Role permissions updated successfully.');
+        } catch (\Throwable $e) {
+            \Log::error('RolePermission update failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error has occurred while updating permissions. Please reload your page or try again.');
+        }
     }
 }

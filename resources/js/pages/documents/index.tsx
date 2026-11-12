@@ -5,7 +5,7 @@ import {
     Scale, AlertTriangle, Gavel, Handshake, Calendar, BadgeCheck, X,
     FileSignature, ClipboardCheck, UserPlus, Send, History, Trash2,
     ClipboardList, Briefcase, ShieldAlert, BadgeInfo, Edit, Upload, Loader2,
-    Folder, FolderPlus, FilePlus, ChevronDown, ChevronUp, ShieldCheck
+    Folder, FolderPlus, FilePlus, ChevronDown, ChevronUp, ShieldCheck, AlertCircle
 } from 'lucide-react';
 import { DocumentVersionHistoryModal } from '@/components/documents/document-version-history-modal';
 
@@ -132,10 +132,11 @@ interface DocumentsProps {
     hiddenTemplates: string[];
     caseFolders?: CaseFolder[];
     aiQuota?: AiQuota;
+    nextFolderNumber?: string;
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-export default function Documents({ documents, stats, customTemplates, hiddenTemplates, caseFolders = [], aiQuota }: DocumentsProps) {
+export default function Documents({ documents, stats, customTemplates, hiddenTemplates, caseFolders = [], aiQuota, nextFolderNumber }: DocumentsProps) {
     const { auth } = usePage<SharedData>().props;
     const isAdmin = auth?.user?.role === 'Administrator' || auth?.user?.role === 'Admin' || auth?.roles?.includes('Administrator') || auth?.roles?.includes('Admin') || (auth?.user?.email && auth.user.email.toLowerCase() === 'kataru@gmail.com');
     const canEdit = !isAdmin;
@@ -145,12 +146,19 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
 
     // Quota state for weekly AI scans
     const [quotaState, setQuotaState] = useState<AiQuota>(aiQuota || { used: 0, limit: 20, isExceeded: false });
+    const [assignedFolder, setAssignedFolder] = useState<string>(nextFolderNumber || '');
 
     useEffect(() => {
         if (aiQuota) {
             setQuotaState(aiQuota);
         }
     }, [aiQuota]);
+
+    useEffect(() => {
+        if (nextFolderNumber && !assignedFolder) {
+            setAssignedFolder(nextFolderNumber);
+        }
+    }, [nextFolderNumber]);
 
     // Network connectivity state for AI scan fallback
     const [isOffline, setIsOffline] = useState<boolean>(typeof navigator !== 'undefined' ? !navigator.onLine : false);
@@ -183,6 +191,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
     const [newFolderRespondent, setNewFolderRespondent] = useState('');
     const [newFolderNature, setNewFolderNature] = useState('');
     const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+    const [createFolderError, setCreateFolderError] = useState<string | null>(null);
 
     const [uploadFolderTarget, setUploadFolderTarget] = useState<CaseFolder | null>(null);
     const [folderUploadFile, setFolderUploadFile] = useState<File | null>(null);
@@ -193,6 +202,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
         e.preventDefault();
         if (!newFolderName.trim()) return;
         setIsCreatingFolder(true);
+        setCreateFolderError(null);
         router.post('/documents/create-folder', {
             folder_name: newFolderName,
             case_number: newFolderCaseNo,
@@ -208,8 +218,14 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                 setNewFolderRespondent('');
                 setNewFolderNature('');
                 setIsCreatingFolder(false);
+                setCreateFolderError(null);
             },
-            onError: () => setIsCreatingFolder(false)
+            onError: (errors: any) => {
+                setIsCreatingFolder(false);
+                const rawErr = errors?.folder_name || errors?.case_number || errors?.error || errors?.general || 'That folder number already exists please change your case folder name / number';
+                const errMsg = typeof rawErr === 'string' ? rawErr : (Array.isArray(rawErr) ? rawErr[0] : 'That folder number already exists please change your case folder name / number');
+                setCreateFolderError(errMsg);
+            }
         });
     };
 
@@ -361,6 +377,9 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                 // Successful read — reset failed attempts
                 setScanAttempts(0);
                 setTempFilePath(result.temp_file);
+                if (result.assigned_folder) {
+                    setAssignedFolder(result.assigned_folder);
+                }
                 
                 // Pre-fill editable inputs with AI-extracted values
                 setComplainant(data.complainant || '');
@@ -430,7 +449,8 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
             case_no: caseNo,
             nature_of_case: natureOfCase,
             summary,
-            case_id: caseId
+            case_id: caseId,
+            assigned_folder: assignedFolder
         }, {
             onSuccess: () => {
                 setIsSaving(false);
@@ -462,6 +482,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
         setCaseNo('');
         setNatureOfCase('');
         setSummary('');
+        setAssignedFolder(nextFolderNumber || '');
         setIsScanning(false);
         setIsSaving(false);
         setIsOffline(typeof navigator !== 'undefined' ? !navigator.onLine : false);
@@ -1256,7 +1277,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                     ))}
                                 </select>
 
-                                {caseId && (
+                                {caseId ? (
                                     <div className="flex items-center justify-between mt-1 px-2.5 py-1.5 bg-amber-500/10 border border-amber-300/40 rounded text-xs">
                                         <span className="font-medium text-[#dd8b11] flex items-center gap-1 truncate">
                                             <Folder className="h-3.5 w-3.5 shrink-0" />
@@ -1267,8 +1288,16 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                             onClick={() => { setCaseId(null); setCaseSearch(''); }}
                                             className="text-xs text-red-500 font-medium hover:underline shrink-0 ml-2"
                                         >
-                                            Unlink
+                                            Unlink (Use Auto-assigned Folder)
                                         </button>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center justify-between mt-1 px-3 py-2 bg-emerald-500/10 border border-emerald-300/40 dark:border-emerald-800 rounded-lg text-xs">
+                                        <span className="font-medium text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 truncate">
+                                            <Folder className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                            Auto-assigned Case Folder: <strong className="ml-1 font-bold text-emerald-900 dark:text-emerald-200">{assignedFolder || nextFolderNumber || 'case-001'}</strong>
+                                        </span>
+                                        <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium shrink-0 ml-2">Next Available (n + 1)</span>
                                     </div>
                                 )}
                             </div>
@@ -1399,7 +1428,10 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
             </Dialog>
 
             {/* Create Case Folder Modal */}
-            <Dialog open={isCreateFolderModalOpen} onOpenChange={setIsCreateFolderModalOpen}>
+            <Dialog open={isCreateFolderModalOpen} onOpenChange={(open) => {
+                setIsCreateFolderModalOpen(open);
+                if (!open) setCreateFolderError(null);
+            }}>
                 <DialogContent className="sm:max-w-md p-6">
                     <DialogHeader>
                         <DialogTitle className="text-lg font-bold flex items-center gap-2 text-foreground">
@@ -1412,6 +1444,12 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                     </DialogHeader>
 
                     <form onSubmit={handleCreateFolderSubmit} className="space-y-4 mt-2">
+                        {createFolderError && (
+                            <div className="p-3 text-xs rounded-lg border border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400 font-medium flex items-start gap-2">
+                                <AlertCircle className="h-4 w-4 shrink-0 text-red-500 mt-0.5" />
+                                <span>{createFolderError}</span>
+                            </div>
+                        )}
                         <div className="space-y-1.5">
                             <Label className="text-xs font-semibold">Folder Name / ID (e.g., case-026)</Label>
                             <Input

@@ -105,6 +105,79 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
+        // Handle Database & SQL Query Exceptions globally
+        $exceptions->render(function (\Illuminate\Database\QueryException $e, \Illuminate\Http\Request $request) {
+            $msg = $e->getMessage();
+            $code = $e->getCode();
+            $isDuplicate = ($code == 23000 || str_contains($msg, '1062') || str_contains($msg, 'Duplicate entry'));
+            $isFolderOrCase = str_contains($msg, 'folder') || str_contains($msg, 'case') || str_contains($request->path(), 'folder') || str_contains($request->path(), 'case');
+
+            if ($isDuplicate && $isFolderOrCase) {
+                $userFriendlyMessage = 'That folder number already exists. Please change your case folder name / number.';
+            } elseif ($isDuplicate) {
+                $userFriendlyMessage = 'A duplicate entry already exists. Please change your input.';
+            } else {
+                $userFriendlyMessage = 'An error has occurred. Please reload your page or try again.';
+            }
+
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'message' => $userFriendlyMessage,
+                    'error' => $userFriendlyMessage,
+                ], $isDuplicate ? 422 : 500);
+            }
+
+            if ($request->header('X-Inertia')) {
+                if ($request->isMethod('GET')) {
+                    return redirect()->route('dashboard')->with('error', $userFriendlyMessage);
+                }
+                return redirect()->back()
+                    ->withErrors([
+                        'folder_name' => $userFriendlyMessage,
+                        'case_number' => $userFriendlyMessage,
+                        'general' => $userFriendlyMessage,
+                    ])
+                    ->with('error', $userFriendlyMessage)
+                    ->withInput();
+            }
+
+            if ($request->isMethod('GET')) {
+                return response()->view('errors.custom', [
+                    'message' => $userFriendlyMessage,
+                    'code' => 500,
+                ], 500);
+            }
+
+            return redirect()->back()
+                ->withErrors(['general' => $userFriendlyMessage])
+                ->with('error', $userFriendlyMessage)
+                ->withInput();
+        });
+
+        // Handle PDO & Database Connection Exceptions globally
+        $exceptions->render(function (\PDOException $e, \Illuminate\Http\Request $request) {
+            $userFriendlyMessage = 'An error has occurred. Please reload your page or try again.';
+
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'message' => $userFriendlyMessage,
+                    'error' => $userFriendlyMessage,
+                ], 500);
+            }
+
+            if ($request->header('X-Inertia')) {
+                if ($request->isMethod('GET')) {
+                    return redirect()->route('dashboard')->with('error', $userFriendlyMessage);
+                }
+                return redirect()->back()->with('error', $userFriendlyMessage)->withInput();
+            }
+
+            return response()->view('errors.custom', [
+                'message' => $userFriendlyMessage,
+                'code' => 500,
+            ], 500);
+        });
+
         // Handle "Too Many Requests" 429 errors gracefully
         $exceptions->render(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $e, \Illuminate\Http\Request $request) {
             if ($request->isMethod('POST')) {
@@ -112,5 +185,40 @@ return Application::configure(basePath: dirname(__DIR__))
                     'email' => 'Too many login attempts. Please try again in ' . $e->getHeaders()['Retry-After'] . ' seconds.',
                 ]);
             }
+        });
+
+        // Fallback handler for unhandled code/system Throwables
+        $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
+            // Allow standard framework exceptions to pass through
+            if ($e instanceof \Illuminate\Validation\ValidationException ||
+                $e instanceof \Illuminate\Auth\AuthenticationException ||
+                $e instanceof \Illuminate\Auth\Access\AuthorizationException ||
+                $e instanceof \Symfony\Component\HttpKernel\Exception\NotFoundHttpException ||
+                $e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface ||
+                $e instanceof \Illuminate\Session\TokenMismatchException ||
+                $e instanceof \Illuminate\Http\Exceptions\ThrottleRequestsException) {
+                return null;
+            }
+
+            $userFriendlyMessage = 'An error has occurred. Please reload your page or try again.';
+
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'message' => $userFriendlyMessage,
+                    'error' => $userFriendlyMessage,
+                ], 500);
+            }
+
+            if ($request->header('X-Inertia')) {
+                if ($request->isMethod('GET')) {
+                    return redirect()->route('dashboard')->with('error', $userFriendlyMessage);
+                }
+                return redirect()->back()->with('error', $userFriendlyMessage)->withInput();
+            }
+
+            return response()->view('errors.custom', [
+                'message' => $userFriendlyMessage,
+                'code' => 500,
+            ], 500);
         });
     })->create();

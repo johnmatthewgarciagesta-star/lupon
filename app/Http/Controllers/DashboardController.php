@@ -269,7 +269,7 @@ class DashboardController extends Controller
                     'recent' => $recentDocuments,
                 ],
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Log::error('Dashboard loading failed: ' . $e->getMessage());
             
             $emptyDist = ['mediation' => 0, 'conciliation' => 0, 'arbitration' => 0, 'settled' => 0, 'dismissed' => 0, 'certified' => 0];
@@ -311,7 +311,7 @@ class DashboardController extends Controller
                     'by_type' => [],
                     'recent' => [],
                 ],
-            ]);
+            ])->with('error', 'An error has occurred while retrieving dashboard data. Please reload your page.');
         }
     }
 }

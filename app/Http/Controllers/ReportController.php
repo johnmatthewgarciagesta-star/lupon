@@ -13,26 +13,33 @@ class ReportController extends Controller
 {
     public function index()
     {
-        return Inertia::render('reports/index', [
-            'stats' => $this->getStats(),
-        ]);
+        try {
+            return Inertia::render('reports/index', [
+                'stats' => $this->getStats(),
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Reports index loading failed: ' . $e->getMessage());
+            return Inertia::render('reports/index', [
+                'stats' => $this->getEmptyStats(),
+            ])->with('error', 'An error has occurred while retrieving report data. Please reload your page.');
+        }
     }
 
     public function generate(Request $request)
     {
-        set_time_limit(300); // 5 minutes execution time for PDF generation
-        $type = $request->input('type', 'summary');
-        $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
-        
-        // Security Audit Log
-        \App\Services\AuditService::log('EXPORT', 'System Reports', "Generated System Report ({$type})", null);
-        
-        $stats = $this->getStats($startDate, $endDate);
-
-        $html = view('reports.pdf', compact('stats', 'type', 'startDate', 'endDate'))->render();
-
         try {
+            set_time_limit(300); // 5 minutes execution time for PDF generation
+            $type = $request->input('type', 'summary');
+            $startDate = $request->input('start_date');
+            $endDate = $request->input('end_date');
+            
+            // Security Audit Log
+            \App\Services\AuditService::log('EXPORT', 'System Reports', "Generated System Report ({$type})", null);
+            
+            $stats = $this->getStats($startDate, $endDate);
+
+            $html = view('reports.pdf', compact('stats', 'type', 'startDate', 'endDate'))->render();
+
             $browsershot = Browsershot::html($html);
             if (env('CHROME_PATH')) {
                 $browsershot->setChromePath(env('CHROME_PATH'));
@@ -55,91 +62,116 @@ class ReportController extends Controller
                 ->header('Content-Type', 'application/pdf')
                 ->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
 
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'PDF Generation Failed: '.$e->getMessage()], 500);
+        } catch (\Throwable $e) {
+            \Log::error('PDF Generation Failed: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'An error has occurred while generating the report PDF. Please reload your page or try again.'
+            ], 500);
         }
     }
 
     public function checkCount(Request $request)
     {
-        $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
+        try {
+            $startDate = $request->input('start_date');
+            $endDate = $request->input('end_date');
 
-        $query = LuponCase::withTrashed();
-        if (!empty($startDate)) {
-            $query->whereDate('date_filed', '>=', $startDate);
-        }
-        if (!empty($endDate)) {
-            $query->whereDate('date_filed', '<=', $endDate);
-        }
+            $query = LuponCase::withTrashed();
+            if (!empty($startDate)) {
+                $query->whereDate('date_filed', '>=', $startDate);
+            }
+            if (!empty($endDate)) {
+                $query->whereDate('date_filed', '<=', $endDate);
+            }
 
-        return response()->json([
-            'count' => $query->count()
-        ]);
+            return response()->json([
+                'count' => $query->count()
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Check count error: ' . $e->getMessage());
+            return response()->json(['count' => 0]);
+        }
+    }
+
+    private function getEmptyStats()
+    {
+        return [
+            'total_cases' => 0,
+            'cases_this_month' => 0,
+            'pending_cases' => 0,
+            'resolved_cases' => 0,
+            'cases_by_nature' => [],
+            'recent_cases' => [],
+        ];
     }
 
     private function getStats($startDate = null, $endDate = null)
     {
-        $query = LuponCase::withTrashed();
+        try {
+            $query = LuponCase::withTrashed();
 
-        if (!empty($startDate)) {
-            $query->whereDate('date_filed', '>=', $startDate);
-        }
-        if (!empty($endDate)) {
-            $query->whereDate('date_filed', '<=', $endDate);
-        }
+            if (!empty($startDate)) {
+                $query->whereDate('date_filed', '>=', $startDate);
+            }
+            if (!empty($endDate)) {
+                $query->whereDate('date_filed', '<=', $endDate);
+            }
 
-        $cases = $query->get();
+            $cases = $query->get();
 
-        $nowMonth = Carbon::now()->month;
-        $nowYear = Carbon::now()->year;
+            $nowMonth = Carbon::now()->month;
+            $nowYear = Carbon::now()->year;
 
-        // Recent cases: Cases filed this month (or sorted recent if custom date filter applied)
-        $thisMonthCases = $cases->filter(function ($c) use ($nowMonth, $nowYear) {
-            if (!$c->date_filed) return false;
-            $d = Carbon::parse($c->date_filed);
-            return $d->month === $nowMonth && $d->year === $nowYear;
-        });
-
-        // If filtering by specific date range or if no cases this month, fallback to filtered cases set
-        $recentCasesCollection = (!empty($startDate) || !empty($endDate) || $thisMonthCases->isEmpty()) 
-            ? $cases->sortByDesc('created_at')->take(50)
-            : $thisMonthCases->sortByDesc('created_at');
-
-        return [
-            'total_cases' => $cases->count(),
-            'cases_this_month' => $cases->filter(function ($c) use ($nowMonth, $nowYear) {
+            // Recent cases: Cases filed this month (or sorted recent if custom date filter applied)
+            $thisMonthCases = $cases->filter(function ($c) use ($nowMonth, $nowYear) {
                 if (!$c->date_filed) return false;
                 $d = Carbon::parse($c->date_filed);
                 return $d->month === $nowMonth && $d->year === $nowYear;
-            })->count(),
-            'pending_cases' => $cases->whereNotIn('status', ['Resolved', 'Settled', 'Dismissed'])->whereNull('deleted_at')->count(),
-            'resolved_cases' => $cases->whereIn('status', ['Resolved', 'Settled', 'Dismissed'])->count(),
+            });
 
-            // Group by Nature
-            'cases_by_nature' => $cases->groupBy('nature_of_case')->map(function ($group, $key) {
-                return (object)[
-                    'nature_of_case' => $key ?: 'Unspecified',
-                    'count' => $group->count()
-                ];
-            })->values(),
+            // If filtering by specific date range or if no cases this month, fallback to filtered cases set
+            $recentCasesCollection = (!empty($startDate) || !empty($endDate) || $thisMonthCases->isEmpty()) 
+                ? $cases->sortByDesc('created_at')->take(50)
+                : $thisMonthCases->sortByDesc('created_at');
 
-            // Recent Cases (Cases filed this month or matching period)
-            'recent_cases' => $recentCasesCollection->map(function ($case) {
-                    $statusStr = $case->status;
-                    if ($case->trashed()) {
-                        $statusStr = $statusStr ? "{$statusStr} (Archived)" : 'Archived';
-                    }
-                    return [
-                        'id' => $case->id,
-                        'case_number' => $case->case_number,
-                        'title' => $case->title,
-                        'nature' => $case->nature_of_case,
-                        'status' => $statusStr,
-                        'is_archived' => $case->trashed(),
-                        'date_filed' => $case->date_filed ? Carbon::parse($case->date_filed)->format('M d, Y') : 'N/A',
+            return [
+                'total_cases' => $cases->count(),
+                'cases_this_month' => $cases->filter(function ($c) use ($nowMonth, $nowYear) {
+                    if (!$c->date_filed) return false;
+                    $d = Carbon::parse($c->date_filed);
+                    return $d->month === $nowMonth && $d->year === $nowYear;
+                })->count(),
+                'pending_cases' => $cases->whereNotIn('status', ['Resolved', 'Settled', 'Dismissed'])->whereNull('deleted_at')->count(),
+                'resolved_cases' => $cases->whereIn('status', ['Resolved', 'Settled', 'Dismissed'])->count(),
+
+                // Group by Nature
+                'cases_by_nature' => $cases->groupBy('nature_of_case')->map(function ($group, $key) {
+                    return (object)[
+                        'nature_of_case' => $key ?: 'Unspecified',
+                        'count' => $group->count()
                     ];
                 })->values(),
-        ];
+
+                // Recent Cases (Cases filed this month or matching period)
+                'recent_cases' => $recentCasesCollection->map(function ($case) {
+                        $statusStr = $case->status;
+                        if ($case->trashed()) {
+                            $statusStr = $statusStr ? "{$statusStr} (Archived)" : 'Archived';
+                        }
+                        return [
+                            'id' => $case->id,
+                            'case_number' => $case->case_number,
+                            'title' => $case->title,
+                            'nature' => $case->nature_of_case,
+                            'status' => $statusStr,
+                            'is_archived' => $case->trashed(),
+                            'date_filed' => $case->date_filed ? Carbon::parse($case->date_filed)->format('M d, Y') : 'N/A',
+                        ];
+                    })->values(),
+            ];
+        } catch (\Throwable $e) {
+            \Log::error('Error calculating report stats: ' . $e->getMessage());
+            return $this->getEmptyStats();
+        }
     }
 }
