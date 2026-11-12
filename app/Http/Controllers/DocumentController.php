@@ -1552,8 +1552,8 @@ class DocumentController extends Controller
         $apiKey = env('GEMINI_API_KEY');
         $alignedViaGemini = false;
 
-        // Valid Google Gemini API keys start with AIza...
-        if (!empty($apiKey) && str_starts_with($apiKey, 'AIza')) {
+        // Valid Google Gemini API keys start with AIza... or AQ....
+        if (!empty($apiKey) && (str_starts_with($apiKey, 'AIza') || str_starts_with($apiKey, 'AQ.'))) {
             // Generate base64 image of the uploaded PDF template page 1
             $imageBase64 = $this->generateBackgroundImage('custom_temp', $customPath ?? storage_path('app/public/' . $filePath));
             
@@ -1963,9 +1963,11 @@ class DocumentController extends Controller
 
             // Send POST request to Google AI Studio with automatic fallback across verified models
             $modelsToTry = array_unique(array_filter([
-                env('GEMINI_MODEL', 'gemini-2.0-flash'),
-                'gemini-2.0-flash',
-                'gemini-2.0-flash-lite',
+                env('GEMINI_MODEL', 'gemini-3.6-flash'),
+                'gemini-3.6-flash',
+                'gemini-3-flash-preview',
+                'gemini-3.1-flash-lite-preview',
+                'gemini-flash-lite-latest',
                 'gemini-flash-latest',
             ]));
 
@@ -1974,26 +1976,31 @@ class DocumentController extends Controller
             $hasQuotaError = false;
 
             foreach ($modelsToTry as $geminiModel) {
-                $res = \Illuminate\Support\Facades\Http::withHeaders([
-                    'Content-Type' => 'application/json'
-                ])->timeout(45)->post("https://generativelanguage.googleapis.com/v1beta/models/{$geminiModel}:generateContent?key={$apiKey}", [
-                    'contents' => [
-                        [
-                            'parts' => [
-                                ['text' => $promptInstruction],
-                                [
-                                    'inlineData' => [
-                                        'mimeType' => $mimeType,
-                                        'data' => $base64Image
+                try {
+                    $res = \Illuminate\Support\Facades\Http::withHeaders([
+                        'Content-Type' => 'application/json'
+                    ])->timeout(45)->post("https://generativelanguage.googleapis.com/v1beta/models/{$geminiModel}:generateContent?key={$apiKey}", [
+                        'contents' => [
+                            [
+                                'parts' => [
+                                    ['text' => $promptInstruction],
+                                    [
+                                        'inlineData' => [
+                                            'mimeType' => $mimeType,
+                                            'data' => $base64Image
+                                        ]
                                     ]
                                 ]
                             ]
+                        ],
+                        'generationConfig' => [
+                            'responseMimeType' => 'application/json'
                         ]
-                    ],
-                    'generationConfig' => [
-                        'responseMimeType' => 'application/json'
-                    ]
-                ]);
+                    ]);
+                } catch (\Illuminate\Http\Client\ConnectionException $e) {
+                    $lastErrorMsg = $e->getMessage();
+                    continue;
+                }
 
                 if ($res->successful()) {
                     $response = $res;
