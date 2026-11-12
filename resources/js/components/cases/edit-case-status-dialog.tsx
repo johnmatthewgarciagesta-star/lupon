@@ -39,23 +39,22 @@ interface Props {
 }
 
 const statusOptions = [
-    { value: 'Pending', label: 'Pending (Awaiting Initial Action)', color: 'text-amber-600' },
-    { value: 'Mediation', label: 'Mediation (Active Mediation Proceedings)', color: 'text-blue-600' },
-    { value: 'Conciliation', label: 'Conciliation (Under Conciliation)', color: 'text-indigo-600' },
-    { value: 'Arbitration', label: 'Arbitration (Under Arbitration)', color: 'text-purple-600' },
-    { value: 'Settled', label: 'Settled (Amicably Settled)', color: 'text-emerald-600' },
-    { value: 'Withdrawn', label: 'Withdrawn (Case Withdrawn)', color: 'text-orange-600' },
-    { value: 'Dismissed', label: 'Dismissed / Repudiated', color: 'text-slate-600' },
-    { value: 'Certified', label: 'Certified (Court Action / Escalated)', color: 'text-red-600' },
+    { value: 'Dismissed', label: 'Dismissed', color: 'text-red-600' },
+    { value: 'Certified to File Action', label: 'Certified to File Action', color: 'text-purple-600' },
+    { value: 'Withdrawn', label: 'Withdrawn', color: 'text-orange-600' },
+    { value: 'Settled', label: 'Settled', color: 'text-emerald-600' },
 ];
 
 export function EditCaseStatusDialog({ caseItem, open, onOpenChange, onSuccess }: Props) {
-    const [status, setStatus] = useState<string>('Pending');
+    const [status, setStatus] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         if (caseItem) {
-            setStatus(caseItem.status || 'Pending');
+            const rawStatus = caseItem.status || '';
+            const normalized = rawStatus === 'Certified' ? 'Certified to File Action' : rawStatus;
+            const isAllowed = statusOptions.some((opt) => opt.value === normalized);
+            setStatus(isAllowed ? normalized : '');
         }
     }, [caseItem]);
 
@@ -126,7 +125,7 @@ export function EditCaseStatusDialog({ caseItem, open, onOpenChange, onSuccess }
                         </Button>
                         <Button 
                             type="submit" 
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || !statusOptions.some((opt) => opt.value === status)}
                             className="bg-[#1c2434] hover:bg-[#2c3a4f] text-[#ffffff]"
                         >
                             {isSubmitting ? "Updating..." : "Save Status Changes"}

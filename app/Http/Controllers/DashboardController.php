@@ -12,11 +12,15 @@ class DashboardController extends Controller
     public function index()
     {
         try {
+            CaseController::checkMonthlyRolloverAutoArchive();
+
             // 1. Key Metrics
             $allCases = LuponCase::withTrashed()->get();
+            $activeCases = $allCases->filter(fn ($c) => !$c->trashed())->values();
             $totalCases = $allCases->count();
-            $pendingCases = $allCases->whereNotIn('status', ['Resolved', 'Settled', 'Dismissed', 'Withdrawn'])->count();
-            $resolvedCases = $allCases->whereIn('status', ['Resolved', 'Settled', 'Dismissed', 'Withdrawn'])->count();
+            $concludedStatuses = ['Resolved', 'Settled', 'Dismissed', 'Withdrawn', 'Certified', 'Certified to File Action'];
+            $pendingCases = $allCases->whereNotIn('status', $concludedStatuses)->count();
+            $resolvedCases = $allCases->whereIn('status', $concludedStatuses)->count();
 
             // Calculate new cases this month
             $currentYear = Carbon::now()->year;
@@ -82,46 +86,48 @@ class DashboardController extends Controller
                 ],
             ];
 
-            // 3. Dynamic Month Status Distribution
+            // 3. Dynamic Month Status Distribution (active, non-archived cases only)
             $calcStatusBreakdown = function ($casesCollection) {
-                $med = 0; $conc = 0; $arb = 0; $settled = 0; $dism = 0; $cert = 0;
+                $dismissed = 0;
+                $certified = 0;
+                $withdrawn = 0;
+                $settled = 0;
+
                 foreach ($casesCollection as $c) {
-                    $st = strtolower($c->status ?? '');
-                    if (str_contains($st, 'mediation')) {
-                        $med++;
-                    } elseif (str_contains($st, 'conciliation') || $st === 'pending') {
-                        $conc++;
-                    } elseif (str_contains($st, 'arbitration')) {
-                        $arb++;
+                    $st = strtolower(trim($c->status ?? ''));
+                    if (str_contains($st, 'dismissed') || str_contains($st, 'repudiated')) {
+                        $dismissed++;
+                    } elseif (str_contains($st, 'certified') || str_contains($st, 'certificate')) {
+                        $certified++;
+                    } elseif (str_contains($st, 'withdrawn')) {
+                        $withdrawn++;
                     } elseif (str_contains($st, 'settled') || str_contains($st, 'resolved')) {
                         $settled++;
-                    } elseif (str_contains($st, 'dismissed') || str_contains($st, 'repudiated') || str_contains($st, 'withdrawn')) {
-                        $dism++;
-                    } elseif (str_contains($st, 'certified') || str_contains($st, 'certificate')) {
-                        $cert++;
-                    } else {
-                        $conc++;
                     }
                 }
+
                 return [
-                    'mediation' => $med,
-                    'conciliation' => $conc,
-                    'arbitration' => $arb,
+                    'dismissed' => $dismissed,
+                    'certified' => $certified,
+                    'withdrawn' => $withdrawn,
                     'settled' => $settled,
-                    'dismissed' => $dism,
-                    'certified' => $cert,
                 ];
             };
 
             $statusDistributionByMonth = [
-                'all' => $calcStatusBreakdown($allCases->filter(function ($c) use ($currentYear) {
-                    return Carbon::parse($c->date_filed)->year === $currentYear;
+                'all' => $calcStatusBreakdown($activeCases->filter(function ($c) use ($currentYear) {
+                    $rawDate = $c->date_filed ?: $c->created_at;
+                    return $rawDate && Carbon::parse($rawDate)->year === $currentYear;
                 })),
             ];
 
             for ($m = 1; $m <= 12; $m++) {
-                $monthCases = $allCases->filter(function ($c) use ($m, $currentYear) {
-                    $d = Carbon::parse($c->date_filed);
+                $monthCases = $activeCases->filter(function ($c) use ($m, $currentYear) {
+                    $rawDate = $c->date_filed ?: $c->created_at;
+                    if (!$rawDate) {
+                        return false;
+                    }
+                    $d = Carbon::parse($rawDate);
                     return $d->year === $currentYear && $d->month === $m;
                 });
                 $statusDistributionByMonth[(string)$m] = $calcStatusBreakdown($monthCases);
@@ -143,20 +149,14 @@ class DashboardController extends Controller
                     ];
                 });
 
-            // 5. Outcome Distribution
+            // 5. Status Distribution (active cases) & Outcome Distribution
+            $statusDistribution = $calcStatusBreakdown($activeCases);
+
             $pendingCount = $allCases->where('status', 'Pending')->count();
             $resolvedCount = $allCases->whereIn('status', ['Resolved', 'Settled'])->count();
             $mediationCount = $allCases->where('status', 'Mediation')->count();
             $dismissedCount = $allCases->whereIn('status', ['Dismissed', 'Withdrawn'])->count();
-            $certifiedCount = $allCases->where('status', 'Certified')->count();
-
-            $statusDistribution = [
-                'pending' => $pendingCount,
-                'resolved' => $resolvedCount,
-                'mediation' => $mediationCount,
-                'dismissed' => $dismissedCount,
-                'certified' => $certifiedCount,
-            ];
+            $certifiedCount = $allCases->filter(fn ($c) => str_contains(strtolower($c->status ?? ''), 'certif'))->count();
 
             $settled = $resolvedCount;
             $pendingActive = $pendingCount + $mediationCount;
@@ -274,7 +274,7 @@ class DashboardController extends Controller
         } catch (\Throwable $e) {
             \Log::error('Dashboard loading failed: ' . $e->getMessage());
             
-            $emptyDist = ['mediation' => 0, 'conciliation' => 0, 'arbitration' => 0, 'settled' => 0, 'dismissed' => 0, 'certified' => 0];
+            $emptyDist = ['dismissed' => 0, 'certified' => 0, 'withdrawn' => 0, 'settled' => 0];
             $monthDist = ['all' => $emptyDist];
             for ($m = 1; $m <= 12; $m++) {
                 $monthDist[(string)$m] = $emptyDist;
@@ -296,7 +296,7 @@ class DashboardController extends Controller
                 ],
                 'statusDistributionByMonth' => $monthDist,
                 'recentCases' => [],
-                'statusDistribution' => ['settled' => 0, 'pending' => 0, 'mediation' => 0, 'dismissed' => 0, 'certified' => 0],
+                'statusDistribution' => $emptyDist,
                 'statusPercentages' => ['settled' => 0, 'pending' => 0, 'unresolved' => 0],
                 'outcomeStats' => [
                     ['name' => 'Pending', 'value' => 0, 'percentage' => 0],

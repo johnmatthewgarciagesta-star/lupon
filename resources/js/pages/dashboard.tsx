@@ -79,12 +79,10 @@ interface DashboardProps {
         };
     };
     statusDistributionByMonth?: Record<string, {
-        mediation: number;
-        conciliation: number;
-        arbitration: number;
-        settled: number;
         dismissed: number;
         certified: number;
+        withdrawn: number;
+        settled: number;
     }>;
     recentCases: Array<{
         id: number;
@@ -100,11 +98,10 @@ interface DashboardProps {
         percentage: number;
     }>;
     statusDistribution: {
-        pending: number;
-        resolved: number;
-        mediation: number;
         dismissed: number;
         certified: number;
+        withdrawn: number;
+        settled: number;
     };
     typeStats: Array<{
         nature_of_case: string;
@@ -133,7 +130,7 @@ export default function Dashboard({
     caseOverview, 
     statusDistributionByMonth = {}, 
     recentCases = [], 
-    statusDistribution = { pending: 0, resolved: 0, mediation: 0, dismissed: 0, certified: 0 }, 
+    statusDistribution = { dismissed: 0, certified: 0, withdrawn: 0, settled: 0 }, 
     outcomeStats = [], 
     typeStats = [], 
     documentStats, 
@@ -188,6 +185,7 @@ export default function Dashboard({
             case 'mediation':
                 return 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800';
             case 'certified':
+            case 'certified to file action':
             case 'escalated':
                 return 'bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800';
             case 'withdrawn':
@@ -230,8 +228,16 @@ export default function Dashboard({
                 }
             }
             // Status filter
-            if (modalStatus !== 'all' && c.status?.toLowerCase() !== modalStatus.toLowerCase()) {
-                return false;
+            if (modalStatus !== 'all') {
+                const target = modalStatus.toLowerCase();
+                const current = (c.status || '').toLowerCase();
+                if (target === 'certified to file action') {
+                    if (current !== 'certified to file action' && current !== 'certified') return false;
+                } else if (target === 'settled') {
+                    if (current !== 'settled' && current !== 'resolved') return false;
+                } else if (current !== target) {
+                    return false;
+                }
             }
             // Search query
             if (modalSearch.trim() !== '') {
@@ -416,13 +422,10 @@ export default function Dashboard({
                                     <SelectContent>
                                         <SelectItem value="all">All Statuses</SelectItem>
                                         <SelectItem value="Pending">Pending</SelectItem>
-                                        <SelectItem value="Mediation">Mediation</SelectItem>
-                                        <SelectItem value="Conciliation">Conciliation</SelectItem>
-                                        <SelectItem value="Arbitration">Arbitration</SelectItem>
-                                        <SelectItem value="Resolved">Resolved / Settled</SelectItem>
+                                        <SelectItem value="Dismissed">Dismissed</SelectItem>
+                                        <SelectItem value="Certified to File Action">Certified to File Action</SelectItem>
                                         <SelectItem value="Withdrawn">Withdrawn</SelectItem>
-                                        <SelectItem value="Dismissed">Dismissed / Repudiated</SelectItem>
-                                        <SelectItem value="Certified">Certified</SelectItem>
+                                        <SelectItem value="Settled">Settled</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -783,18 +786,16 @@ export default function Dashboard({
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Months (YTD)</SelectItem>
-                                        <SelectItem value="1">January 2026</SelectItem>
-                                        <SelectItem value="2">February 2026</SelectItem>
-                                        <SelectItem value="3">March 2026</SelectItem>
-                                        <SelectItem value="4">April 2026</SelectItem>
-                                        <SelectItem value="5">May 2026</SelectItem>
-                                        <SelectItem value="6">June 2026</SelectItem>
-                                        <SelectItem value="7">July 2026</SelectItem>
-                                        <SelectItem value="8">August 2026</SelectItem>
-                                        <SelectItem value="9">September 2026</SelectItem>
-                                        <SelectItem value="10">October 2026</SelectItem>
-                                        <SelectItem value="11">November 2026</SelectItem>
-                                        <SelectItem value="12">December 2026</SelectItem>
+                                        {Array.from({ length: 12 }, (_, idx) => {
+                                            const monthIndex = idx + 1;
+                                            const year = new Date().getFullYear();
+                                            const monthLabel = new Date(year, idx, 1).toLocaleString('default', { month: 'long' });
+                                            return (
+                                                <SelectItem key={monthIndex} value={String(monthIndex)}>
+                                                    {monthLabel} {year}
+                                                </SelectItem>
+                                            );
+                                        })}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -802,21 +803,17 @@ export default function Dashboard({
                         <CardContent>
                             {(() => {
                                 const currentDist = statusDistributionByMonth?.[selectedStatusMonth] || {
-                                    mediation: statusDistribution?.mediation || 0,
-                                    conciliation: statusDistribution?.pending || 0,
-                                    arbitration: 0,
-                                    settled: statusDistribution?.resolved || 0,
                                     dismissed: statusDistribution?.dismissed || 0,
                                     certified: statusDistribution?.certified || 0,
+                                    withdrawn: statusDistribution?.withdrawn || 0,
+                                    settled: statusDistribution?.settled || 0,
                                 };
 
                                 const stageItems = [
-                                    { name: 'Mediation Stage', value: currentDist.mediation, color: '#3b82f6' },
-                                    { name: 'Conciliation Stage', value: currentDist.conciliation, color: '#f59e0b' },
-                                    { name: 'Arbitration Stage', value: currentDist.arbitration, color: '#8b5cf6' },
-                                    { name: 'Amicably Settled', value: currentDist.settled, color: '#10b981' },
-                                    { name: 'Repudiated / Dismissed', value: currentDist.dismissed, color: '#ef4444' },
-                                    { name: 'Issued Certificate to File Action', value: currentDist.certified, color: '#64748b' },
+                                    { name: 'Dismissed', value: currentDist.dismissed, color: '#ef4444' },
+                                    { name: 'Certified to File Action', value: currentDist.certified, color: '#8b5cf6' },
+                                    { name: 'Withdrawn', value: currentDist.withdrawn, color: '#f97316' },
+                                    { name: 'Settled', value: currentDist.settled, color: '#10b981' },
                                 ];
 
                                 const totalStage = stageItems.reduce((acc, curr) => acc + curr.value, 0);

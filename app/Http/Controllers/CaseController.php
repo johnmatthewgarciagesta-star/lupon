@@ -13,10 +13,9 @@ class CaseController extends Controller
     {
         try {
             $startOfCurrentMonth = \Carbon\Carbon::now()->startOfMonth();
-            
-            // Auto-archive cases from prior months that have not been modified or restored during the current month
-            $olderCases = LuponCase::where('date_filed', '<', $startOfCurrentMonth)
-                ->where('updated_at', '<', $startOfCurrentMonth)
+
+            // Auto-archive active cases whose last update occurred before the current month
+            $olderCases = LuponCase::where('updated_at', '<', $startOfCurrentMonth)
                 ->whereNull('deleted_at')
                 ->get();
 
@@ -25,7 +24,7 @@ class CaseController extends Controller
                 AuditService::log(
                     'AUTO_ARCHIVE',
                     'Cases',
-                    "Auto-archived Case #{$case->case_number} upon new month rollover",
+                    "Auto-archived Case #{$case->case_number} after end of updated month",
                     $case->case_number
                 );
             }
@@ -37,7 +36,7 @@ class CaseController extends Controller
     public function index(Request $request)
     {
         try {
-            // Auto-archive disabled to keep all cases visible on the main cases page
+            static::checkMonthlyRolloverAutoArchive();
             $user = auth()->user();
             $isAdmin = $user && ($user->hasRole('Administrator') || $user->hasRole('Admin') || $user->hasRole('Lupon Secretary') || in_array(strtolower($user->role ?? ''), ['administrator', 'admin', 'lupon secretary', 'secretary']));
 
@@ -99,7 +98,9 @@ class CaseController extends Controller
                 if (strcasecmp($st, 'Resolved') === 0 || strcasecmp($st, 'Settled') === 0) {
                     $query->whereIn('status', ['Resolved', 'Settled']);
                 } elseif (strcasecmp($st, 'Escalated') === 0) {
-                    $query->whereIn('status', ['Escalated', 'Certified', 'Dismissed']);
+                    $query->whereIn('status', ['Escalated', 'Certified', 'Certified to File Action', 'Dismissed']);
+                } elseif (strcasecmp($st, 'Certified') === 0 || strcasecmp($st, 'Certified to File Action') === 0) {
+                    $query->whereIn('status', ['Certified', 'Certified to File Action']);
                 } elseif (strcasecmp($st, 'Pending') === 0) {
                     $query->whereIn('status', ['Pending', 'Ongoing']);
                 } else {
@@ -238,6 +239,8 @@ class CaseController extends Controller
     public function archives(Request $request)
     {
         try {
+            static::checkMonthlyRolloverAutoArchive();
+
             // Only get soft-deleted cases
             $query = LuponCase::onlyTrashed();
 

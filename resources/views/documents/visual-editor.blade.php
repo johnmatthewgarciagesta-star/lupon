@@ -419,11 +419,11 @@
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Process / Status</label>
                     <div class="flex flex-col gap-2">
                         <select id="case-status-select" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-50 text-sm py-2 px-3 border">
-                            <option value="Pending" {{ ($case->status ?? '') == 'Pending' ? 'selected' : '' }}>Pending</option>
-                            <option value="Mediation" {{ ($case->status ?? '') == 'Mediation' ? 'selected' : '' }}>Mediation</option>
-                            <option value="Withdrawn" {{ ($case->status ?? '') == 'Withdrawn' ? 'selected' : '' }}>Withdrawn</option>
+                            <option value="" disabled {{ !in_array(($case->status ?? ''), ['Dismissed', 'Certified to File Action', 'Certified', 'Withdrawn', 'Settled']) ? 'selected' : '' }}>Select Status</option>
                             <option value="Dismissed" {{ ($case->status ?? '') == 'Dismissed' ? 'selected' : '' }}>Dismissed</option>
-                            <option value="Certified" {{ ($case->status ?? '') == 'Certified' ? 'selected' : '' }}>Certified</option>
+                            <option value="Certified to File Action" {{ in_array(($case->status ?? ''), ['Certified to File Action', 'Certified']) ? 'selected' : '' }}>Certified to File Action</option>
+                            <option value="Withdrawn" {{ ($case->status ?? '') == 'Withdrawn' ? 'selected' : '' }}>Withdrawn</option>
+                            <option value="Settled" {{ ($case->status ?? '') == 'Settled' ? 'selected' : '' }}>Settled</option>
                         </select>
                         <button type="button" onclick="updateStatus()" id="btn-update-status"
                             class="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium text-sm flex justify-center items-center gap-2 transition-all shadow-sm">

@@ -339,6 +339,7 @@ export default function CaseManagement({ cases, filters }: Props) {
             case 'mediation':
                 return 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800';
             case 'certified':
+            case 'certified to file action':
             case 'escalated':
                 return 'bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800';
             case 'withdrawn':
@@ -422,14 +423,10 @@ export default function CaseManagement({ cases, filters }: Props) {
                                     <SelectContent>
                                         <SelectItem value="all">All Status</SelectItem>
                                         <SelectItem value="Pending">Pending</SelectItem>
-                                        <SelectItem value="Mediation">Mediation</SelectItem>
-                                        <SelectItem value="Conciliation">Conciliation</SelectItem>
-                                        <SelectItem value="Arbitration">Arbitration</SelectItem>
-                                        <SelectItem value="Resolved">Resolved / Settled</SelectItem>
-                                        <SelectItem value="Withdrawn">Withdrawn</SelectItem>
-                                        <SelectItem value="Escalated">Escalated (Referred to Court)</SelectItem>
                                         <SelectItem value="Dismissed">Dismissed</SelectItem>
-                                        <SelectItem value="Certified">Certified</SelectItem>
+                                        <SelectItem value="Certified to File Action">Certified to File Action</SelectItem>
+                                        <SelectItem value="Withdrawn">Withdrawn</SelectItem>
+                                        <SelectItem value="Settled">Settled</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
