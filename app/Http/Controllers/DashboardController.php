@@ -15,8 +15,8 @@ class DashboardController extends Controller
             // 1. Key Metrics
             $allCases = LuponCase::withTrashed()->get();
             $totalCases = $allCases->count();
-            $pendingCases = $allCases->whereNotIn('status', ['Resolved', 'Settled', 'Dismissed'])->count();
-            $resolvedCases = $allCases->whereIn('status', ['Resolved', 'Settled', 'Dismissed'])->count();
+            $pendingCases = $allCases->whereNotIn('status', ['Resolved', 'Settled', 'Dismissed', 'Withdrawn'])->count();
+            $resolvedCases = $allCases->whereIn('status', ['Resolved', 'Settled', 'Dismissed', 'Withdrawn'])->count();
 
             // Calculate new cases this month
             $currentYear = Carbon::now()->year;
@@ -95,7 +95,7 @@ class DashboardController extends Controller
                         $arb++;
                     } elseif (str_contains($st, 'settled') || str_contains($st, 'resolved')) {
                         $settled++;
-                    } elseif (str_contains($st, 'dismissed') || str_contains($st, 'repudiated')) {
+                    } elseif (str_contains($st, 'dismissed') || str_contains($st, 'repudiated') || str_contains($st, 'withdrawn')) {
                         $dism++;
                     } elseif (str_contains($st, 'certified') || str_contains($st, 'certificate')) {
                         $cert++;
@@ -147,7 +147,7 @@ class DashboardController extends Controller
             $pendingCount = $allCases->where('status', 'Pending')->count();
             $resolvedCount = $allCases->whereIn('status', ['Resolved', 'Settled'])->count();
             $mediationCount = $allCases->where('status', 'Mediation')->count();
-            $dismissedCount = $allCases->where('status', 'Dismissed')->count();
+            $dismissedCount = $allCases->whereIn('status', ['Dismissed', 'Withdrawn'])->count();
             $certifiedCount = $allCases->where('status', 'Certified')->count();
 
             $statusDistribution = [

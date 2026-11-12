@@ -190,6 +190,8 @@ export default function Dashboard({
             case 'certified':
             case 'escalated':
                 return 'bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800';
+            case 'withdrawn':
+                return 'bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800';
             case 'dismissed':
                 return 'bg-red-100 text-red-700 border-red-200 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800';
             default:
@@ -418,6 +420,7 @@ export default function Dashboard({
                                         <SelectItem value="Conciliation">Conciliation</SelectItem>
                                         <SelectItem value="Arbitration">Arbitration</SelectItem>
                                         <SelectItem value="Resolved">Resolved / Settled</SelectItem>
+                                        <SelectItem value="Withdrawn">Withdrawn</SelectItem>
                                         <SelectItem value="Dismissed">Dismissed / Repudiated</SelectItem>
                                         <SelectItem value="Certified">Certified</SelectItem>
                                     </SelectContent>

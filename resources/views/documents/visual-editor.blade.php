@@ -421,7 +421,7 @@
                         <select id="case-status-select" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-50 text-sm py-2 px-3 border">
                             <option value="Pending" {{ ($case->status ?? '') == 'Pending' ? 'selected' : '' }}>Pending</option>
                             <option value="Mediation" {{ ($case->status ?? '') == 'Mediation' ? 'selected' : '' }}>Mediation</option>
-                            <option value="Resolved" {{ ($case->status ?? '') == 'Resolved' ? 'selected' : '' }}>Resolved</option>
+                            <option value="Withdrawn" {{ ($case->status ?? '') == 'Withdrawn' ? 'selected' : '' }}>Withdrawn</option>
                             <option value="Dismissed" {{ ($case->status ?? '') == 'Dismissed' ? 'selected' : '' }}>Dismissed</option>
                             <option value="Certified" {{ ($case->status ?? '') == 'Certified' ? 'selected' : '' }}>Certified</option>
                         </select>

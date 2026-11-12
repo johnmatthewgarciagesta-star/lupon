@@ -44,7 +44,7 @@ const statusOptions = [
     { value: 'Conciliation', label: 'Conciliation (Under Conciliation)', color: 'text-indigo-600' },
     { value: 'Arbitration', label: 'Arbitration (Under Arbitration)', color: 'text-purple-600' },
     { value: 'Settled', label: 'Settled (Amicably Settled)', color: 'text-emerald-600' },
-    { value: 'Resolved', label: 'Resolved (Case Concluded)', color: 'text-green-600' },
+    { value: 'Withdrawn', label: 'Withdrawn (Case Withdrawn)', color: 'text-orange-600' },
     { value: 'Dismissed', label: 'Dismissed / Repudiated', color: 'text-slate-600' },
     { value: 'Certified', label: 'Certified (Court Action / Escalated)', color: 'text-red-600' },
 ];

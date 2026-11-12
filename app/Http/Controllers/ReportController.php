@@ -131,8 +131,8 @@ class ReportController extends Controller
                     $d = Carbon::parse($c->date_filed);
                     return $d->month === $nowMonth && $d->year === $nowYear;
                 })->count(),
-                'pending_cases' => $cases->whereNotIn('status', ['Resolved', 'Settled', 'Dismissed'])->whereNull('deleted_at')->count(),
-                'resolved_cases' => $cases->whereIn('status', ['Resolved', 'Settled', 'Dismissed'])->count(),
+                'pending_cases' => $cases->whereNotIn('status', ['Resolved', 'Settled', 'Dismissed', 'Withdrawn'])->whereNull('deleted_at')->count(),
+                'resolved_cases' => $cases->whereIn('status', ['Resolved', 'Settled', 'Dismissed', 'Withdrawn'])->count(),
 
                 // Group by Nature
                 'cases_by_nature' => $cases->groupBy('nature_of_case')->map(function ($group, $key) {
