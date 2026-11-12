@@ -172,12 +172,26 @@ class SettingsBackupController extends Controller
             DB::beginTransaction();
 
             $tables = $data['tables'];
+            $authUserId = auth()->id();
+            $reassignToCurrentUser = $authUserId !== null && !$this->isAdmin();
+            $validUserIds = User::withTrashed()->pluck('id')->flip()->all();
+
+            $resolveUserId = static function ($originalUserId, bool $forceAuthUser) use ($authUserId, $validUserIds): ?int {
+                if ($forceAuthUser && $authUserId !== null) {
+                    return $authUserId;
+                }
+                if ($originalUserId !== null && isset($validUserIds[(int) $originalUserId])) {
+                    return (int) $originalUserId;
+                }
+                return $authUserId;
+            };
 
             // Restore Cases
             if (isset($tables['cases']) && is_array($tables['cases'])) {
                 foreach ($tables['cases'] as $caseRow) {
                     $id = $caseRow['id'];
                     unset($caseRow['id']);
+                    $caseRow['created_by'] = $resolveUserId($caseRow['created_by'] ?? null, $reassignToCurrentUser);
                     LuponCase::withTrashed()->updateOrCreate(['id' => $id], $caseRow);
                 }
             }
@@ -187,6 +201,7 @@ class SettingsBackupController extends Controller
                 foreach ($tables['documents'] as $docRow) {
                     $id = $docRow['id'];
                     unset($docRow['id']);
+                    $docRow['created_by'] = $resolveUserId($docRow['created_by'] ?? null, $reassignToCurrentUser);
                     Document::withTrashed()->updateOrCreate(['id' => $id], $docRow);
                 }
             }
@@ -196,6 +211,7 @@ class SettingsBackupController extends Controller
                 foreach ($tables['document_versions'] as $verRow) {
                     $id = $verRow['id'];
                     unset($verRow['id']);
+                    $verRow['edited_by'] = $resolveUserId($verRow['edited_by'] ?? null, false);
                     DocumentVersion::updateOrCreate(['id' => $id], $verRow);
                 }
             }
