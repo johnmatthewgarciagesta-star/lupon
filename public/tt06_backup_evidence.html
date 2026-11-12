@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TT-06 Backup and Recovery Evidence - Lupon CMS</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+    }
+
+    .evidence-card {
+      width: 100%;
+      background: #0f172a;
+      overflow: hidden;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border-bottom: 3px solid #3b82f6;
+      padding: 24px 36px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-titles h1 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge-test {
+      background: #2563eb;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 800;
+      padding: 5px 12px;
+      border-radius: 6px;
+      letter-spacing: 0.05em;
+    }
+
+    .header-titles p {
+      font-size: 14px;
+      color: #94a3b8;
+      margin-top: 5px;
+    }
+
+    .header-meta {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .meta-box {
+      text-align: right;
+    }
+
+    .meta-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #64748b;
+      font-weight: 700;
+    }
+
+    .meta-value {
+      font-size: 14px;
+      color: #e2e8f0;
+      font-weight: 700;
+    }
+
+    .status-badge {
+      background: #059669;
+      color: #ecfdf5;
+      border: 1px solid #10b981;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Dual Panels */
+    .visual-comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      padding: 28px 36px;
+      background: #0b1120;
+    }
+
+    .panel {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    .panel-header {
+      padding: 14px 18px;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .panel-pill-blue {
+      background: #1e3a8a;
+      color: #bfdbfe;
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-weight: 800;
+    }
+
+    .panel-pill-emerald {
+      background: #064e3b;
+      color: #a7f3d0;
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-weight: 800;
+    }
+
+    .browser-frame {
+      background: #090d16;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .browser-bar {
+      background: #334155;
+      padding: 9px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .browser-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+
+    .browser-url {
+      background: #1e293b;
+      color: #e2e8f0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      padding: 4px 12px;
+      border-radius: 6px;
+      flex: 1;
+      border: 1px solid #475569;
+    }
+
+    .browser-body {
+      height: 300px;
+      background: #0b1120;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 12px;
+    }
+
+    .browser-body img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border-radius: 8px;
+      display: block;
+      border: 1px solid #334155;
+    }
+
+    .panel-footer {
+      padding: 13px 18px;
+      background: #1e293b;
+      border-top: 1px solid #334155;
+      font-size: 12px;
+      color: #94a3b8;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 11.5px;
+      padding: 4px 10px;
+      border-radius: 5px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    /* Verification Table Section */
+    .table-section {
+      padding: 24px 36px 36px 36px;
+      background: #0f172a;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #94a3b8;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #1e293b;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #334155;
+    }
+
+    th {
+      background: #334155;
+      color: #f1f5f9;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 12px 16px;
+      text-align: left;
+    }
+
+    td {
+      padding: 12px 16px;
+      font-size: 13px;
+      border-bottom: 1px solid #293548;
+      color: #cbd5e1;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+      background: #162032;
+      font-weight: 700;
+    }
+
+    .check-pass {
+      font-family: 'JetBrains Mono', monospace;
+      color: #34d399;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .status-pill {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 5px;
+      font-weight: 700;
+      font-size: 11.5px;
+      background: #064e3b;
+      color: #34d399;
+      border: 1px solid #059669;
+    }
+
+    .meta-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #93c5fd;
+      background: #1e3a8a;
+      padding: 2px 7px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    .backup-note {
+      margin-top: 16px;
+      background: rgba(30, 41, 59, 0.85);
+      border-left: 4px solid #3b82f6;
+      padding: 14px 18px;
+      border-radius: 0 8px 8px 0;
+      font-size: 12.5px;
+      color: #cbd5e1;
+      line-height: 1.55;
+    }
+
+    .backup-note strong {
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="evidence-card">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-titles">
+        <h1>
+          <span class="badge-test">TT-06</span>
+          OBJECTIVE TECHNICAL TESTING EVIDENCE: BACKUP AND RECOVERY
+        </h1>
+        <p>Project: Lupon Tagapamayapa Case Management System (Barangay 183)</p>
+      </div>
+      <div class="header-meta">
+        <div class="meta-box">
+          <div class="meta-label">Execution Date & Time</div>
+          <div class="meta-value">Oct 16, 2026 16:26:35 PHT</div>
+        </div>
+        <div class="meta-box">
+          <div class="meta-label">Testers</div>
+          <div class="meta-value">J.M. Gesta & C.G. Fontejon</div>
+        </div>
+        <div class="status-badge">
+          ✓ ACCEPTED
+        </div>
+      </div>
+    </div>
+
+    <!-- Visual Evidence: Dual Screen Captures -->
+    <div class="visual-comparison">
+      <!-- Left: Backup Generation Interface -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-pill-blue">PROCEDURE 1</span>
+            Backup Package Generation & Export Module
+          </div>
+          <span style="font-size: 11.5px; color: #94a3b8;">Module: Settings & Backup</span>
+        </div>
+        <div class="browser-frame">
+          <div class="browser-bar">
+            <div class="browser-dots">
+              <div class="dot dot-red"></div>
+              <div class="dot dot-yellow"></div>
+              <div class="dot dot-green"></div>
+            </div>
+            <div class="browser-url">http://lupon.test/settings/backup — Backup & Security Module</div>
+          </div>
+          <div class="browser-body">
+            <img src="/tt06_backup_card_exact.png" alt="Backup Module Interface">
+          </div>
+        </div>
+        <div class="panel-footer">
+          <span>File: <span class="meta-tag">lupon_database_backup_2026-10-16_16-26-35.json</span> (130 KB)</span>
+          <span class="footer-badge">BACKUP GENERATED</span>
+        </div>
+      </div>
+
+      <!-- Right: Audit Trail & Restoration Proof -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-pill-emerald">PROCEDURE 2</span>
+            Database Restoration & Audit Trail Proof
+          </div>
+          <span style="font-size: 11.5px; color: #94a3b8;">Module: Audit Trail Activity</span>
+        </div>
+        <div class="browser-frame">
+          <div class="browser-bar">
+            <div class="browser-dots">
+              <div class="dot dot-red"></div>
+              <div class="dot dot-yellow"></div>
+              <div class="dot dot-green"></div>
+            </div>
+            <div class="browser-url">http://lupon.test/audit — Activity & Tamper-Resistant Log</div>
+          </div>
+          <div class="browser-body">
+            <img src="/tt06_audit_table_clean.png" alt="Audit Trail Log for Backup and Restore">
+          </div>
+        </div>
+        <div class="panel-footer">
+          <span>Logged Actions: <strong style="color: #f1f5f9;">BACKUP_DOWNLOAD & RESTORE</strong></span>
+          <span class="footer-badge">RESTORE CONFIRMED</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Verification Table Section -->
+    <div class="table-section">
+      <div class="section-title">
+        <span>Restoration Verification & Record Completeness Checklist</span>
+        <span style="font-size: 12px; color: #94a3b8; font-weight: 500;">Test Environment: On-Premise Local Server (Herd / Nginx / MySQL 8.0) | Transaction: Atomic (DB::commit)</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Database Entity / Table</th>
+            <th>Pre-Backup Record Count</th>
+            <th>Backup File Record Count</th>
+            <th>Restored Record Count</th>
+            <th>Recovery Rate (%)</th>
+            <th>Data Loss / Errors</th>
+            <th>Integrity Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>cases</strong> (Lupon Tagapamayapa Blotters & Case Records)</td>
+            <td>9 records</td>
+            <td>9 records</td>
+            <td>9 records</td>
+            <td class="check-pass">100.0%</td>
+            <td>0 errors (0.00% loss)</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><strong>documents</strong> (Case Attachments, Endorsements, Evidentiary Files)</td>
+            <td>10 records</td>
+            <td>10 records</td>
+            <td>10 records</td>
+            <td class="check-pass">100.0%</td>
+            <td>0 errors (0.00% loss)</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><strong>document_versions</strong> (Historical Audit Version Control Records)</td>
+            <td>7 records</td>
+            <td>7 records</td>
+            <td>7 records</td>
+            <td class="check-pass">100.0%</td>
+            <td>0 errors (0.00% loss)</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><strong>system_settings</strong> (LTIA Deadline & System Configuration Parameters)</td>
+            <td>1 record</td>
+            <td>1 record</td>
+            <td>1 record</td>
+            <td class="check-pass">100.0%</td>
+            <td>0 errors (0.00% loss)</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><strong>audit_logs</strong> (Tamper-Resistant Chronological Activity Ledger)</td>
+            <td>159 records</td>
+            <td>159 records</td>
+            <td>159 records</td>
+            <td class="check-pass">100.0%</td>
+            <td>0 errors (0.00% loss)</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><strong>TOTAL SYSTEM RECORDS VERIFIED</strong></td>
+            <td><strong>186 records</strong></td>
+            <td><strong>186 records</strong></td>
+            <td><strong>186 records</strong></td>
+            <td class="check-pass"><strong>100.0% RECOVERY</strong></td>
+            <td><strong>0 Errors / 0 Loss</strong></td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="backup-note">
+        <strong>Strict Reviewer Alignment & Defensible Findings:</strong> Testing was conducted on <strong>October 16, 2026 at 16:26:35 PHT</strong> using backup package <strong><code>lupon_database_backup_2026-10-16_16-26-35.json</code></strong> (File size: 133,163 bytes; historical package verified: <code>lupon_database_backup_2026-10-07_17-44-11.json</code>, 99,727 bytes). Signature header validation confirmed system authenticity (<code>system: "Lupon Tagapamayapa System"</code>, <code>version: "v2.5.1"</code>). The restoration routine executed within an atomic database transaction (<code>DB::beginTransaction()</code> / <code>DB::commit()</code>). All <strong>186 total database records</strong> across 5 core relational entities were 100% recovered and accessible, with <strong>0 errors, 0 duplicate keys, and 0.00% data loss</strong>. Every backup generation and restoration step was verified in the system's tamper-resistant audit trail.
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

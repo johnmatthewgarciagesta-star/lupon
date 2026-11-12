@@ -23,10 +23,15 @@ class PasswordController extends Controller
      */
     public function update(PasswordUpdateRequest $request): RedirectResponse
     {
-        $request->user()->update([
-            'password' => $request->password,
-        ]);
+        try {
+            $request->user()->update([
+                'password' => $request->password,
+            ]);
 
-        return back();
+            return back()->with('success', 'Password updated successfully.');
+        } catch (\Throwable $e) {
+            \Log::error('Password update failed: ' . $e->getMessage());
+            return back()->with('error', 'An error has occurred while updating your password. Please reload your page or try again.');
+        }
     }
 }

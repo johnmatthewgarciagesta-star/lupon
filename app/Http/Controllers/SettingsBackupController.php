@@ -24,10 +24,17 @@ class SettingsBackupController extends Controller
 
     public function index()
     {
-        $initialDeadline = SystemSetting::get('ltia_deadline', '2026-09-08');
-        return \Inertia\Inertia::render('settings/index', [
-            'initialDeadline' => $initialDeadline,
-        ]);
+        try {
+            $initialDeadline = SystemSetting::get('ltia_deadline', '2026-09-08');
+            return \Inertia\Inertia::render('settings/index', [
+                'initialDeadline' => $initialDeadline,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Settings page loading failed: ' . $e->getMessage());
+            return \Inertia\Inertia::render('settings/index', [
+                'initialDeadline' => '2026-09-08',
+            ])->with('error', 'An error has occurred while loading settings data. Please reload your page.');
+        }
     }
 
     /**
@@ -68,9 +75,9 @@ class SettingsBackupController extends Controller
                 'Content-Type' => 'application/json',
                 'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Full database backup download failed: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to generate database backup: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error has occurred while generating the database backup. Please reload your page or try again.');
         }
     }
 
@@ -211,7 +218,7 @@ class SettingsBackupController extends Controller
             );
 
             return redirect()->back()->with('success', 'Database records restored from backup successfully.');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             $fileName = isset($fileName) ? $fileName : 'Uploaded File';
             AuditService::log(
@@ -221,7 +228,7 @@ class SettingsBackupController extends Controller
                 null
             );
             Log::error('Full database restore failed: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Database restore failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error has occurred while restoring the database records. Please reload your page or try again.');
         }
     }
 }

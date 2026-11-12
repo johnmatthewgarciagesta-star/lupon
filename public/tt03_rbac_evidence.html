@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TT-03 Security RBAC Evidence - Lupon CMS</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 28px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .evidence-card {
+      width: 1340px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border-bottom: 2px solid #8b5cf6;
+      padding: 24px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-titles h1 {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge-test {
+      background: #7c3aed;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      letter-spacing: 0.05em;
+    }
+
+    .header-titles p {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+
+    .header-meta {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .meta-box {
+      text-align: right;
+    }
+
+    .meta-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .meta-value {
+      font-size: 13px;
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+
+    .status-badge {
+      background: #059669;
+      color: #ecfdf5;
+      border: 1px solid #10b981;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Comparison Dual Screens */
+    .visual-comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      padding: 28px 32px;
+      background: #0f172a;
+    }
+
+    .panel {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      padding: 12px 16px;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-pill-red {
+      background: #7f1d1d;
+      color: #fca5a5;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+
+    .panel-pill-green {
+      background: #064e3b;
+      color: #6ee7b7;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+
+    .browser-frame {
+      background: #090d16;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .browser-bar {
+      background: #334155;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .browser-dots {
+      display: flex;
+      gap: 5px;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+    }
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+
+    .browser-url {
+      background: #1e293b;
+      color: #cbd5e1;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 5px;
+      flex: 1;
+      border: 1px solid #475569;
+    }
+
+    .browser-body {
+      height: 380px;
+      background: #0b1120;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .browser-body img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top center;
+    }
+
+    .panel-footer {
+      padding: 12px 16px;
+      background: #1e293b;
+      border-top: 1px solid #334155;
+      font-size: 11.5px;
+      color: #94a3b8;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+
+    .badge-error {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .badge-success {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    /* Checklist & Table Section */
+    .table-section {
+      padding: 0 32px 28px 32px;
+      background: #0f172a;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #94a3b8;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #1e293b;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #334155;
+    }
+
+    th {
+      background: #334155;
+      color: #e2e8f0;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 10px 14px;
+      text-align: left;
+    }
+
+    td {
+      padding: 10px 14px;
+      font-size: 12px;
+      border-bottom: 1px solid #293548;
+      color: #cbd5e1;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .code-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #38bdf8;
+      border: 1px solid #334155;
+    }
+
+    .status-pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 11px;
+      background: #064e3b;
+      color: #34d399;
+      border: 1px solid #059669;
+    }
+
+    .http-403 {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      color: #f87171;
+      background: rgba(239, 68, 68, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .http-200 {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      color: #34d399;
+      background: rgba(16, 185, 129, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .security-note {
+      margin-top: 14px;
+      background: rgba(30, 41, 59, 0.7);
+      border-left: 3px solid #8b5cf6;
+      padding: 12px 16px;
+      border-radius: 0 6px 6px 0;
+      font-size: 11.5px;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+
+    .security-note strong {
+      color: #e2e8f0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="evidence-card">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-titles">
+        <h1>
+          <span class="badge-test">TT-03</span>
+          OBJECTIVE TECHNICAL TESTING EVIDENCE: SECURITY – ROLE-BASED ACCESS CONTROL (RBAC)
+        </h1>
+        <p>Project: Lupon Tagapamayapa Case Management System (Barangay 183)</p>
+      </div>
+      <div class="header-meta">
+        <div class="meta-box">
+          <div class="meta-label">Execution Date</div>
+          <div class="meta-value">October 16, 2026</div>
+        </div>
+        <div class="meta-box">
+          <div class="meta-label">Testers</div>
+          <div class="meta-value">J.M. Gesta & C.G. Fontejon</div>
+        </div>
+        <div class="status-badge">
+          ✓ ACCEPTED
+        </div>
+      </div>
+    </div>
+
+    <!-- Visual Evidence: 403 Forbidden vs Authorized Personnel Management -->
+    <div class="visual-comparison">
+      <!-- Left: Data Encoder Restricted -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-pill-red">ACCESS RESTRICTED</span>
+            Data Encoder Traversal to /users
+          </div>
+          <span style="font-size: 11px; color: #94a3b8;">Account: encoder@lupon.test</span>
+        </div>
+        <div class="browser-frame">
+          <div class="browser-bar">
+            <div class="browser-dots">
+              <div class="dot dot-red"></div>
+              <div class="dot dot-yellow"></div>
+              <div class="dot dot-green"></div>
+            </div>
+            <div class="browser-url">http://lupon.test/users — Blocked Traversal</div>
+          </div>
+          <div class="browser-body">
+            <img src="/tt03_encoder_blocked.png" alt="403 Forbidden Error Screen">
+          </div>
+        </div>
+        <div class="panel-footer">
+          <span>Observed: <em>"403 | USER DOES NOT HAVE ANY OF THE NECESSARY ACCESS RIGHTS."</em></span>
+          <span class="footer-badge badge-error">HTTP 403 FORBIDDEN (PASS)</span>
+        </div>
+      </div>
+
+      <!-- Right: Administrator Authorized -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-pill-green">ACCESS AUTHORIZED</span>
+            Administrator Access to /users
+          </div>
+          <span style="font-size: 11px; color: #94a3b8;">Account: tester@lupon.test</span>
+        </div>
+        <div class="browser-frame">
+          <div class="browser-bar">
+            <div class="browser-dots">
+              <div class="dot dot-red"></div>
+              <div class="dot dot-yellow"></div>
+              <div class="dot dot-green"></div>
+            </div>
+            <div class="browser-url">http://lupon.test/users — Personnel Management</div>
+          </div>
+          <div class="browser-body">
+            <img src="/tt03_admin_authorized.png" alt="Authorized Personnel Management Screen">
+          </div>
+        </div>
+        <div class="panel-footer">
+          <span>Observed: <strong>Full Directory (8 Staff), Role Badges & Permissions</strong></span>
+          <span class="footer-badge badge-success">HTTP 200 OK (PASS)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Route-by-Route Matrix Table -->
+    <div class="table-section">
+      <div class="section-title">
+        <span>Route-by-Route Role-Permission Access Log & Security Decision Matrix</span>
+        <span style="font-size: 11px; color: #64748b; font-weight: normal;">Spatie Role Middleware & Separation of Duties (SoD) Enforced</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Protected Route / Module</th>
+            <th>Target Function / Scope</th>
+            <th>Data Encoder HTTP Response</th>
+            <th>Administrator HTTP Response</th>
+            <th>Expected RBAC Matrix Policy</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="code-pill">/dashboard</span></td>
+            <td>General Case Statistics & Metrics</td>
+            <td><span class="http-200">HTTP 200 OK</span></td>
+            <td><span class="http-200">HTTP 200 OK</span></td>
+            <td>Both roles have authorized dashboard access</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><span class="code-pill">/cases</span></td>
+            <td>Case Management & Incident Records</td>
+            <td><span class="http-200">HTTP 200 OK</span></td>
+            <td><span class="http-200">HTTP 200 OK</span></td>
+            <td>Both roles can inspect and manage cases</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><span class="code-pill">/users</span></td>
+            <td>Personnel & Account Management</td>
+            <td><span class="http-403">HTTP 403 Forbidden</span></td>
+            <td><span class="http-200">HTTP 200 OK</span></td>
+            <td>Restricted strictly to Administrator role</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><span class="code-pill">/audit</span></td>
+            <td>System Audit Trail Logs</td>
+            <td><span class="http-403">HTTP 403 Forbidden</span></td>
+            <td><span class="http-200">HTTP 200 OK</span></td>
+            <td>Restricted strictly to Administrator role</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><span class="code-pill">/roles-permissions</span></td>
+            <td>RBAC Matrix Configuration</td>
+            <td><span class="http-403">HTTP 403 Forbidden</span></td>
+            <td><span class="http-200">HTTP 200 OK</span></td>
+            <td>Restricted strictly to Administrator role</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="security-note">
+        <strong>OWASP Top 10 (Broken Access Control) Defense Verification:</strong> The Lupon CMS employs Spatie Permission middleware (`role_or_permission`) at the route routing pipeline. Direct URL tampering by Data Encoders to administrative endpoints (`/users`, `/audit`, `/roles-permissions`) is intercepted prior to controller invocation, returning an immutable HTTP 403 Forbidden error response and preventing privilege escalation.
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

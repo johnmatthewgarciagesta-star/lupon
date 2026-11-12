@@ -217,7 +217,7 @@ export default function NewDocument({ existingTemplate }: { existingTemplate?: D
             coreFields.forEach(cf => checkAndAdd(cf.label, cf.id, cf.type));
 
             if (detectedText.match(/Nature of/i) || detectedText.match(/For:/i)) checkAndAdd('Nature of Case', 'For');
-            if (detectedText.match(/Hearing/i)) checkAndAdd('Hearing Date/Time', 'hearing_info');
+            if (detectedText.match(/Hearing/i)) checkAndAdd('Hearing Date/Time', 'hearing_info', 'date');
 
             const fieldPatterns = [
                 /([A-Z][a-zA-Z\s]{2,25})(?::|\.|\s)\s*(?:_{2,}|\.{3,})/g,
@@ -523,7 +523,7 @@ export default function NewDocument({ existingTemplate }: { existingTemplate?: D
                                                             { id: 'complainant', type: 'text', label: 'Complainant (Full Name)', placeholder: 'Full legal name of the complainant', required: true },
                                                             { id: 'respondent', type: 'text', label: 'Respondent / Addressee', placeholder: 'Full legal name of the respondent', required: true },
                                                             { id: 'case_no', type: 'text', label: 'Case Number', placeholder: 'e.g. 26-001', required: true },
-                                                            { id: 'hearing_date', type: 'text', label: 'Hearing Date & Time', placeholder: 'e.g. February 28, 2026 at 9:00 AM', required: true },
+                                                            { id: 'hearing_date', type: 'date', label: 'Hearing Date & Time', placeholder: 'Select hearing date & 12-hour AM/PM time', required: true },
                                                             { id: 'place', type: 'text', label: 'Place (City/Municipality)', required: true },
                                                             { id: 'province', type: 'text', label: 'Province', required: true }
                                                         ];

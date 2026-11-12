@@ -1,7 +1,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { SharedData } from '@/types';
 import {
-    Folder, FolderPlus, FileText, Search, Plus, Eye, Upload, FilePlus, Loader2, X, Filter, Trash2, ChevronDown, ChevronUp, ShieldCheck
+    Folder, FolderPlus, FileText, Search, Plus, Eye, Upload, FilePlus, Loader2, X, Filter, Trash2, ChevronDown, ChevronUp, ShieldCheck, AlertCircle
 } from 'lucide-react';
 import { DocumentVersionHistoryModal } from '@/components/documents/document-version-history-modal';
 import { useMemo, useState } from 'react';
@@ -66,6 +66,7 @@ export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
     const [newFolderRespondent, setNewFolderRespondent] = useState('');
     const [newFolderNature, setNewFolderNature] = useState('');
     const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+    const [createFolderError, setCreateFolderError] = useState<string | null>(null);
 
     // Modal states for Direct Upload to Folder
     const [uploadFolderTarget, setUploadFolderTarget] = useState<CaseFolder | null>(null);
@@ -112,6 +113,7 @@ export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
         e.preventDefault();
         if (!newFolderName.trim()) return;
         setIsCreatingFolder(true);
+        setCreateFolderError(null);
         router.post('/documents/create-folder', {
             folder_name: newFolderName,
             case_number: newFolderCaseNo,
@@ -127,8 +129,14 @@ export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
                 setNewFolderRespondent('');
                 setNewFolderNature('');
                 setIsCreatingFolder(false);
+                setCreateFolderError(null);
             },
-            onError: () => setIsCreatingFolder(false)
+            onError: (errors: any) => {
+                setIsCreatingFolder(false);
+                const rawErr = errors?.folder_name || errors?.case_number || errors?.error || errors?.general || 'That folder number already exists please change your case folder name / number';
+                const errMsg = typeof rawErr === 'string' ? rawErr : (Array.isArray(rawErr) ? rawErr[0] : 'That folder number already exists please change your case folder name / number');
+                setCreateFolderError(errMsg);
+            }
         });
     };
 
@@ -400,7 +408,10 @@ export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
             />
 
                 {/* ── Create Case Folder Modal ── */}
-                <Dialog open={isCreateFolderModalOpen} onOpenChange={setIsCreateFolderModalOpen}>
+                <Dialog open={isCreateFolderModalOpen} onOpenChange={(open) => {
+                    setIsCreateFolderModalOpen(open);
+                    if (!open) setCreateFolderError(null);
+                }}>
                     <DialogContent className="sm:max-w-md p-6">
                         <DialogHeader>
                             <DialogTitle className="text-lg font-bold flex items-center gap-2 text-foreground">
@@ -413,6 +424,12 @@ export default function DocumentsFolders({ caseFolders = [] }: FoldersProps) {
                         </DialogHeader>
 
                         <form onSubmit={handleCreateFolderSubmit} className="space-y-4 mt-2">
+                            {createFolderError && (
+                                <div className="p-3 text-xs rounded-lg border border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400 font-medium flex items-start gap-2">
+                                    <AlertCircle className="h-4 w-4 shrink-0 text-red-500 mt-0.5" />
+                                    <span>{createFolderError}</span>
+                                </div>
+                            )}
                             <div className="space-y-1.5">
                                 <Label className="text-xs font-semibold">Folder Name / ID (e.g., case-026)</Label>
                                 <Input

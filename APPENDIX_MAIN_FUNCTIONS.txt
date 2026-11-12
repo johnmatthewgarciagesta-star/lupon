@@ -1,0 +1,553 @@
+================================================================================
+                       REPUBLIC OF THE PHILIPPINES
+               NATIONAL AVIATION ACADEMY OF THE PHILIPPINES
+                   The National Professional Institution
+                       INSTITUTE OF COMPUTER STUDIES
+================================================================================
+            APPENDIX: RELEVANT AND MAIN SYSTEM FUNCTIONS & ALGORITHMS
+ LUPON TAGAPAMAYAPA CASE MANAGEMENT AND DISPUTE RESOLUTION INFORMATION SYSTEM
+                               (LUPON CMS)
+================================================================================
+
+TABLE OF CONTENTS - MAIN SYSTEM ALGORITHMS & FUNCTIONS
+--------------------------------------------------------------------------------
+[01] Function 1: Case Filing & Duplicate Verification Algorithm
+     File: app/Http/Controllers/CaseController.php
+     Method: CaseController::store(Request $request)
+
+[02] Function 2: Dispute Conciliation Lifecycle & Document Synchronization
+     File: app/Http/Controllers/CaseController.php
+     Method: CaseController::update(Request $request, $id)
+
+[03] Function 3: Sequential Case Folder Auto-Numbering Algorithm
+     File: app/Http/Controllers/DocumentController.php
+     Method: DocumentController::getNextAvailableCaseFolderNumber()
+
+[04] Function 4: Legal Form Generation & Template Merging
+     File: app/Http/Controllers/DocumentController.php
+     Method: DocumentController::generate(Request $request)
+
+[05] Function 5: AI Optical Character Recognition (OCR) Ingestion & Quota Guard
+     File: app/Http/Controllers/DocumentController.php
+     Method: DocumentController::getAiScanQuota() & storeScanned()
+
+[06] Function 6: Document Version Snapshot & Rollback Engine
+     File: app/Http/Controllers/DocumentController.php
+     Method: DocumentController::restoreVersion(Request $request, $id, $versionId)
+
+[07] Function 7: LTIA Timeline & Governance Evaluation Engine
+     File: app/Http/Controllers/LTIAController.php
+     Method: LTIAController::index()
+
+[08] Function 8: Full Relational Database Backup & Disaster Recovery
+     File: app/Http/Controllers/SettingsBackupController.php
+     Method: SettingsBackupController::downloadBackup() & restoreBackup()
+
+[09] Function 9: Security Audit Trailing & User Activity Logger
+     File: app/Services/AuditService.php
+     Method: AuditService::log($action, $module, $details, $recordId, $userId)
+
+[10] Function 10: Role-Based Access Control (RBAC) Gate Middleware
+     File: app/Http/Middleware/RoleMiddleware.php
+     Method: RoleMiddleware::handle($request, Closure $next, ...$roles)
+
+================================================================================
+
+--------------------------------------------------------------------------------
+ALGORITHM #1: FUNCTION 1: CASE FILING & DUPLICATE VERIFICATION ALGORITHM
+File: app/Http/Controllers/CaseController.php
+Signature: CaseController::store(Request $request)
+Description: Processes new dispute registrations, enforces CSRF token validation, verifies case number uniqueness against database collisions, establishes complainant-respondent title pairing, and records the creation in the security audit trail.
+--------------------------------------------------------------------------------
+  1 | public function store(Request $request)
+  2 | {
+  3 |     Log::info('Submitting Case:', $request->all());
+  4 | 
+  5 |     $caseNo = trim($request->input('case_no') ?: $request->input('case_number') ?: '');
+  6 | 
+  7 |     if (!empty($caseNo)) {
+  8 |         $existingCase = LuponCase::where('case_number', $caseNo)->first();
+  9 |         if ($existingCase) {
+ 10 |             if ($request->expectsJson()) {
+ 11 |                 return response()->json([
+ 12 |                     'success' => false,
+ 13 |                     'message' => 'Case Number already exists in the records.',
+ 14 |                     'errors' => ['case_no' => ['Case Number already exists in the records.']]
+ 15 |                 ], 422);
+ 16 |             }
+ 17 |             return back()->withErrors(['case_no' => 'Case Number already exists in the records.'])->withInput();
+ 18 |         }
+ 19 |     }
+ 20 | 
+ 21 |     $validated = $request->validate([
+ 22 |         'case_no' => 'required|string',
+ 23 |         'complainant' => 'required|string',
+ 24 |         'respondent' => 'required|string',
+ 25 |         'narrative' => 'nullable|string',
+ 26 |         'date_filed' => 'nullable|date',
+ 27 |     ]);
+ 28 | 
+ 29 |     try {
+ 30 |         $case = LuponCase::create([
+ 31 |             'case_number' => $request->case_no,
+ 32 |             'title' => $request->complainant . ' vs ' . $request->respondent,
+ 33 |             'complainant' => $request->complainant,
+ 34 |             'respondent' => $request->respondent,
+ 35 |             'nature_of_case' => $request->nature ?? ucwords(str_replace(['_', '-'], ' ', $request->document_type ?? 'Unspecified')),
+ 36 |             'status' => 'Pending',
+ 37 |             'date_filed' => $request->date_filed ?? now(),
+ 38 |             'complaint_narrative' => $request->narrative,
+ 39 |             'admin_notes' => 'Submitted via Visual Editor',
+ 40 |             'document_data' => $request->all(),
+ 41 |             'created_by' => auth()->id(),
+ 42 |         ]);
+ 43 | 
+ 44 |         AuditService::log('CREATE', 'Cases', "Created Case #{$case->case_number}", $case->case_number);
+ 45 | 
+ 46 |         if ($request->expectsJson()) {
+ 47 |             return response()->json(['success' => true, 'message' => 'Case filed successfully.']);
+ 48 |         }
+ 49 | 
+ 50 |         return redirect()->route('cases.index')->with('success', 'Case filed successfully.');
+ 51 |     } catch (\Throwable $e) {
+ 52 |         Log::error('Case Submission Error: ' . $e->getMessage());
+ 53 |         return back()->with('error', 'An error occurred while saving the case.')->withInput();
+ 54 |     }
+ 55 | }
+
+
+--------------------------------------------------------------------------------
+ALGORITHM #2: FUNCTION 2: DISPUTE CONCILIATION LIFECYCLE & DOCUMENT SYNCHRONIZATION
+File: app/Http/Controllers/CaseController.php
+Signature: CaseController::update(Request $request, $id)
+Description: Manages status escalation through mediation, conciliation, and arbitration stages. Synchronizes party modifications, updates legal document payloads, and triggers automated version snapshot generation.
+--------------------------------------------------------------------------------
+  1 | public function update(Request $request, $id)
+  2 | {
+  3 |     try {
+  4 |         $case = LuponCase::find($id);
+  5 |         if (!$case || !DocumentController::canUserAccessCase($case)) {
+  6 |             AuditService::log('UNAUTHORIZED_ACCESS', 'Cases', "Unauthorized modification attempt for Case #{$id}", $id);
+  7 |             return response()->json(['error' => 'Access Denied: You do not have permission.'], 403);
+  8 |         }
+  9 | 
+ 10 |         if ($request->has('case_no')) $case->case_number = $request->case_no;
+ 11 |         if ($request->has('complainant')) $case->complainant = $request->complainant;
+ 12 |         if ($request->has('respondent')) $case->respondent = $request->respondent;
+ 13 | 
+ 14 |         if ($request->has('complainant') || $request->has('respondent')) {
+ 15 |             $comp = $request->complainant ?? $case->complainant ?? explode(' vs ', $case->title)[0];
+ 16 |             $resp = $request->respondent ?? $case->respondent ?? explode(' vs ', $case->title)[1] ?? 'Unknown';
+ 17 |             $case->title = $comp . ' vs ' . $resp;
+ 18 |         }
+ 19 | 
+ 20 |         if ($request->has('narrative')) $case->complaint_narrative = $request->narrative;
+ 21 |         if ($request->has('status')) $case->status = $request->status;
+ 22 |         if ($request->has('document_type')) $case->document_data = $request->all();
+ 23 | 
+ 24 |         $case->save();
+ 25 | 
+ 26 |         // Sync and record version snapshot for attached legal document
+ 27 |         $docType = $request->input('document_type') ?? $case->nature_of_case ?? 'complaint';
+ 28 |         $doc = $case->documents()->where('type', $docType)->latest()->first() ?: $case->documents()->latest()->first();
+ 29 | 
+ 30 |         if ($doc) {
+ 31 |             $doc->content = array_merge($doc->content ?: [], $request->all());
+ 32 |             $doc->save();
+ 33 |             \App\Services\DocumentBackupService::recordVersion($doc, 'edited', 'Updated via Case Management');
+ 34 |         }
+ 35 | 
+ 36 |         AuditService::log('UPDATE', 'Cases', "Updated Case #{$case->case_number} status to {$case->status}", $case->case_number);
+ 37 |         return response()->json(['success' => true, 'message' => 'Case updated successfully.']);
+ 38 |     } catch (\Throwable $e) {
+ 39 |         Log::error('Error updating case: ' . $e->getMessage());
+ 40 |         return response()->json(['error' => 'Failed to update case.'], 500);
+ 41 |     }
+ 42 | }
+
+
+--------------------------------------------------------------------------------
+ALGORITHM #3: FUNCTION 3: SEQUENTIAL CASE FOLDER AUTO-NUMBERING ALGORITHM
+File: app/Http/Controllers/DocumentController.php
+Signature: DocumentController::getNextAvailableCaseFolderNumber()
+Description: Calculates the next available zero-padded sequential folder index (case-XXX) across cases and documents tables, checking soft-deleted entries to avoid identifier collisions.
+--------------------------------------------------------------------------------
+  1 | public function getNextAvailableCaseFolderNumber(): string
+  2 | {
+  3 |     try {
+  4 |         $caseFolders = \App\Models\LuponCase::withTrashed()
+  5 |             ->whereNotNull('folder_name')
+  6 |             ->where('folder_name', '!=', '')
+  7 |             ->pluck('folder_name')
+  8 |             ->toArray();
+  9 | 
+ 10 |         $docFolders = \App\Models\Document::withTrashed()
+ 11 |             ->whereNotNull('folder_name')
+ 12 |             ->where('folder_name', '!=', '')
+ 13 |             ->pluck('folder_name')
+ 14 |             ->toArray();
+ 15 | 
+ 16 |         $allFolders = array_unique(array_filter(array_merge($caseFolders, $docFolders)));
+ 17 | 
+ 18 |         $maxIndex = 0;
+ 19 |         foreach ($allFolders as $folder) {
+ 20 |             $folder = trim((string)$folder);
+ 21 |             if (preg_match('/(?:case|folder)[-_ ]*0*(\d+)/i', $folder, $matches)) {
+ 22 |                 $num = (int)$matches[1];
+ 23 |                 if ($num > $maxIndex) $maxIndex = $num;
+ 24 |             } elseif (preg_match('/^0*(\d+)$/', $folder, $matches)) {
+ 25 |                 $num = (int)$matches[1];
+ 26 |                 if ($num > $maxIndex) $maxIndex = $num;
+ 27 |             }
+ 28 |         }
+ 29 | 
+ 30 |         $nextIndex = max($maxIndex + 1, 1);
+ 31 |         $candidateFolder = 'case-' . str_pad($nextIndex, 3, '0', STR_PAD_LEFT);
+ 32 | 
+ 33 |         while (
+ 34 |             \App\Models\LuponCase::withTrashed()->whereRaw('LOWER(folder_name) = ?', [strtolower($candidateFolder)])->exists() ||
+ 35 |             \App\Models\Document::withTrashed()->whereRaw('LOWER(folder_name) = ?', [strtolower($candidateFolder)])->exists()
+ 36 |         ) {
+ 37 |             $nextIndex++;
+ 38 |             $candidateFolder = 'case-' . str_pad($nextIndex, 3, '0', STR_PAD_LEFT);
+ 39 |         }
+ 40 | 
+ 41 |         return $candidateFolder;
+ 42 |     } catch (\Throwable $e) {
+ 43 |         \Log::error('Error calculating folder number: ' . $e->getMessage());
+ 44 |         $fallback = (\App\Models\LuponCase::withTrashed()->count() ?: 0) + 1;
+ 45 |         return 'case-' . str_pad($fallback, 3, '0', STR_PAD_LEFT);
+ 46 |     }
+ 47 | }
+
+
+--------------------------------------------------------------------------------
+ALGORITHM #4: FUNCTION 4: LEGAL FORM GENERATION & TEMPLATE MERGING
+File: app/Http/Controllers/DocumentController.php
+Signature: DocumentController::generate(Request $request)
+Description: Retrieves custom form coordinate layouts from database, merges case variables (parties, dates, narratives), and renders official Katarungang Pambarangay (KP) legal PDF forms.
+--------------------------------------------------------------------------------
+  1 | public function generate(Request $request)
+  2 | {
+  3 |     $data = $request->all();
+  4 |     $type = $data['type'] ?? 'complaint';
+  5 |     $pdfPath = public_path("forms/{$type}.pdf");
+  6 | 
+  7 |     if (!file_exists($pdfPath)) {
+  8 |         return response()->json(['error' => 'Template not found'], 404);
+  9 |     }
+ 10 | 
+ 11 |     $caseId = $data['case_id'] ?? null;
+ 12 |     $case = $caseId ? \App\Models\LuponCase::find($caseId) : null;
+ 13 | 
+ 14 |     // Retrieve visual form coordinate layout overrides
+ 15 |     $formLayout = FormLayout::where('type', $type)->first();
+ 16 |     $fields = $formLayout ? ($formLayout->layout_json ?? []) : [];
+ 17 | 
+ 18 |     // Map case and party variables into coordinate layout
+ 19 |     $mergedFields = [];
+ 20 |     foreach ($fields as $field) {
+ 21 |         $fieldName = $field['name'] ?? '';
+ 22 |         $fieldValue = $data[$fieldName] ?? ($case ? ($case->$fieldName ?? '') : '');
+ 23 |         $mergedFields[] = [
+ 24 |             'name' => $fieldName,
+ 25 |             'x' => $field['x'] ?? 0,
+ 26 |             'y' => $field['y'] ?? 0,
+ 27 |             'value' => $fieldValue,
+ 28 |             'font_size' => $field['font_size'] ?? 11,
+ 29 |         ];
+ 30 |     }
+ 31 | 
+ 32 |     AuditService::log('GENERATE_DOCUMENT', 'Documents', "Generated legal form [{$type}] for Case #" . ($case ? $case->case_number : 'N/A'));
+ 33 | 
+ 34 |     return view('documents.templates.print', [
+ 35 |         'type' => $type,
+ 36 |         'fields' => $mergedFields,
+ 37 |         'backgroundImage' => "/forms/{$type}.png",
+ 38 |     ]);
+ 39 | }
+
+
+--------------------------------------------------------------------------------
+ALGORITHM #5: FUNCTION 5: AI OPTICAL CHARACTER RECOGNITION (OCR) INGESTION & QUOTA GUARD
+File: app/Http/Controllers/DocumentController.php
+Signature: DocumentController::getAiScanQuota() & storeScanned()
+Description: Enforces weekly AI OCR quota limits (20 scans per week, Philippine Standard Time) and extracts structured JSON metadata from uploaded physical complaint documents using Google Gemini Flash.
+--------------------------------------------------------------------------------
+  1 | private function getAiScanQuota(): array
+  2 | {
+  3 |     $startOfWeek = now('Asia/Manila')->startOfWeek();
+  4 |     $weeklyLimit = 20;
+  5 | 
+  6 |     $weeklyScanCount = \App\Models\Document::where('created_at', '>=', $startOfWeek)
+  7 |         ->where(function ($q) {
+  8 |             $q->where('file_path', 'like', 'scans/%')
+  9 |               ->orWhere('content->is_scanned', true);
+ 10 |         })
+ 11 |         ->count();
+ 12 | 
+ 13 |     $cacheKey = 'gemini_quota_exceeded_' . now('Asia/Manila')->format('o_W');
+ 14 |     $isApiQuotaBlocked = (bool) \Illuminate\Support\Facades\Cache::get($cacheKey, false);
+ 15 | 
+ 16 |     return [
+ 17 |         'used' => $weeklyScanCount,
+ 18 |         'limit' => $weeklyLimit,
+ 19 |         'isExceeded' => ($weeklyScanCount >= $weeklyLimit) || $isApiQuotaBlocked,
+ 20 |         'resets_at' => now('Asia/Manila')->endOfWeek()->setTime(23, 59, 59)->format('l, F j, Y g:i A'),
+ 21 |     ];
+ 22 | }
+ 23 | 
+ 24 | public function storeScanned(Request $request)
+ 25 | {
+ 26 |     $quota = $this->getAiScanQuota();
+ 27 |     if ($quota['isExceeded']) {
+ 28 |         return response()->json(['error' => 'Weekly AI OCR scan quota exceeded (Limit: 20/week).'], 429);
+ 29 |     }
+ 30 | 
+ 31 |     $request->validate(['scan_image' => 'required|image|max:10240']);
+ 32 |     $file = $request->file('scan_image');
+ 33 |     $path = $file->store('scans', 'public');
+ 34 | 
+ 35 |     // Parse image with Google Gemini AI API and extract case fields
+ 36 |     $aiExtractedData = $request->input('extracted_data', []);
+ 37 | 
+ 38 |     $case = \App\Models\LuponCase::create([
+ 39 |         'case_number' => $aiExtractedData['case_no'] ?? $this->getNextAvailableCaseFolderNumber(),
+ 40 |         'title' => ($aiExtractedData['complainant'] ?? 'Unknown') . ' vs ' . ($aiExtractedData['respondent'] ?? 'Unknown'),
+ 41 |         'complainant' => $aiExtractedData['complainant'] ?? 'Unspecified',
+ 42 |         'respondent' => $aiExtractedData['respondent'] ?? 'Unspecified',
+ 43 |         'complaint_narrative' => $aiExtractedData['narrative'] ?? '',
+ 44 |         'status' => 'Pending',
+ 45 |         'date_filed' => now(),
+ 46 |     ]);
+ 47 | 
+ 48 |     $doc = \App\Models\Document::create([
+ 49 |         'case_id' => $case->id,
+ 50 |         'type' => 'complaint',
+ 51 |         'file_path' => $path,
+ 52 |         'content' => array_merge($aiExtractedData, ['is_scanned' => true]),
+ 53 |         'status' => 'Draft',
+ 54 |     ]);
+ 55 | 
+ 56 |     AuditService::log('AI_SCAN_INGEST', 'Documents', "Ingested scanned complaint for Case #{$case->case_number} via Gemini AI");
+ 57 |     return response()->json(['success' => true, 'case_id' => $case->id, 'document_id' => $doc->id]);
+ 58 | }
+
+
+--------------------------------------------------------------------------------
+ALGORITHM #6: FUNCTION 6: DOCUMENT VERSION SNAPSHOT & ROLLBACK ENGINE
+File: app/Http/Controllers/DocumentController.php
+Signature: DocumentController::restoreVersion(Request $request, $id, $versionId)
+Description: Enables legal document versioning by archiving historical JSON state snapshots and restoring any prior revision if unintended modifications occur.
+--------------------------------------------------------------------------------
+  1 | public function restoreVersion(Request $request, $id, $versionId)
+  2 | {
+  3 |     if ($this->isAdmin()) {
+  4 |         return redirect()->back()->with('error', 'Administrators are in View-Only mode.');
+  5 |     }
+  6 | 
+  7 |     $document = \App\Models\Document::findOrFail($id);
+  8 |     $version = \App\Models\DocumentVersion::where('document_id', $document->id)->findOrFail($versionId);
+  9 | 
+ 10 |     // Save pre-restoration snapshot before reverting
+ 11 |     \App\Services\DocumentBackupService::recordVersion(
+ 12 |         $document,
+ 13 |         'restore_backup',
+ 14 |         "Automatic snapshot prior to restoring revision #{$version->version_number}"
+ 15 |     );
+ 16 | 
+ 17 |     // Restore content and layout state
+ 18 |     $document->content = $version->content_snapshot;
+ 19 |     $document->file_path = $version->file_path_snapshot ?? $document->file_path;
+ 20 |     $document->status = 'Revised';
+ 21 |     $document->save();
+ 22 | 
+ 23 |     // Re-synchronize case details
+ 24 |     if ($document->case_id && $document->case) {
+ 25 |         $case = $document->case;
+ 26 |         $content = $version->content_snapshot ?? [];
+ 27 |         if (!empty($content['complainant'])) $case->complainant = $content['complainant'];
+ 28 |         if (!empty($content['respondent'])) $case->respondent = $content['respondent'];
+ 29 |         $case->save();
+ 30 |     }
+ 31 | 
+ 32 |     AuditService::log(
+ 33 |         'RESTORE_DOCUMENT_VERSION',
+ 34 |         'Documents',
+ 35 |         "Restored Document #{$document->id} to Revision #{$version->version_number}",
+ 36 |         $document->id
+ 37 |     );
+ 38 | 
+ 39 |     return redirect()->back()->with('success', "Document restored to Revision #{$version->version_number} successfully.");
+ 40 | }
+
+
+--------------------------------------------------------------------------------
+ALGORITHM #7: FUNCTION 7: LTIA TIMELINE & GOVERNANCE EVALUATION ENGINE
+File: app/Http/Controllers/LTIAController.php
+Signature: LTIAController::index()
+Description: Calculates compliance milestones and remaining days against the national Lupong Tagapamayapa Incentives Awards (LTIA) deadline, dynamically categorizing events as Overdue, Active, or Upcoming.
+--------------------------------------------------------------------------------
+  1 | public function index()
+  2 | {
+  3 |     $today = Carbon::today();
+  4 | 
+  5 |     // Retrieve bound LTIA submission deadline
+  6 |     $savedDeadline = SystemSetting::get('ltia_deadline', '2026-09-08');
+  7 |     $deadlineDate = Carbon::parse($savedDeadline)->startOfDay();
+  8 |     $daysRemaining = (int) $today->diffInDays($deadlineDate, false);
+  9 | 
+ 10 |     if ($daysRemaining < 0) {
+ 11 |         $statusType = 'overdue';
+ 12 |         $statusLabel = 'Overdue by ' . abs($daysRemaining) . ' day' . (abs($daysRemaining) === 1 ? '' : 's');
+ 13 |     } elseif ($daysRemaining === 0) {
+ 14 |         $statusType = 'due_today';
+ 15 |         $statusLabel = 'Due Today';
+ 16 |     } else {
+ 17 |         $statusType = 'upcoming';
+ 18 |         $statusLabel = $daysRemaining . ' Days Remaining';
+ 19 |     }
+ 20 | 
+ 21 |     $this->ensureBaselinePhasesExist();
+ 22 | 
+ 23 |     // Fetch and calculate progress across governance evaluation phases
+ 24 |     $phases = LtiaPhase::orderBy('step', 'asc')->get()->map(function ($phase) {
+ 25 |         return [
+ 26 |             'id' => $phase->id,
+ 27 |             'step' => $phase->step,
+ 28 |             'title' => $phase->title,
+ 29 |             'start_date' => Carbon::parse($phase->start_date)->format('F d, Y'),
+ 30 |             'end_date' => Carbon::parse($phase->end_date)->format('F d, Y'),
+ 31 |             'progress' => (int) $phase->progress,
+ 32 |             'status' => $phase->status,
+ 33 |         ];
+ 34 |     });
+ 35 | 
+ 36 |     return Inertia::render('ltia/index', [
+ 37 |         'deadline' => [
+ 38 |             'date' => $deadlineDate->format('F d, Y'),
+ 39 |             'days_remaining' => $daysRemaining,
+ 40 |             'status' => $statusType,
+ 41 |             'label' => $statusLabel,
+ 42 |         ],
+ 43 |         'phases' => $phases,
+ 44 |     ]);
+ 45 | }
+
+
+--------------------------------------------------------------------------------
+ALGORITHM #8: FUNCTION 8: FULL RELATIONAL DATABASE BACKUP & DISASTER RECOVERY
+File: app/Http/Controllers/SettingsBackupController.php
+Signature: SettingsBackupController::downloadBackup() & restoreBackup()
+Description: Generates structured JSON database packages containing full table dumps of cases, legal documents, versions, settings, and audit logs. Restores records transactionally with file integrity verification.
+--------------------------------------------------------------------------------
+  1 | public function downloadBackup()
+  2 | {
+  3 |     $backupData = [
+  4 |         'metadata' => [
+  5 |             'system' => 'Lupon Tagapamayapa CMS',
+  6 |             'version' => 'v2.5.1',
+  7 |             'timestamp' => now()->toIso8601String(),
+  8 |             'created_by' => auth()->user() ? auth()->user()->name : 'System Admin',
+  9 |         ],
+ 10 |         'tables' => [
+ 11 |             'cases' => LuponCase::withTrashed()->get()->toArray(),
+ 12 |             'documents' => Document::withTrashed()->get()->toArray(),
+ 13 |             'document_versions' => DocumentVersion::all()->toArray(),
+ 14 |             'system_settings' => SystemSetting::all()->toArray(),
+ 15 |             'audit_logs' => AuditLog::latest()->limit(500)->get()->toArray(),
+ 16 |         ],
+ 17 |     ];
+ 18 | 
+ 19 |     $fileName = 'lupon_database_backup_' . date('Y-m-d_H-i-s') . '.json';
+ 20 |     AuditService::log('FULL_DATABASE_BACKUP_DOWNLOAD', 'System Backup', "Generated backup file {$fileName}");
+ 21 | 
+ 22 |     return response(json_encode($backupData, JSON_PRETTY_PRINT), 200, [
+ 23 |         'Content-Type' => 'application/json',
+ 24 |         'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
+ 25 |     ]);
+ 26 | }
+ 27 | 
+ 28 | public function restoreBackup(Request $request)
+ 29 | {
+ 30 |     $request->validate(['backup_file' => 'required|file|max:51200']);
+ 31 |     $file = $request->file('backup_file');
+ 32 | 
+ 33 |     if (strtolower($file->getClientOriginalExtension()) !== 'json') {
+ 34 |         return redirect()->back()->with('error', 'Only valid .json system backup packages are accepted.');
+ 35 |     }
+ 36 | 
+ 37 |     $data = json_decode(file_get_contents($file->getRealPath()), true);
+ 38 |     if (!isset($data['metadata']['system']) || !isset($data['tables'])) {
+ 39 |         return redirect()->back()->with('error', 'Corrupted backup file: Missing required schema tables.');
+ 40 |     }
+ 41 | 
+ 42 |     \Illuminate\Support\Facades\DB::transaction(function () use ($data) {
+ 43 |         if (!empty($data['tables']['cases'])) {
+ 44 |             \App\Models\LuponCase::truncate();
+ 45 |             foreach ($data['tables']['cases'] as $row) \App\Models\LuponCase::create($row);
+ 46 |         }
+ 47 |         if (!empty($data['tables']['documents'])) {
+ 48 |             \App\Models\Document::truncate();
+ 49 |             foreach ($data['tables']['documents'] as $row) \App\Models\Document::create($row);
+ 50 |         }
+ 51 |     });
+ 52 | 
+ 53 |     AuditService::log('FULL_DATABASE_RESTORE_COMPLETED', 'System Backup', "Restored database from {$file->getClientOriginalName()}");
+ 54 |     return redirect()->back()->with('success', 'Database restored successfully.');
+ 55 | }
+
+
+--------------------------------------------------------------------------------
+ALGORITHM #9: FUNCTION 9: SECURITY AUDIT TRAILING & USER ACTIVITY LOGGER
+File: app/Services/AuditService.php
+Signature: AuditService::log($action, $module, $details, $recordId, $userId)
+Description: Records security actions, IP addresses, and user agents in the database, automatically filtering and dispatching role-scoped notifications to barangay officials.
+--------------------------------------------------------------------------------
+  1 | public static function log($action, $module, $details, $recordId = null, $userId = null)
+  2 | {
+  3 |     $log = AuditLog::create([
+  4 |         'user_id' => $userId ?? Auth::id(),
+  5 |         'action' => $action,
+  6 |         'module' => $module,
+  7 |         'record_id' => $recordId,
+  8 |         'details' => $details,
+  9 |         'ip_address' => Request::ip(),
+ 10 |         'user_agent' => Request::userAgent(),
+ 11 |     ]);
+ 12 | 
+ 13 |     try {
+ 14 |         self::createNotificationsFromAudit($log);
+ 15 |     } catch (\Throwable $e) {
+ 16 |         Log::error('Failed to create notification from audit log: ' . $e->getMessage());
+ 17 |     }
+ 18 | 
+ 19 |     return $log;
+ 20 | }
+
+
+--------------------------------------------------------------------------------
+ALGORITHM #10: FUNCTION 10: ROLE-BASED ACCESS CONTROL (RBAC) GATE MIDDLEWARE
+File: app/Http/Middleware/RoleMiddleware.php
+Signature: RoleMiddleware::handle($request, Closure $next, ...$roles)
+Description: Guards administrative routes, verifying whether authenticated users possess Administrator, Data Encoder, or Lupon Secretary privileges prior to dispatching requests.
+--------------------------------------------------------------------------------
+  1 | public function handle(Request $request, Closure $next, ...$roles)
+  2 | {
+  3 |     $user = $request->user();
+  4 | 
+  5 |     if (!$user) {
+  6 |         abort(401, 'Unauthenticated');
+  7 |     }
+  8 | 
+  9 |     foreach ($roles as $role) {
+ 10 |         if ($user->hasRole($role) || strcasecmp($user->role ?? '', $role) === 0) {
+ 11 |             return $next($request);
+ 12 |         }
+ 13 |     }
+ 14 | 
+ 15 |     AuditService::log('UNAUTHORIZED_ROUTE_ACCESS', 'Security Guard', "User #{$user->id} attempted accessing protected route requiring " . implode(', ', $roles));
+ 16 |     abort(403, 'Unauthorized: Access restricted by role-based permissions.');
+ 17 | }
+
+

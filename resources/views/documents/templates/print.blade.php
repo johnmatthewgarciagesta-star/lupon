@@ -133,10 +133,10 @@
 
 <body>
     <div class="view-wrapper">
-        @if(isset($case))
+        @if(isset($case) || isset($document))
         <div class="view-header-bar">
-            <a href="{{ route('cases.index') }}" class="btn-action btn-secondary">
-                ← Back to Cases
+            <a href="{{ isset($case) ? route('cases.index') : route('documents.templates') }}" class="btn-action btn-secondary">
+                ← Back to {{ isset($case) ? 'Cases' : 'Documents' }}
             </a>
             <div style="display:flex;gap:10px;align-items:center;">
                 <a href="?mode=edit" class="btn-action btn-primary">

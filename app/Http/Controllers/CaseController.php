@@ -36,222 +36,240 @@ class CaseController extends Controller
 
     public function index(Request $request)
     {
-        // Auto-archive disabled to keep all cases visible on the main cases page
-        $user = auth()->user();
-        $isAdmin = $user && ($user->hasRole('Administrator') || $user->hasRole('Admin') || $user->hasRole('Lupon Secretary') || in_array(strtolower($user->role ?? ''), ['administrator', 'admin', 'lupon secretary', 'secretary']));
+        try {
+            // Auto-archive disabled to keep all cases visible on the main cases page
+            $user = auth()->user();
+            $isAdmin = $user && ($user->hasRole('Administrator') || $user->hasRole('Admin') || $user->hasRole('Lupon Secretary') || in_array(strtolower($user->role ?? ''), ['administrator', 'admin', 'lupon secretary', 'secretary']));
 
-        $query = LuponCase::with(['documents.creator', 'creator']);
+            $query = LuponCase::with(['documents.creator', 'creator']);
 
-        if (!$isAdmin && $user) {
-            $query->where(function ($q) use ($user) {
-                $q->whereNull('created_by')
-                  ->orWhere('created_by', $user->id)
-                  ->orWhereHas('documents', function ($dq) use ($user) {
-                      $dq->where('created_by', $user->id);
-                  });
-            });
-        }
-
-        // Search
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $cleanSearch = trim($search, '/ ');
-            
-            $numericId = null;
-            if (preg_match('/^case-(\d+)$/i', $cleanSearch, $matches)) {
-                $numericId = (int) $matches[1];
-            } elseif (is_numeric($cleanSearch)) {
-                $numericId = (int) $cleanSearch;
-            }
-            
-            $dateParsed = null;
-            if (!is_numeric($cleanSearch) && preg_match('/[\/\-\.]/', $cleanSearch) && strtotime($cleanSearch) !== false) {
-                try {
-                    $dateParsed = \Carbon\Carbon::parse($cleanSearch)->format('Y-m-d');
-                } catch (\Exception $e) {}
+            if (!$isAdmin && $user) {
+                $query->where(function ($q) use ($user) {
+                    $q->whereNull('created_by')
+                      ->orWhere('created_by', $user->id)
+                      ->orWhereHas('documents', function ($dq) use ($user) {
+                          $dq->where('created_by', $user->id);
+                      });
+                });
             }
 
-            $query->where(function ($q) use ($search, $cleanSearch, $numericId, $dateParsed) {
-                $q->where('case_number', 'like', "%{$cleanSearch}%")
-                    ->orWhere('folder_name', 'like', "%{$cleanSearch}%")
-                    ->orWhere('title', 'like', "%{$cleanSearch}%")
-                    ->orWhere('complainant', 'like', "%{$cleanSearch}%")
-                    ->orWhere('respondent', 'like', "%{$cleanSearch}%")
-                    ->orWhere('nature_of_case', 'like', "%{$cleanSearch}%")
-                    ->orWhere('status', 'like', "%{$cleanSearch}%")
-                    ->orWhere('date_filed', 'like', "%{$cleanSearch}%");
-
-                if ($numericId !== null) {
-                    $q->orWhere('id', $numericId)
-                      ->orWhere('case_number', 'like', "%{$numericId}%");
+            // Search
+            if ($request->filled('search')) {
+                $search = $request->input('search');
+                $cleanSearch = trim($search, '/ ');
+                
+                $numericId = null;
+                if (preg_match('/^case-(\d+)$/i', $cleanSearch, $matches)) {
+                    $numericId = (int) $matches[1];
+                } elseif (is_numeric($cleanSearch)) {
+                    $numericId = (int) $cleanSearch;
+                }
+                
+                $dateParsed = null;
+                if (!is_numeric($cleanSearch) && preg_match('/[\/\-\.]/', $cleanSearch) && strtotime($cleanSearch) !== false) {
+                    try {
+                        $dateParsed = \Carbon\Carbon::parse($cleanSearch)->format('Y-m-d');
+                    } catch (\Exception $e) {}
                 }
 
-                if ($dateParsed) {
-                    $q->orWhereDate('date_filed', $dateParsed);
-                }
-            });
-        }
+                $query->where(function ($q) use ($search, $cleanSearch, $numericId, $dateParsed) {
+                    $q->where('case_number', 'like', "%{$cleanSearch}%")
+                        ->orWhere('folder_name', 'like', "%{$cleanSearch}%")
+                        ->orWhere('title', 'like', "%{$cleanSearch}%")
+                        ->orWhere('complainant', 'like', "%{$cleanSearch}%")
+                        ->orWhere('respondent', 'like', "%{$cleanSearch}%")
+                        ->orWhere('nature_of_case', 'like', "%{$cleanSearch}%")
+                        ->orWhere('status', 'like', "%{$cleanSearch}%")
+                        ->orWhere('date_filed', 'like', "%{$cleanSearch}%");
 
-        // Filter by Status
-        if ($request->filled('status') && $request->status !== 'all') {
-            $st = $request->status;
-            if (strcasecmp($st, 'Resolved') === 0 || strcasecmp($st, 'Settled') === 0) {
-                $query->whereIn('status', ['Resolved', 'Settled']);
-            } elseif (strcasecmp($st, 'Escalated') === 0) {
-                $query->whereIn('status', ['Escalated', 'Certified', 'Dismissed']);
-            } elseif (strcasecmp($st, 'Pending') === 0) {
-                $query->whereIn('status', ['Pending', 'Ongoing']);
-            } else {
-                $query->where('status', 'like', "%{$st}%");
-            }
-        }
-
-        // Filter by Date
-        if ($request->filled('date')) {
-            $rawDate = trim($request->date);
-            $cleanDate = str_replace('-', '/', $rawDate);
-            if (strtotime($cleanDate) !== false) {
-                $dateVal = date('Y-m-d', strtotime($cleanDate));
-            } else {
-                $dateVal = $rawDate;
-            }
-
-            $query->where(function ($q) use ($dateVal) {
-                $q->whereDate('date_filed', $dateVal)
-                  ->orWhereDate('created_at', $dateVal);
-            });
-        }
-
-        // Filter by Nature / Case Type
-        if ($request->filled('nature') && $request->nature !== 'all') {
-            $query->where('nature_of_case', 'like', "%{$request->nature}%");
-        }
-
-        // Filter by Month or New Cases trigger (only if date filter is NOT specified)
-        if (!$request->filled('date') && (($request->filled('month') && $request->month !== 'all') || $request->input('filter') === 'new_cases')) {
-            $monthVal = $request->input('month', 'latest');
-            $targetYear = \Carbon\Carbon::now()->year;
-
-            if ($monthVal === 'latest' || $request->input('filter') === 'new_cases') {
-                $targetMonth = \Carbon\Carbon::now()->month;
-                $query->whereMonth('date_filed', $targetMonth)
-                      ->whereYear('date_filed', $targetYear);
-            } elseif (is_numeric($monthVal)) {
-                $targetMonth = (int) $monthVal;
-                $query->whereMonth('date_filed', $targetMonth)
-                      ->whereYear('date_filed', $targetYear);
-            }
-        }
-
-        // Filter by Document Type / File Association
-        if ($request->filled('doc_type') && $request->doc_type !== 'all') {
-            $docType = $request->input('doc_type');
-            $docTitle = $request->input('doc_title', '');
-
-            $query->where(function ($q) use ($docType, $docTitle) {
-                $q->whereHas('documents', function ($dq) use ($docType, $docTitle) {
-                    $dq->where('type', 'like', "%{$docType}%");
-                    if ($docTitle) {
-                        $dq->orWhere('type', 'like', "%{$docTitle}%");
+                    if ($numericId !== null) {
+                        $q->orWhere('id', $numericId)
+                          ->orWhere('case_number', 'like', "%{$numericId}%");
                     }
-                })
-                ->orWhere('document_data', 'like', "%{$docType}%");
 
-                if ($docTitle) {
-                    $q->orWhere('document_data', 'like', "%{$docTitle}%");
-                }
-            });
-        }
-
-        // Sort
-        $defaultSort = ($request->filled('month') || $request->input('filter') === 'new_cases') ? 'date_filed' : 'created_at';
-        $sortField = $request->input('sort_by', $defaultSort);
-        $sortOrder = $request->input('sort_order', 'desc');
-        
-        // Ensure valid sort field
-        $allowedFields = ['case_number', 'title', 'nature_of_case', 'complainant', 'respondent', 'status', 'date_filed', 'created_at'];
-        if (!in_array($sortField, $allowedFields)) {
-            $sortField = $defaultSort;
-        }
-        if (!in_array($sortOrder, ['asc', 'desc'])) {
-            $sortOrder = 'desc';
-        }
-
-        $paginated = $query->orderBy($sortField, $sortOrder)
-            ->orderBy('created_at', 'desc')
-            ->paginate(10)
-            ->withQueryString();
-
-        $paginated->through(function ($case) {
-            $folderName = $case->folder_name ?: ('case-' . str_pad($case->id, 3, '0', STR_PAD_LEFT));
-            return [
-                'id' => $case->id,
-                'case_number' => $case->case_number,
-                'folder_name' => $folderName,
-                'title' => $case->title,
-                'nature_of_case' => $case->nature_of_case,
-                'complainant' => $case->complainant,
-                'respondent' => $case->respondent,
-                'status' => $case->status,
-                'date_filed' => $case->date_filed,
-                'created_by' => $case->created_by,
-                'creator' => ['name' => $case->creator ? $case->creator->name : ($case->created_by ? 'Encoder #'.$case->created_by : 'System Admin')],
-                'documents_count' => $case->documents->count(),
-                'documents' => $case->documents->map(function ($doc) {
-                    return [
-                        'id' => $doc->id,
-                        'type' => $doc->type,
-                        'file_path' => $doc->file_path,
-                        'status' => $doc->status,
-                        'created_at' => $doc->created_at ? $doc->created_at->format('M d, Y H:i') : null,
-                        'creator' => $doc->creator ? ['name' => $doc->creator->name] : null,
-                    ];
-                })->values(),
-            ];
-        });
-
-        $filters = $request->only(['search', 'status', 'nature', 'date', 'month', 'filter', 'sort_by', 'sort_order', 'doc_type', 'doc_title']);
-        if (!empty($filters['date'])) {
-            $cleanD = str_replace('-', '/', trim($filters['date']));
-            if (strtotime($cleanD) !== false) {
-                $filters['date'] = date('Y-m-d', strtotime($cleanD));
+                    if ($dateParsed) {
+                        $q->orWhereDate('date_filed', $dateParsed);
+                    }
+                });
             }
-        }
 
-        return \Inertia\Inertia::render('cases/index', [
-            'cases' => $paginated,
-            'filters' => $filters,
-        ]);
+            // Filter by Status
+            if ($request->filled('status') && $request->status !== 'all') {
+                $st = $request->status;
+                if (strcasecmp($st, 'Resolved') === 0 || strcasecmp($st, 'Settled') === 0) {
+                    $query->whereIn('status', ['Resolved', 'Settled']);
+                } elseif (strcasecmp($st, 'Escalated') === 0) {
+                    $query->whereIn('status', ['Escalated', 'Certified', 'Dismissed']);
+                } elseif (strcasecmp($st, 'Pending') === 0) {
+                    $query->whereIn('status', ['Pending', 'Ongoing']);
+                } else {
+                    $query->where('status', 'like', "%{$st}%");
+                }
+            }
+
+            // Filter by Date
+            if ($request->filled('date')) {
+                $rawDate = trim($request->date);
+                $cleanDate = str_replace('-', '/', $rawDate);
+                if (strtotime($cleanDate) !== false) {
+                    $dateVal = date('Y-m-d', strtotime($cleanDate));
+                } else {
+                    $dateVal = $rawDate;
+                }
+
+                $query->where(function ($q) use ($dateVal) {
+                    $q->whereDate('date_filed', $dateVal)
+                      ->orWhereDate('created_at', $dateVal);
+                });
+            }
+
+            // Filter by Nature / Case Type
+            if ($request->filled('nature') && $request->nature !== 'all') {
+                $query->where('nature_of_case', 'like', "%{$request->nature}%");
+            }
+
+            // Filter by Month or New Cases trigger (only if date filter is NOT specified)
+            if (!$request->filled('date') && (($request->filled('month') && $request->month !== 'all') || $request->input('filter') === 'new_cases')) {
+                $monthVal = $request->input('month', 'latest');
+                $targetYear = \Carbon\Carbon::now()->year;
+
+                if ($monthVal === 'latest' || $request->input('filter') === 'new_cases') {
+                    $targetMonth = \Carbon\Carbon::now()->month;
+                    $query->whereMonth('date_filed', $targetMonth)
+                          ->whereYear('date_filed', $targetYear);
+                } elseif (is_numeric($monthVal)) {
+                    $targetMonth = (int) $monthVal;
+                    $query->whereMonth('date_filed', $targetMonth)
+                          ->whereYear('date_filed', $targetYear);
+                }
+            }
+
+            // Filter by Document Type / File Association
+            if ($request->filled('doc_type') && $request->doc_type !== 'all') {
+                $docType = $request->input('doc_type');
+                $docTitle = $request->input('doc_title', '');
+
+                $query->where(function ($q) use ($docType, $docTitle) {
+                    $q->whereHas('documents', function ($dq) use ($docType, $docTitle) {
+                        $dq->where('type', 'like', "%{$docType}%");
+                        if ($docTitle) {
+                            $dq->orWhere('type', 'like', "%{$docTitle}%");
+                        }
+                    })
+                    ->orWhere('document_data', 'like', "%{$docType}%");
+
+                    if ($docTitle) {
+                        $q->orWhere('document_data', 'like', "%{$docTitle}%");
+                    }
+                });
+            }
+
+            // Sort
+            $defaultSort = ($request->filled('month') || $request->input('filter') === 'new_cases') ? 'date_filed' : 'created_at';
+            $sortField = $request->input('sort_by', $defaultSort);
+            $sortOrder = $request->input('sort_order', 'desc');
+            
+            // Ensure valid sort field
+            $allowedFields = ['case_number', 'title', 'nature_of_case', 'complainant', 'respondent', 'status', 'date_filed', 'created_at'];
+            if (!in_array($sortField, $allowedFields)) {
+                $sortField = $defaultSort;
+            }
+            if (!in_array($sortOrder, ['asc', 'desc'])) {
+                $sortOrder = 'desc';
+            }
+
+            $paginated = $query->orderBy($sortField, $sortOrder)
+                ->orderBy('created_at', 'desc')
+                ->paginate(10)
+                ->withQueryString();
+
+            $paginated->through(function ($case) {
+                $folderName = $case->folder_name ?: ('case-' . str_pad($case->id, 3, '0', STR_PAD_LEFT));
+                return [
+                    'id' => $case->id,
+                    'case_number' => $case->case_number,
+                    'folder_name' => $folderName,
+                    'title' => $case->title,
+                    'nature_of_case' => $case->nature_of_case,
+                    'complainant' => $case->complainant,
+                    'respondent' => $case->respondent,
+                    'status' => $case->status,
+                    'date_filed' => $case->date_filed,
+                    'created_by' => $case->created_by,
+                    'creator' => ['name' => $case->creator ? $case->creator->name : ($case->created_by ? 'Encoder #'.$case->created_by : 'System Admin')],
+                    'documents_count' => $case->documents->count(),
+                    'documents' => $case->documents->map(function ($doc) {
+                        return [
+                            'id' => $doc->id,
+                            'type' => $doc->type,
+                            'file_path' => $doc->file_path,
+                            'status' => $doc->status,
+                            'created_at' => $doc->created_at ? $doc->created_at->format('M d, Y H:i') : null,
+                            'creator' => $doc->creator ? ['name' => $doc->creator->name] : null,
+                        ];
+                    })->values(),
+                ];
+            });
+
+            $filters = $request->only(['search', 'status', 'nature', 'date', 'month', 'filter', 'sort_by', 'sort_order', 'doc_type', 'doc_title']);
+            if (!empty($filters['date'])) {
+                $cleanD = str_replace('-', '/', trim($filters['date']));
+                if (strtotime($cleanD) !== false) {
+                    $filters['date'] = date('Y-m-d', strtotime($cleanD));
+                }
+            }
+
+            return \Inertia\Inertia::render('cases/index', [
+                'cases' => $paginated,
+                'filters' => $filters,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error loading cases index: ' . $e->getMessage());
+            $emptyPaginator = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10);
+            return \Inertia\Inertia::render('cases/index', [
+                'cases' => $emptyPaginator,
+                'filters' => $request->only(['search', 'status', 'nature', 'date', 'month', 'filter', 'sort_by', 'sort_order', 'doc_type', 'doc_title']),
+            ])->with('error', 'An error has occurred while retrieving cases. Please reload your page.');
+        }
     }
 
     public function archives(Request $request)
     {
-        // Only get soft-deleted cases
-        $query = LuponCase::onlyTrashed();
+        try {
+            // Only get soft-deleted cases
+            $query = LuponCase::onlyTrashed();
 
-        // Search
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('case_number', 'like', "%{$search}%")
-                    ->orWhere('title', 'like', "%{$search}%")
-                    ->orWhere('complainant', 'like', "%{$search}%")
-                    ->orWhere('respondent', 'like', "%{$search}%");
-            });
+            // Search
+            if ($request->filled('search')) {
+                $search = $request->input('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where('case_number', 'like', "%{$search}%")
+                        ->orWhere('title', 'like', "%{$search}%")
+                        ->orWhere('complainant', 'like', "%{$search}%")
+                        ->orWhere('respondent', 'like', "%{$search}%");
+                });
+            }
+
+            // Filter by Date (the file date to show on archive dashboard)
+            if ($request->filled('date')) {
+                // Can be exact date or month/year depending on UI - let's do exactly date matching for now
+                $query->whereDate('date_filed', $request->date);
+            }
+
+            $cases = $query->orderBy('deleted_at', 'desc')->paginate(10)->withQueryString();
+
+            return \Inertia\Inertia::render('cases/archive', [
+                'cases' => $cases,
+                'filters' => $request->only(['search', 'date']),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error loading archived cases: ' . $e->getMessage());
+            $emptyPaginator = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10);
+            return \Inertia\Inertia::render('cases/archive', [
+                'cases' => $emptyPaginator,
+                'filters' => $request->only(['search', 'date']),
+            ])->with('error', 'An error has occurred while retrieving archived cases. Please reload your page.');
         }
-
-        // Filter by Date (the file date to show on archive dashboard)
-        if ($request->filled('date')) {
-            // Can be exact date or month/year depending on UI - let's do exactly date matching for now
-            $query->whereDate('date_filed', $request->date);
-        }
-
-        $cases = $query->orderBy('deleted_at', 'desc')->paginate(10)->withQueryString();
-
-        return \Inertia\Inertia::render('cases/archive', [
-            'cases' => $cases,
-            'filters' => $request->only(['search', 'date']),
-        ]);
     }
 
     public function store(Request $request)
@@ -317,13 +335,31 @@ class CaseController extends Controller
 
             return redirect()->route('cases.index')->with('success', 'Case filed successfully.');
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Case Submission Error: '.$e->getMessage());
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Error saving case: '.$e->getMessage(),
-            ], 500);
+            $isDuplicate = ($e instanceof \Illuminate\Database\QueryException && in_array($e->errorInfo[1] ?? 0, [1062, 19]))
+                || str_contains($e->getMessage(), '1062 Duplicate entry')
+                || str_contains($e->getMessage(), 'UNIQUE constraint failed');
+
+            $userMessage = $isDuplicate
+                ? 'That folder number already exists please change your case folder name / number'
+                : 'An error has occurred while saving the case. Please reload your page or try again.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $userMessage,
+                    'errors' => [
+                        'case_no' => [$userMessage]
+                    ]
+                ], $isDuplicate ? 422 : 500);
+            }
+
+            return back()->withErrors([
+                'case_no' => $userMessage,
+                'error' => $userMessage
+            ])->with('error', $userMessage)->withInput();
         }
     }
 
@@ -415,13 +451,25 @@ class CaseController extends Controller
 
             return redirect()->back()->with('success', 'Case updated successfully.');
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Case Update Error: '.$e->getMessage());
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Error updating case: '.$e->getMessage(),
-            ], 500);
+            $isDuplicate = ($e instanceof \Illuminate\Database\QueryException && in_array($e->errorInfo[1] ?? 0, [1062, 19]))
+                || str_contains($e->getMessage(), '1062 Duplicate entry')
+                || str_contains($e->getMessage(), 'UNIQUE constraint failed');
+
+            $userMessage = $isDuplicate
+                ? 'That folder number already exists please change your case folder name / number'
+                : 'An error has occurred while updating the case. Please reload your page or try again.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $userMessage,
+                ], $isDuplicate ? 422 : 500);
+            }
+
+            return redirect()->back()->with('error', $userMessage)->withErrors(['error' => $userMessage]);
         }
     }
 
@@ -443,11 +491,16 @@ class CaseController extends Controller
             AuditService::log('DELETE', 'Cases', "Archived Case #{$case->case_number}", $case->case_number);
 
             return redirect()->back()->with('success', 'Case archived successfully.');
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error archiving case: '.$e->getMessage(),
-            ], 500);
+        } catch (\Throwable $e) {
+            Log::error('Error archiving case: ' . $e->getMessage());
+            $userMessage = 'An error has occurred while archiving the case. Please reload your page or try again.';
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $userMessage,
+                ], 500);
+            }
+            return redirect()->back()->with('error', $userMessage);
         }
     }
 
@@ -471,11 +524,16 @@ class CaseController extends Controller
             AuditService::log('UPDATE', 'Cases', "Restored Case #{$case->case_number}", $case->case_number);
 
             return redirect()->route('cases.index')->with('success', "Case #{$case->case_number} has been restored successfully.");
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error restoring case: '.$e->getMessage(),
-            ], 500);
+        } catch (\Throwable $e) {
+            Log::error('Error restoring case: ' . $e->getMessage());
+            $userMessage = 'An error has occurred while restoring the case. Please reload your page or try again.';
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $userMessage,
+                ], 500);
+            }
+            return redirect()->route('cases.index')->with('error', $userMessage);
         }
     }
 
@@ -491,64 +549,71 @@ class CaseController extends Controller
             AuditService::log('DELETE', 'Cases', 'Bulk Archived '.count($ids).' Cases', 'Bulk');
 
             return redirect()->back()->with('success', count($ids).' cases archived successfully.');
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Error archiving cases.');
+        } catch (\Throwable $e) {
+            Log::error('Bulk archive error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error has occurred while archiving cases. Please reload your page or try again.');
         }
     }
+
     public function lookup(Request $request)
     {
-        $search = trim($request->input('search', ''));
+        try {
+            $search = trim($request->input('search', ''));
 
-        if (empty($search)) {
+            if (empty($search)) {
+                return response()->json([]);
+            }
+
+            $user = auth()->user();
+            $isAdmin = $user && ($user->hasRole('Administrator') || $user->hasRole('Admin') || $user->hasRole('Lupon Secretary') || in_array(strtolower($user->role ?? ''), ['administrator', 'admin', 'lupon secretary', 'secretary']));
+
+            $query = LuponCase::withTrashed();
+
+            if (!$isAdmin && $user) {
+                $query->where(function ($q) use ($user) {
+                    $q->whereNull('created_by')
+                      ->orWhere('created_by', $user->id)
+                      ->orWhereHas('documents', function ($dq) use ($user) {
+                          $dq->where('created_by', $user->id);
+                      });
+                });
+            }
+
+            $isCasSearch = stripos($search, 'cas') === 0;
+
+            $query->where(function ($q) use ($search, $isCasSearch) {
+                $q->where('case_number', 'like', "{$search}%")
+                  ->orWhere('case_number', 'like', "%-{$search}%")
+                  ->orWhere('case_number', 'like', "%/{$search}%")
+                  ->orWhere('title', 'like', "%{$search}%")
+                  ->orWhere('complainant', 'like', "%{$search}%")
+                  ->orWhere('respondent', 'like', "%{$search}%");
+
+                if ($isCasSearch) {
+                    $q->orWhere('case_number', 'like', "%{$search}%");
+                } elseif (strlen($search) >= 4 && is_numeric($search)) {
+                    $q->orWhereYear('date_filed', (int) $search);
+                }
+            });
+
+            if (!$isCasSearch) {
+                // Exclude internal timestamped CAS-... placeholders when searching for specific numbers/years like 2026
+                $query->where('case_number', 'not like', 'CAS-%');
+            }
+
+            $cases = $query->orderByRaw("CASE 
+                    WHEN case_number LIKE '{$search}%' THEN 1 
+                    WHEN case_number LIKE '%-{$search}%' THEN 2 
+                    ELSE 3 
+                END")
+                ->orderBy('date_filed', 'desc')
+                ->take(10)
+                ->get(['id', 'case_number', 'title', 'status', 'nature_of_case']);
+
+            return response()->json($cases);
+        } catch (\Throwable $e) {
+            Log::error('Case lookup error: ' . $e->getMessage());
             return response()->json([]);
         }
-
-        $user = auth()->user();
-        $isAdmin = $user && ($user->hasRole('Administrator') || $user->hasRole('Admin') || $user->hasRole('Lupon Secretary') || in_array(strtolower($user->role ?? ''), ['administrator', 'admin', 'lupon secretary', 'secretary']));
-
-        $query = LuponCase::withTrashed();
-
-        if (!$isAdmin && $user) {
-            $query->where(function ($q) use ($user) {
-                $q->whereNull('created_by')
-                  ->orWhere('created_by', $user->id)
-                  ->orWhereHas('documents', function ($dq) use ($user) {
-                      $dq->where('created_by', $user->id);
-                  });
-            });
-        }
-
-        $isCasSearch = stripos($search, 'cas') === 0;
-
-        $query->where(function ($q) use ($search, $isCasSearch) {
-            $q->where('case_number', 'like', "{$search}%")
-              ->orWhere('case_number', 'like', "%-{$search}%")
-              ->orWhere('case_number', 'like', "%/{$search}%")
-              ->orWhere('title', 'like', "%{$search}%")
-              ->orWhere('complainant', 'like', "%{$search}%")
-              ->orWhere('respondent', 'like', "%{$search}%");
-
-            if ($isCasSearch) {
-                $q->orWhere('case_number', 'like', "%{$search}%");
-            } elseif (strlen($search) >= 4 && is_numeric($search)) {
-                $q->orWhereYear('date_filed', (int) $search);
-            }
-        });
-
-        if (!$isCasSearch) {
-            // Exclude internal timestamped CAS-... placeholders when searching for specific numbers/years like 2026
-            $query->where('case_number', 'not like', 'CAS-%');
-        }
-
-        $cases = $query->orderByRaw("CASE 
-                WHEN case_number LIKE '{$search}%' THEN 1 
-                WHEN case_number LIKE '%-{$search}%' THEN 2 
-                ELSE 3 
-            END")
-            ->orderBy('date_filed', 'desc')
-            ->take(10)
-            ->get(['id', 'case_number', 'title', 'status', 'nature_of_case']);
-
-        return response()->json($cases);
     }
 }

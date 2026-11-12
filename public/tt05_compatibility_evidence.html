@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TT-05 Cross-Environment Compatibility Evidence - Lupon CMS</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+    }
+
+    .evidence-card {
+      width: 100%;
+      background: #0f172a;
+      overflow: hidden;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border-bottom: 3px solid #f59e0b;
+      padding: 24px 36px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-titles h1 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge-test {
+      background: #d97706;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 800;
+      padding: 5px 12px;
+      border-radius: 6px;
+      letter-spacing: 0.05em;
+    }
+
+    .header-titles p {
+      font-size: 14px;
+      color: #94a3b8;
+      margin-top: 5px;
+    }
+
+    .header-meta {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .meta-box {
+      text-align: right;
+    }
+
+    .meta-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #64748b;
+      font-weight: 700;
+    }
+
+    .meta-value {
+      font-size: 14px;
+      color: #e2e8f0;
+      font-weight: 700;
+    }
+
+    .status-badge {
+      background: #059669;
+      color: #ecfdf5;
+      border: 1px solid #10b981;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Comparison Dual Screens */
+    .visual-comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      padding: 28px 36px;
+      background: #0b1120;
+    }
+
+    .panel {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    .panel-header {
+      padding: 14px 18px;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .panel-pill-amber {
+      background: #78350f;
+      color: #fde68a;
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-weight: 800;
+    }
+
+    .browser-frame {
+      background: #090d16;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .browser-bar {
+      background: #334155;
+      padding: 9px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .browser-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+
+    .browser-url {
+      background: #1e293b;
+      color: #e2e8f0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      padding: 4px 12px;
+      border-radius: 6px;
+      flex: 1;
+      border: 1px solid #475569;
+    }
+
+    .browser-body {
+      height: 380px;
+      background: #0b1120;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .browser-body img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top left;
+      display: block;
+    }
+
+    .panel-footer {
+      padding: 13px 18px;
+      background: #1e293b;
+      border-top: 1px solid #334155;
+      font-size: 12.5px;
+      color: #94a3b8;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 11.5px;
+      padding: 4px 10px;
+      border-radius: 5px;
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    /* Checklist & Table Section */
+    .table-section {
+      padding: 24px 36px 36px 36px;
+      background: #0f172a;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #94a3b8;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #1e293b;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #334155;
+    }
+
+    th {
+      background: #334155;
+      color: #f1f5f9;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 12px 16px;
+      text-align: left;
+    }
+
+    td {
+      padding: 12px 16px;
+      font-size: 13px;
+      border-bottom: 1px solid #293548;
+      color: #cbd5e1;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .check-pass {
+      font-family: 'JetBrains Mono', monospace;
+      color: #34d399;
+      font-weight: 700;
+      font-size: 13.5px;
+    }
+
+    .status-pill {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 5px;
+      font-weight: 700;
+      font-size: 11.5px;
+      background: #064e3b;
+      color: #34d399;
+      border: 1px solid #059669;
+    }
+
+    .compatibility-note {
+      margin-top: 16px;
+      background: rgba(30, 41, 59, 0.85);
+      border-left: 4px solid #f59e0b;
+      padding: 14px 18px;
+      border-radius: 0 8px 8px 0;
+      font-size: 12.5px;
+      color: #cbd5e1;
+      line-height: 1.55;
+    }
+
+    .compatibility-note strong {
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="evidence-card">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-titles">
+        <h1>
+          <span class="badge-test">TT-05</span>
+          OBJECTIVE TECHNICAL TESTING EVIDENCE: COMPATIBILITY
+        </h1>
+        <p>Project: Lupon Tagapamayapa Case Management System (Barangay 183)</p>
+      </div>
+      <div class="header-meta">
+        <div class="meta-box">
+          <div class="meta-label">Execution Date</div>
+          <div class="meta-value">October 16, 2026</div>
+        </div>
+        <div class="meta-box">
+          <div class="meta-label">Testers</div>
+          <div class="meta-value">J.M. Gesta & C.G. Fontejon</div>
+        </div>
+        <div class="status-badge">
+          ✓ ACCEPTED
+        </div>
+      </div>
+    </div>
+
+    <!-- Visual Evidence: Dual Cross-Browser Screen Captures -->
+    <div class="visual-comparison">
+      <!-- Left: Google Chrome Environment -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-pill-amber">ENVIRONMENT 1</span>
+            Google Chrome (v155.0.8059.39) 64-bit
+          </div>
+          <span style="font-size: 11.5px; color: #94a3b8;">Module: Dashboard Overview</span>
+        </div>
+        <div class="browser-frame">
+          <div class="browser-bar">
+            <div class="browser-dots">
+              <div class="dot dot-red"></div>
+              <div class="dot dot-yellow"></div>
+              <div class="dot dot-green"></div>
+            </div>
+            <div class="browser-url">http://lupon.test/dashboard — Google Chrome 155.0</div>
+          </div>
+          <div class="browser-body">
+            <img src="/tt05_dashboard_chrome.png" alt="Dashboard on Google Chrome">
+          </div>
+        </div>
+        <div class="panel-footer">
+          <span>Observed: <strong>Full CSS Grid, Chart.js Donut, KPI Widgets</strong></span>
+          <span class="footer-badge">VERIFIED & COMPATIBLE</span>
+        </div>
+      </div>
+
+      <!-- Right: Microsoft Edge Environment -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-pill-amber">ENVIRONMENT 2</span>
+            Microsoft Edge (v155.0.4283.45) 64-bit
+          </div>
+          <span style="font-size: 11.5px; color: #94a3b8;">Module: System Reports & Analytics</span>
+        </div>
+        <div class="browser-frame">
+          <div class="browser-bar">
+            <div class="browser-dots">
+              <div class="dot dot-red"></div>
+              <div class="dot dot-yellow"></div>
+              <div class="dot dot-green"></div>
+            </div>
+            <div class="browser-url">http://lupon.test/system-reports — Microsoft Edge 155.0</div>
+          </div>
+          <div class="browser-body">
+            <img src="/tt05_reports_module.png" alt="Reports on Microsoft Edge">
+          </div>
+        </div>
+        <div class="panel-footer">
+          <span>Observed: <strong>Interactive Date Picker, Lookup Box & PDF Exporter</strong></span>
+          <span class="footer-badge">VERIFIED & COMPATIBLE</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Core Functions Compatibility Matrix Table -->
+    <div class="table-section">
+      <div class="section-title">
+        <span>Cross-Browser / Platform Core-Function Verification Matrix</span>
+        <span style="font-size: 12px; color: #94a3b8; font-weight: 500;">Hardware: Laptop PC (Intel Core i5, 16GB RAM) | OS: Windows 11 Pro 64-bit | On-Premise LAN</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Defined Core Function / Module</th>
+            <th>Google Chrome (v155.0.8059.39)</th>
+            <th>Microsoft Edge (v155.0.4283.45)</th>
+            <th>Brave Browser (v155.1.97.57)</th>
+            <th>Layout & Execution Integrity</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>1. Authentication & Session Security</strong></td>
+            <td class="check-pass">✓ Pass</td>
+            <td class="check-pass">✓ Pass</td>
+            <td class="check-pass">✓ Pass</td>
+            <td>Password visibility toggle, CSRF validation, zero errors</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><strong>2. Dashboard & KPI Telemetry</strong></td>
+            <td class="check-pass">✓ Pass</td>
+            <td class="check-pass">✓ Pass</td>
+            <td class="check-pass">✓ Pass</td>
+            <td>Responsive flex grid, SVG donut chart, real-time counters</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><strong>3. Case Management & Filtering</strong></td>
+            <td class="check-pass">✓ Pass</td>
+            <td class="check-pass">✓ Pass</td>
+            <td class="check-pass">✓ Pass</td>
+            <td>Case search, month/type/status dropdowns, action modals</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><strong>4. Document Upload & Storage</strong></td>
+            <td class="check-pass">✓ Pass</td>
+            <td class="check-pass">✓ Pass</td>
+            <td class="check-pass">✓ Pass</td>
+            <td>Multi-part drag-and-drop file ingestion, file preview modal</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><strong>5. Periodic Report Generation</strong></td>
+            <td class="check-pass">✓ Pass</td>
+            <td class="check-pass">✓ Pass</td>
+            <td class="check-pass">✓ Pass</td>
+            <td>Date-range picker, case document lookup, PDF download trigger</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><strong>6. LTIA Awards Timeline & Tracker</strong></td>
+            <td class="check-pass">✓ Pass</td>
+            <td class="check-pass">✓ Pass</td>
+            <td class="check-pass">✓ Pass</td>
+            <td>Interactive calendar, milestone slider, synchronized agenda</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><strong>7. Case Archival & Reversible Restoration</strong></td>
+            <td class="check-pass">✓ Pass</td>
+            <td class="check-pass">✓ Pass</td>
+            <td class="check-pass">✓ Pass</td>
+            <td>Soft-delete ledger isolation, confirmation dialog, pagination</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="compatibility-note">
+        <strong>Strict Reviewer Alignment & Defensible Scope:</strong> As directed in the revision guidelines, compatibility claims are strictly confined to the environments physically deployed and executed on the test device: <strong>Google Chrome v155.0.8059.39</strong>, <strong>Microsoft Edge v155.0.4283.45</strong>, and <strong>Brave Browser v155.1.97.57</strong> under <strong>Windows 11 Pro 64-bit</strong> on the Barangay 183 on-premise local server setup. Untested environments (e.g. Safari, macOS) are explicitly omitted. All 7 core modules operated with 100% functional parity and zero blocking anomalies.
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

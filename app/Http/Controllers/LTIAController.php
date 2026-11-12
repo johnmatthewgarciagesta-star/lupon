@@ -14,102 +14,118 @@ class LTIAController extends Controller
 {
     public function index()
     {
-        $today = Carbon::today();
+        try {
+            $today = Carbon::today();
 
-        // 1. Primary Bound Deadline (Default: September 08, 2026)
-        $savedDeadline = SystemSetting::get('ltia_deadline');
-        if ($savedDeadline) {
-            $deadlineDate = Carbon::parse($savedDeadline)->startOfDay();
-        } else {
-            $deadlineDate = Carbon::create(2026, 9, 8)->startOfDay();
-            SystemSetting::set('ltia_deadline', $deadlineDate->format('Y-m-d'));
-        }
-
-        $daysRemaining = (int) $today->diffInDays($deadlineDate, false);
-
-        if ($daysRemaining < 0) {
-            $statusType = 'overdue';
-            $statusLabel = 'Overdue by ' . abs($daysRemaining) . ' day' . (abs($daysRemaining) === 1 ? '' : 's');
-        } elseif ($daysRemaining === 0) {
-            $statusType = 'due_today';
-            $statusLabel = 'Due Today';
-        } else {
-            $statusType = 'upcoming';
-            $statusLabel = $daysRemaining . ' Days Remaining';
-        }
-
-        // 2. Ensure Default Baseline Timeline Phases Exist
-        $this->ensureBaselinePhasesExist();
-
-        // Fetch phases sorted by step
-        $phases = LtiaPhase::orderBy('step', 'asc')->get()->map(function ($phase) {
-            $startDate = Carbon::parse($phase->start_date);
-            $endDate = Carbon::parse($phase->end_date);
-
-            // Format status label for UI
-            $statusMap = [
-                'in_progress' => 'In Progress',
-                'upcoming' => 'Upcoming',
-                'completed' => 'Completed',
-            ];
-
-            return [
-                'id' => $phase->id,
-                'step' => $phase->step,
-                'title' => $phase->title,
-                'description' => $phase->description ?? '',
-                'start_date' => $startDate->format('Y-m-d'),
-                'end_date' => $endDate->format('Y-m-d'),
-                'formatted_start_date' => $startDate->format('F d, Y'),
-                'formatted_end_date' => $endDate->format('F d, Y'),
-                'progress' => (int) $phase->progress,
-                'status' => $phase->status,
-                'status_label' => $statusMap[$phase->status] ?? ucfirst($phase->status),
-            ];
-        });
-
-        // 3. Ensure Default Baseline Calendar Events Exist & Fetch
-        $this->ensureBaselineEventsExist();
-
-        $events = LtiaEvent::orderBy('event_date', 'asc')->get()->map(function ($event) use ($today) {
-            $eventDate = Carbon::parse($event->event_date)->startOfDay();
-            $diffDays = (int) $today->diffInDays($eventDate, false);
-
-            if ($diffDays < 0) {
-                $eventStatus = 'overdue';
-                $eventStatusLabel = 'Overdue';
-            } elseif ($diffDays === 0) {
-                $eventStatus = 'active';
-                $eventStatusLabel = 'Active / Today';
+            // 1. Primary Bound Deadline (Default: September 08, 2026)
+            $savedDeadline = SystemSetting::get('ltia_deadline');
+            if ($savedDeadline) {
+                $deadlineDate = Carbon::parse($savedDeadline)->startOfDay();
             } else {
-                $eventStatus = 'upcoming';
-                $eventStatusLabel = 'Upcoming';
+                $deadlineDate = Carbon::create(2026, 9, 8)->startOfDay();
+                SystemSetting::set('ltia_deadline', $deadlineDate->format('Y-m-d'));
             }
 
-            return [
-                'id' => $event->id,
-                'title' => $event->title,
-                'notes' => $event->notes ?? '',
-                'event_date' => $eventDate->format('Y-m-d'),
-                'formatted_date' => $eventDate->format('F d, Y'),
-                'status' => $eventStatus,
-                'status_label' => $eventStatusLabel,
-                'days_diff' => $diffDays,
-            ];
-        });
+            $daysRemaining = (int) $today->diffInDays($deadlineDate, false);
 
-        return Inertia::render('ltia/index', [
-            'deadline' => [
-                'date' => $deadlineDate->format('Y-m-d'),
-                'formatted_date' => $deadlineDate->format('F d, Y'),
-                'days_remaining' => $daysRemaining,
-                'status_type' => $statusType,
-                'status_label' => $statusLabel,
-                'sync_status' => 'Live Synchronized',
-            ],
-            'timeline' => $phases,
-            'events' => $events,
-        ]);
+            if ($daysRemaining < 0) {
+                $statusType = 'overdue';
+                $statusLabel = 'Overdue by ' . abs($daysRemaining) . ' day' . (abs($daysRemaining) === 1 ? '' : 's');
+            } elseif ($daysRemaining === 0) {
+                $statusType = 'due_today';
+                $statusLabel = 'Due Today';
+            } else {
+                $statusType = 'upcoming';
+                $statusLabel = $daysRemaining . ' Days Remaining';
+            }
+
+            // 2. Ensure Default Baseline Timeline Phases Exist
+            $this->ensureBaselinePhasesExist();
+
+            // Fetch phases sorted by step
+            $phases = LtiaPhase::orderBy('step', 'asc')->get()->map(function ($phase) {
+                $startDate = Carbon::parse($phase->start_date);
+                $endDate = Carbon::parse($phase->end_date);
+
+                // Format status label for UI
+                $statusMap = [
+                    'in_progress' => 'In Progress',
+                    'upcoming' => 'Upcoming',
+                    'completed' => 'Completed',
+                ];
+
+                return [
+                    'id' => $phase->id,
+                    'step' => $phase->step,
+                    'title' => $phase->title,
+                    'description' => $phase->description ?? '',
+                    'start_date' => $startDate->format('Y-m-d'),
+                    'end_date' => $endDate->format('Y-m-d'),
+                    'formatted_start_date' => $startDate->format('F d, Y'),
+                    'formatted_end_date' => $endDate->format('F d, Y'),
+                    'progress' => (int) $phase->progress,
+                    'status' => $phase->status,
+                    'status_label' => $statusMap[$phase->status] ?? ucfirst($phase->status),
+                ];
+            });
+
+            // 3. Ensure Default Baseline Calendar Events Exist & Fetch
+            $this->ensureBaselineEventsExist();
+
+            $events = LtiaEvent::orderBy('event_date', 'asc')->get()->map(function ($event) use ($today) {
+                $eventDate = Carbon::parse($event->event_date)->startOfDay();
+                $diffDays = (int) $today->diffInDays($eventDate, false);
+
+                if ($diffDays < 0) {
+                    $eventStatus = 'overdue';
+                    $eventStatusLabel = 'Overdue';
+                } elseif ($diffDays === 0) {
+                    $eventStatus = 'active';
+                    $eventStatusLabel = 'Active / Today';
+                } else {
+                    $eventStatus = 'upcoming';
+                    $eventStatusLabel = 'Upcoming';
+                }
+
+                return [
+                    'id' => $event->id,
+                    'title' => $event->title,
+                    'notes' => $event->notes ?? '',
+                    'event_date' => $eventDate->format('Y-m-d'),
+                    'formatted_date' => $eventDate->format('F d, Y'),
+                    'status' => $eventStatus,
+                    'status_label' => $eventStatusLabel,
+                    'days_diff' => $diffDays,
+                ];
+            });
+
+            return Inertia::render('ltia/index', [
+                'deadline' => [
+                    'date' => $deadlineDate->format('Y-m-d'),
+                    'formatted_date' => $deadlineDate->format('F d, Y'),
+                    'days_remaining' => $daysRemaining,
+                    'status_type' => $statusType,
+                    'status_label' => $statusLabel,
+                    'sync_status' => 'Live Synchronized',
+                ],
+                'timeline' => $phases,
+                'events' => $events,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('LTIA loading failed: ' . $e->getMessage());
+            return Inertia::render('ltia/index', [
+                'deadline' => [
+                    'date' => date('Y-m-d'),
+                    'formatted_date' => date('F d, Y'),
+                    'days_remaining' => 0,
+                    'status_type' => 'upcoming',
+                    'status_label' => '0 Days Remaining',
+                    'sync_status' => 'Offline Fallback',
+                ],
+                'timeline' => [],
+                'events' => [],
+            ])->with('error', 'An error has occurred while retrieving LTIA data. Please reload your page.');
+        }
     }
 
     /**
@@ -117,37 +133,42 @@ class LTIAController extends Controller
      */
     public function updateDeadline(Request $request)
     {
-        $validated = $request->validate([
-            'deadline_date' => 'required|date_format:Y-m-d',
-        ]);
+        try {
+            $validated = $request->validate([
+                'deadline_date' => 'required|date_format:Y-m-d',
+            ]);
 
-        $oldDeadlineStr = SystemSetting::get('ltia_deadline', '2026-09-08');
-        $oldDeadline = Carbon::parse($oldDeadlineStr)->startOfDay();
-        $newDeadline = Carbon::parse($validated['deadline_date'])->startOfDay();
+            $oldDeadlineStr = SystemSetting::get('ltia_deadline', '2026-09-08');
+            $oldDeadline = Carbon::parse($oldDeadlineStr)->startOfDay();
+            $newDeadline = Carbon::parse($validated['deadline_date'])->startOfDay();
 
-        $diffInDays = (int) $oldDeadline->diffInDays($newDeadline, false);
+            $diffInDays = (int) $oldDeadline->diffInDays($newDeadline, false);
 
-        // Update stored primary deadline
-        SystemSetting::set('ltia_deadline', $validated['deadline_date']);
+            // Update stored primary deadline
+            SystemSetting::set('ltia_deadline', $validated['deadline_date']);
 
-        // Automatically shift phase dates if primary deadline changes
-        if ($diffInDays !== 0) {
-            $phases = LtiaPhase::all();
-            foreach ($phases as $phase) {
-                $newStart = Carbon::parse($phase->start_date)->addDays($diffInDays);
-                $newEnd = Carbon::parse($phase->end_date)->addDays($diffInDays);
+            // Automatically shift phase dates if primary deadline changes
+            if ($diffInDays !== 0) {
+                $phases = LtiaPhase::all();
+                foreach ($phases as $phase) {
+                    $newStart = Carbon::parse($phase->start_date)->addDays($diffInDays);
+                    $newEnd = Carbon::parse($phase->end_date)->addDays($diffInDays);
 
-                $phase->update([
-                    'start_date' => $newStart->format('Y-m-d'),
-                    'end_date' => $newEnd->format('Y-m-d'),
-                ]);
+                    $phase->update([
+                        'start_date' => $newStart->format('Y-m-d'),
+                        'end_date' => $newEnd->format('Y-m-d'),
+                    ]);
+                }
             }
+
+            $formatted = $newDeadline->format('F d, Y');
+            AuditService::log('UPDATE', 'LTIA', "Updated primary system deadline to {$formatted}", auth()->id());
+
+            return redirect()->back()->with('success', 'LTIA system deadline updated & application timeline synchronized.');
+        } catch (\Throwable $e) {
+            \Log::error('Error updating LTIA deadline: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error has occurred while updating the deadline. Please reload your page or try again.');
         }
-
-        $formatted = $newDeadline->format('F d, Y');
-        AuditService::log('UPDATE', 'LTIA', "Updated primary system deadline to {$formatted}", auth()->id());
-
-        return redirect()->back()->with('success', 'LTIA system deadline updated & application timeline synchronized.');
     }
 
     /**
@@ -155,27 +176,32 @@ class LTIAController extends Controller
      */
     public function updatePhase(Request $request, $id)
     {
-        $phase = LtiaPhase::findOrFail($id);
+        try {
+            $phase = LtiaPhase::findOrFail($id);
 
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'start_date' => 'required|date_format:Y-m-d',
-            'end_date' => 'required|date_format:Y-m-d',
-            'status' => 'required|string|in:in_progress,upcoming,completed',
-            'progress' => 'required|integer|min:0|max:100',
-        ]);
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'start_date' => 'required|date_format:Y-m-d',
+                'end_date' => 'required|date_format:Y-m-d',
+                'status' => 'required|string|in:in_progress,upcoming,completed',
+                'progress' => 'required|integer|min:0|max:100',
+            ]);
 
-        $phase->update($validated);
+            $phase->update($validated);
 
-        // If editing phase 4 (Final Awarding & Submission Deadline), also sync primary deadline
-        if ((int) $phase->step === 4) {
-            SystemSetting::set('ltia_deadline', $validated['end_date']);
+            // If editing phase 4 (Final Awarding & Submission Deadline), also sync primary deadline
+            if ((int) $phase->step === 4) {
+                SystemSetting::set('ltia_deadline', $validated['end_date']);
+            }
+
+            AuditService::log('UPDATE', 'LTIA', "Updated Timeline Phase #{$phase->step}: {$phase->title}", auth()->id());
+
+            return redirect()->back()->with('success', "Timeline phase '{$phase->title}' updated successfully.");
+        } catch (\Throwable $e) {
+            \Log::error('Error updating LTIA phase: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error has occurred while updating the phase. Please reload your page or try again.');
         }
-
-        AuditService::log('UPDATE', 'LTIA', "Updated Timeline Phase #{$phase->step}: {$phase->title}", auth()->id());
-
-        return redirect()->back()->with('success', "Timeline phase '{$phase->title}' updated successfully.");
     }
 
     /**
@@ -183,17 +209,22 @@ class LTIAController extends Controller
      */
     public function storeEvent(Request $request)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'notes' => 'nullable|string',
-            'event_date' => 'required|date_format:Y-m-d',
-        ]);
+        try {
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'notes' => 'nullable|string',
+                'event_date' => 'required|date_format:Y-m-d',
+            ]);
 
-        $event = LtiaEvent::create($validated);
+            $event = LtiaEvent::create($validated);
 
-        AuditService::log('CREATE', 'LTIA', "Created Calendar Agenda Event: {$event->title}", auth()->id());
+            AuditService::log('CREATE', 'LTIA', "Created Calendar Agenda Event: {$event->title}", auth()->id());
 
-        return redirect()->back()->with('success', "Event '{$event->title}' added successfully.");
+            return redirect()->back()->with('success', "Event '{$event->title}' added successfully.");
+        } catch (\Throwable $e) {
+            \Log::error('Error creating LTIA event: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error has occurred while creating the event. Please reload your page or try again.');
+        }
     }
 
     /**
@@ -201,19 +232,24 @@ class LTIAController extends Controller
      */
     public function updateEvent(Request $request, $id)
     {
-        $event = LtiaEvent::findOrFail($id);
+        try {
+            $event = LtiaEvent::findOrFail($id);
 
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'notes' => 'nullable|string',
-            'event_date' => 'required|date_format:Y-m-d',
-        ]);
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'notes' => 'nullable|string',
+                'event_date' => 'required|date_format:Y-m-d',
+            ]);
 
-        $event->update($validated);
+            $event->update($validated);
 
-        AuditService::log('UPDATE', 'LTIA', "Updated Calendar Agenda Event: {$event->title}", auth()->id());
+            AuditService::log('UPDATE', 'LTIA', "Updated Calendar Agenda Event: {$event->title}", auth()->id());
 
-        return redirect()->back()->with('success', "Event '{$event->title}' updated successfully.");
+            return redirect()->back()->with('success', "Event '{$event->title}' updated successfully.");
+        } catch (\Throwable $e) {
+            \Log::error('Error updating LTIA event: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error has occurred while updating the event. Please reload your page or try again.');
+        }
     }
 
     /**
@@ -221,13 +257,18 @@ class LTIAController extends Controller
      */
     public function destroyEvent($id)
     {
-        $event = LtiaEvent::findOrFail($id);
-        $title = $event->title;
-        $event->delete();
+        try {
+            $event = LtiaEvent::findOrFail($id);
+            $title = $event->title;
+            $event->delete();
 
-        AuditService::log('DELETE', 'LTIA', "Deleted Calendar Agenda Event: {$title}", auth()->id());
+            AuditService::log('DELETE', 'LTIA', "Deleted Calendar Agenda Event: {$title}", auth()->id());
 
-        return redirect()->back()->with('success', "Event '{$title}' deleted.");
+            return redirect()->back()->with('success', "Event '{$title}' deleted.");
+        } catch (\Throwable $e) {
+            \Log::error('Error deleting LTIA event: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error has occurred while deleting the event. Please reload your page or try again.');
+        }
     }
 
     /**

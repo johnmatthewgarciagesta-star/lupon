@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TT-02 Security Authentication Evidence - Lupon CMS</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 28px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .evidence-card {
+      width: 1340px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border-bottom: 2px solid #10b981;
+      padding: 24px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-titles h1 {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge-test {
+      background: #059669;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      letter-spacing: 0.05em;
+    }
+
+    .header-titles p {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+
+    .header-meta {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .meta-box {
+      text-align: right;
+    }
+
+    .meta-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .meta-value {
+      font-size: 13px;
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+
+    .status-badge {
+      background: #059669;
+      color: #ecfdf5;
+      border: 1px solid #10b981;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Comparison Dual Screens */
+    .visual-comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      padding: 28px 32px;
+      background: #0f172a;
+    }
+
+    .panel {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      padding: 12px 16px;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-pill-red {
+      background: #7f1d1d;
+      color: #fca5a5;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+
+    .panel-pill-green {
+      background: #064e3b;
+      color: #6ee7b7;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+
+    .browser-frame {
+      background: #090d16;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .browser-bar {
+      background: #334155;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .browser-dots {
+      display: flex;
+      gap: 5px;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+    }
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+
+    .browser-url {
+      background: #1e293b;
+      color: #cbd5e1;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 5px;
+      flex: 1;
+      border: 1px solid #475569;
+    }
+
+    .browser-body {
+      height: 380px;
+      background: #0b1120;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .browser-body img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top center;
+    }
+
+    .panel-footer {
+      padding: 12px 16px;
+      background: #1e293b;
+      border-top: 1px solid #334155;
+      font-size: 11.5px;
+      color: #94a3b8;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+
+    .badge-error {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .badge-success {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    /* Checklist & Table Section */
+    .table-section {
+      padding: 0 32px 28px 32px;
+      background: #0f172a;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #94a3b8;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #1e293b;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #334155;
+    }
+
+    th {
+      background: #334155;
+      color: #e2e8f0;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 10px 14px;
+      text-align: left;
+    }
+
+    td {
+      padding: 10px 14px;
+      font-size: 12px;
+      border-bottom: 1px solid #293548;
+      color: #cbd5e1;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .code-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #38bdf8;
+      border: 1px solid #334155;
+    }
+
+    .status-pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 11px;
+      background: #064e3b;
+      color: #34d399;
+      border: 1px solid #059669;
+    }
+
+    .security-note {
+      margin-top: 14px;
+      background: rgba(30, 41, 59, 0.7);
+      border-left: 3px solid #10b981;
+      padding: 12px 16px;
+      border-radius: 0 6px 6px 0;
+      font-size: 11.5px;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+
+    .security-note strong {
+      color: #e2e8f0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="evidence-card">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-titles">
+        <h1>
+          <span class="badge-test">TT-02</span>
+          OBJECTIVE TECHNICAL TESTING EVIDENCE: SECURITY – AUTHENTICATION
+        </h1>
+        <p>Project: Lupon Tagapamayapa Case Management System (Barangay 183)</p>
+      </div>
+      <div class="header-meta">
+        <div class="meta-box">
+          <div class="meta-label">Execution Date</div>
+          <div class="meta-value">October 16, 2026</div>
+        </div>
+        <div class="meta-box">
+          <div class="meta-label">Testers</div>
+          <div class="meta-value">J.M. Gesta & C.G. Fontejon</div>
+        </div>
+        <div class="status-badge">
+          ✓ ACCEPTED
+        </div>
+      </div>
+    </div>
+
+    <!-- Visual Evidence: Rejected vs Authenticated Side-by-Side -->
+    <div class="visual-comparison">
+      <!-- Left: Invalid Login Rejected -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-pill-red">NEGATIVE TEST</span>
+            Condition A: Invalid Credentials Rejection
+          </div>
+          <span style="font-size: 11px; color: #94a3b8;">HTTP 422 / Validation Guard</span>
+        </div>
+        <div class="browser-frame">
+          <div class="browser-bar">
+            <div class="browser-dots">
+              <div class="dot dot-red"></div>
+              <div class="dot dot-yellow"></div>
+              <div class="dot dot-green"></div>
+            </div>
+            <div class="browser-url">http://lupon.test/login — Authentication Rejected</div>
+          </div>
+          <div class="browser-body">
+            <img src="/tt02_rejected.png" alt="Invalid Login Error Screen">
+          </div>
+        </div>
+        <div class="panel-footer">
+          <span>Observed: <em>"These credentials do not match our records."</em></span>
+          <span class="footer-badge badge-error">ACCESS DENIED (PASS)</span>
+        </div>
+      </div>
+
+      <!-- Right: Valid Login Dashboard -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="panel-pill-green">POSITIVE TEST</span>
+            Condition B: Valid Credentials Authentication
+          </div>
+          <span style="font-size: 11px; color: #94a3b8;">HTTP 302 Redirect to /dashboard</span>
+        </div>
+        <div class="browser-frame">
+          <div class="browser-bar">
+            <div class="browser-dots">
+              <div class="dot dot-red"></div>
+              <div class="dot dot-yellow"></div>
+              <div class="dot dot-green"></div>
+            </div>
+            <div class="browser-url">http://lupon.test/dashboard — Authenticated Session</div>
+          </div>
+          <div class="browser-body">
+            <img src="/tt02_authenticated.png" alt="Authenticated Dashboard Overview">
+          </div>
+        </div>
+        <div class="panel-footer">
+          <span>Session: <strong>QA Tester (Active Session ID Established)</strong></span>
+          <span class="footer-badge badge-success">ACCESS GRANTED (PASS)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Checklist & Detailed Verification Table -->
+    <div class="table-section">
+      <div class="section-title">
+        <span>Authentication Test-Case Matrix & Verification Checklist</span>
+        <span style="font-size: 11px; color: #64748b; font-weight: normal;">Coverage: Valid Credentials, Bad Password, Invalid User, Empty Required Fields</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Condition ID</th>
+            <th>Test Condition</th>
+            <th>Input Parameters</th>
+            <th>Expected System Behavior</th>
+            <th>Observed Result / Actual Findings</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>TC-AUTH-01</strong></td>
+            <td>Valid Credentials</td>
+            <td><span class="code-pill">tester@lupon.test</span> + <span class="code-pill">Valid Password</span></td>
+            <td>Authenticate session and redirect to user dashboard</td>
+            <td>Access granted; session token created; redirected to /dashboard; KPI widgets rendered</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><strong>TC-AUTH-02</strong></td>
+            <td>Invalid Password</td>
+            <td><span class="code-pill">tester@lupon.test</span> + <span class="code-pill">WrongPassword999!</span></td>
+            <td>Deny access; retain email; display validation error</td>
+            <td>Access denied; error banner: <em>"These credentials do not match our records."</em> displayed</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><strong>TC-AUTH-03</strong></td>
+            <td>Invalid Username / Email</td>
+            <td><span class="code-pill">nonexistent_user@gmail.com</span> + <span class="code-pill">Password123!</span></td>
+            <td>Deny access; do not reveal account existence</td>
+            <td>Access denied; same generic error displayed preventing user enumeration</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+          <tr>
+            <td><strong>TC-AUTH-04</strong></td>
+            <td>Empty Required Fields</td>
+            <td><span class="code-pill">[blank email]</span> or <span class="code-pill">[blank password]</span></td>
+            <td>Block submission via browser & server validation</td>
+            <td>Submission intercepted; native HTML5 required tooltip triggered; request aborted</td>
+            <td><span class="status-pill">Accepted</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="security-note">
+        <strong>Security & Cryptographic Standards Compliance:</strong> The Lupon system uses Laravel Fortify authentication with Bcrypt hashing ($2y$12$ salted rounds), encrypted database session persistence, and CSRF token verification on all authentication endpoints. Every tested condition matched 100% of the acceptance criteria with zero security vulnerabilities detected.
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

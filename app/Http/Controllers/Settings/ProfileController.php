@@ -30,15 +30,20 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        try {
+            $request->user()->fill($request->validated());
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+            if ($request->user()->isDirty('email')) {
+                $request->user()->email_verified_at = null;
+            }
+
+            $request->user()->save();
+
+            return to_route('profile.edit')->with('success', 'Profile updated successfully.');
+        } catch (\Throwable $e) {
+            \Log::error('Profile update failed: ' . $e->getMessage());
+            return back()->with('error', 'An error has occurred while updating your profile. Please reload your page or try again.');
         }
-
-        $request->user()->save();
-
-        return to_route('profile.edit');
     }
 
     /**
@@ -46,15 +51,20 @@ class ProfileController extends Controller
      */
     public function destroy(ProfileDeleteRequest $request): RedirectResponse
     {
-        $user = $request->user();
+        try {
+            $user = $request->user();
 
-        Auth::logout();
+            Auth::logout();
 
-        $user->delete();
+            $user->delete();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
 
-        return redirect('/');
+            return redirect('/');
+        } catch (\Throwable $e) {
+            \Log::error('Profile deletion failed: ' . $e->getMessage());
+            return back()->with('error', 'An error has occurred while deleting your account. Please reload your page or try again.');
+        }
     }
 }

@@ -51,6 +51,65 @@ class DocumentController extends Controller
         ];
     }
 
+    /**
+     * Programmed automatic folder counter and numbering algorithm (Row 2 capstone revision).
+     * Queries the total existing case folders across cases and documents,
+     * calculates the next sequential index (n + 1), and formats it as case-XXX (zero-padded).
+     */
+    public function getNextAvailableCaseFolderNumber(): string
+    {
+        try {
+            $caseFolders = \App\Models\LuponCase::withTrashed()
+                ->whereNotNull('folder_name')
+                ->where('folder_name', '!=', '')
+                ->pluck('folder_name')
+                ->toArray();
+
+            $docFolders = \App\Models\Document::withTrashed()
+                ->whereNotNull('folder_name')
+                ->where('folder_name', '!=', '')
+                ->pluck('folder_name')
+                ->toArray();
+
+            $allFolders = array_unique(array_filter(array_merge($caseFolders, $docFolders)));
+
+            $maxIndex = 0;
+            foreach ($allFolders as $folder) {
+                $folder = trim((string)$folder);
+                if (preg_match('/(?:case|folder)[-_ ]*0*(\d+)/i', $folder, $matches)) {
+                    $num = (int)$matches[1];
+                    if ($num > $maxIndex) {
+                        $maxIndex = $num;
+                    }
+                } elseif (preg_match('/^0*(\d+)$/', $folder, $matches)) {
+                    $num = (int)$matches[1];
+                    if ($num > $maxIndex) {
+                        $maxIndex = $num;
+                    }
+                }
+            }
+
+            // Calculate next sequential index (n + 1)
+            $nextIndex = max($maxIndex + 1, 1);
+            $candidateFolder = 'case-' . str_pad($nextIndex, 3, '0', STR_PAD_LEFT);
+
+            // Double check collision in database (including case-insensitive matches)
+            while (
+                \App\Models\LuponCase::withTrashed()->whereRaw('LOWER(folder_name) = ?', [strtolower($candidateFolder)])->exists() ||
+                \App\Models\Document::withTrashed()->whereRaw('LOWER(folder_name) = ?', [strtolower($candidateFolder)])->exists()
+            ) {
+                $nextIndex++;
+                $candidateFolder = 'case-' . str_pad($nextIndex, 3, '0', STR_PAD_LEFT);
+            }
+
+            return $candidateFolder;
+        } catch (\Throwable $e) {
+            \Log::error('Error calculating next available folder number: ' . $e->getMessage());
+            $fallbackCount = (\App\Models\LuponCase::withTrashed()->count() ?: 0) + 1;
+            return 'case-' . str_pad($fallbackCount, 3, '0', STR_PAD_LEFT);
+        }
+    }
+
     public function folders(Request $request)
     {
         try {
@@ -100,6 +159,7 @@ class DocumentController extends Controller
             ]);
         } catch (\Exception $e) {
             \Log::error('Documents folders view failed: ' . $e->getMessage());
+            session()->flash('error', 'An error has occurred while retrieving folders. Please reload your page.');
             return \Inertia\Inertia::render('documents/folders', [
                 'caseFolders' => [],
             ]);
@@ -109,11 +169,7 @@ class DocumentController extends Controller
     public function templates(Request $request)
     {
         try {
-            $query = \App\Models\Document::with(['case', 'creator'])
-                ->where(function ($q) {
-                    $q->whereNull('content->is_scanned')
-                      ->orWhere('content->is_scanned', false);
-                });
+            $query = \App\Models\Document::with(['case', 'creator']);
 
             if ($request->filled('search')) {
                 $search = $request->input('search');
@@ -135,6 +191,8 @@ class DocumentController extends Controller
                     'case_id' => $doc->case_id,
                     'case_number' => $doc->case ? $doc->case->case_number : null,
                     'creator' => $doc->creator ? ['name' => $doc->creator->name] : null,
+                    'file_path' => $doc->file_path,
+                    'is_scanned' => !empty($doc->content['is_scanned']),
                 ];
             });
 
@@ -204,9 +262,11 @@ class DocumentController extends Controller
                 'hiddenTemplates' => $hiddenTemplates,
                 'caseFolders' => $caseFolders,
                 'aiQuota' => $this->getAiScanQuota(),
+                'nextFolderNumber' => $this->getNextAvailableCaseFolderNumber(),
             ]);
         } catch (\Exception $e) {
             \Log::error('Documents templates view failed: ' . $e->getMessage());
+            session()->flash('error', 'An error has occurred while retrieving document templates. Please reload your page.');
             return \Inertia\Inertia::render('documents/templates', [
                 'documents' => [],
                 'stats' => ['total' => 0, 'summons' => 0, 'settlements' => 0, 'recent' => 0],
@@ -214,6 +274,7 @@ class DocumentController extends Controller
                 'hiddenTemplates' => [],
                 'caseFolders' => [],
                 'aiQuota' => ['used' => 0, 'limit' => 20, 'isExceeded' => false],
+                'nextFolderNumber' => 'case-001',
             ]);
         }
     }
@@ -238,11 +299,58 @@ class DocumentController extends Controller
         ]);
 
         $folderName = trim($request->folder_name);
-        
-        $case = \App\Models\LuponCase::where('folder_name', $folderName)->first();
+        $caseNo = trim($request->case_number ?: '');
 
-        if (!$case) {
-            $caseNo = $request->case_number ?: ('KP-' . date('Y') . '-' . rand(100, 999));
+        try {
+            // Check if a case or document folder with this name already exists (including soft-deleted records)
+            $folderExistsInCases = \App\Models\LuponCase::withTrashed()
+                ->whereRaw('LOWER(folder_name) = ?', [strtolower($folderName)])
+                ->exists();
+
+            $folderExistsInDocs = \App\Models\Document::withTrashed()
+                ->whereRaw('LOWER(folder_name) = ?', [strtolower($folderName)])
+                ->exists();
+
+            if ($folderExistsInCases || $folderExistsInDocs) {
+                $duplicateMsg = 'That folder number already exists please change your case folder name / number';
+                if ($request->wantsJson() || $request->is('api/*')) {
+                    return response()->json([
+                        'message' => $duplicateMsg,
+                        'errors' => ['folder_name' => [$duplicateMsg]]
+                    ], 422);
+                }
+                return redirect()->back()
+                    ->withErrors(['folder_name' => $duplicateMsg])
+                    ->with('error', $duplicateMsg)
+                    ->withInput();
+            }
+
+            // Check if the provided case number already exists in the system
+            if (!empty($caseNo)) {
+                $caseExists = \App\Models\LuponCase::withTrashed()
+                    ->whereRaw('LOWER(case_number) = ?', [strtolower($caseNo)])
+                    ->exists();
+
+                if ($caseExists) {
+                    $duplicateMsg = 'That folder number already exists please change your case folder name / number';
+                    if ($request->wantsJson() || $request->is('api/*')) {
+                        return response()->json([
+                            'message' => $duplicateMsg,
+                            'errors' => ['case_number' => [$duplicateMsg]]
+                        ], 422);
+                    }
+                    return redirect()->back()
+                        ->withErrors(['case_number' => $duplicateMsg])
+                        ->with('error', $duplicateMsg)
+                        ->withInput();
+                }
+            } else {
+                $caseNo = 'KP-' . date('Y') . '-' . rand(100, 999);
+                while (\App\Models\LuponCase::withTrashed()->where('case_number', $caseNo)->exists()) {
+                    $caseNo = 'KP-' . date('Y') . '-' . rand(1000, 9999);
+                }
+            }
+
             $case = \App\Models\LuponCase::create([
                 'folder_name' => $folderName,
                 'case_number' => $caseNo,
@@ -254,16 +362,55 @@ class DocumentController extends Controller
                 'date_filed' => now()->format('Y-m-d'),
                 'created_by' => auth()->id(),
             ]);
-        } else {
-            if ($request->filled('complainant')) $case->complainant = $request->complainant;
-            if ($request->filled('respondent')) $case->respondent = $request->respondent;
-            if ($request->filled('nature_of_case')) $case->nature_of_case = $request->nature_of_case;
-            $case->save();
+
+            AuditService::log('CREATE_CASE_FOLDER', 'Document Management', "Created case folder {$folderName}", $case->id);
+
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Case folder {$folderName} created successfully.",
+                    'case' => $case
+                ]);
+            }
+
+            return redirect()->back()->with('success', "Case folder {$folderName} created successfully.");
+
+        } catch (\Illuminate\Database\QueryException $e) {
+            \Log::error('Create folder database error: ' . $e->getMessage());
+
+            $isDuplicate = ($e->getCode() == 23000 || str_contains($e->getMessage(), '1062') || str_contains($e->getMessage(), 'Duplicate entry'));
+            $userFacingMessage = $isDuplicate
+                ? 'That folder number already exists please change your case folder name / number'
+                : 'An error has occurred. Please reload your page or try again.';
+
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'message' => $userFacingMessage,
+                    'errors' => ['folder_name' => [$userFacingMessage]]
+                ], $isDuplicate ? 422 : 500);
+            }
+
+            return redirect()->back()
+                ->withErrors([
+                    'folder_name' => $userFacingMessage,
+                    'case_number' => $userFacingMessage,
+                ])
+                ->with('error', $userFacingMessage)
+                ->withInput();
+
+        } catch (\Throwable $e) {
+            \Log::error('Create folder error: ' . $e->getMessage());
+            $userFacingMessage = 'An error has occurred. Please reload your page or try again.';
+
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json(['message' => $userFacingMessage], 500);
+            }
+
+            return redirect()->back()
+                ->withErrors(['general' => $userFacingMessage])
+                ->with('error', $userFacingMessage)
+                ->withInput();
         }
-
-        AuditService::log('CREATE_CASE_FOLDER', 'Document Management', "Created case folder {$folderName}", $case->id);
-
-        return redirect()->back()->with('success', "Case folder {$folderName} created successfully.");
     }
 
     public function uploadToFolder(Request $request)
@@ -272,44 +419,51 @@ class DocumentController extends Controller
             return redirect()->back()->with('error', 'Administrators are in View-Only mode.');
         }
 
-        $request->validate([
-            'case_id' => 'required|exists:cases,id',
-            'file' => 'required|file|mimes:pdf,png,jpg,jpeg|max:10240',
-            'document_type' => 'nullable|string',
-        ], [
-            'file.mimes' => 'Invalid file type. Only PDF, PNG, and JPG files are accepted.',
-            'file.file' => 'Invalid file type. Only PDF, PNG, and JPG files are accepted.',
-        ]);
+        try {
+            $request->validate([
+                'case_id' => 'required|exists:cases,id',
+                'file' => 'required|file|mimes:pdf,png,jpg,jpeg|max:10240',
+                'document_type' => 'nullable|string',
+            ], [
+                'file.mimes' => 'Invalid file type. Only PDF, PNG, and JPG files are accepted.',
+                'file.file' => 'Invalid file type. Only PDF, PNG, and JPG files are accepted.',
+            ]);
 
-        $case = \App\Models\LuponCase::find($request->case_id);
-        if (!$case || !self::canUserAccessCase($case)) {
-            return redirect()->route('cases.index')->with('error', 'Access Denied: You do not have permission to access this case.');
+            $case = \App\Models\LuponCase::find($request->case_id);
+            if (!$case || !self::canUserAccessCase($case)) {
+                return redirect()->route('cases.index')->with('error', 'Access Denied: You do not have permission to access this case.');
+            }
+            $file = $request->file('file');
+            $path = $file->store('case_documents', 'public');
+
+            $docType = $request->input('document_type', $file->getClientOriginalName());
+
+            $document = \App\Models\Document::create([
+                'case_id' => $case->id,
+                'folder_name' => $case->folder_name ?: ('case-' . str_pad($case->id, 3, '0', STR_PAD_LEFT)),
+                'type' => $docType,
+                'file_path' => '/storage/' . $path,
+                'status' => 'Uploaded',
+                'issued_at' => now(),
+                'created_by' => auth()->id(),
+                'content' => [
+                    'original_name' => $file->getClientOriginalName(),
+                    'mime' => $file->getClientMimeType(),
+                    'size' => $file->getSize(),
+                ],
+            ]);
+
+            \App\Services\DocumentBackupService::recordVersion($document, 'created', 'Initial File Upload');
+
+            AuditService::log('UPLOAD_DOCUMENT_TO_FOLDER', 'Document Management', "Uploaded document {$docType} into folder {$case->folder_name}", $case->id);
+
+            return redirect()->back()->with('success', "Document uploaded into folder {$case->folder_name}.");
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            \Log::error('Upload to folder failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error has occurred while uploading the file. Please reload your page or try again.')->withInput();
         }
-        $file = $request->file('file');
-        $path = $file->store('case_documents', 'public');
-
-        $docType = $request->input('document_type', $file->getClientOriginalName());
-
-        $document = \App\Models\Document::create([
-            'case_id' => $case->id,
-            'folder_name' => $case->folder_name ?: ('case-' . str_pad($case->id, 3, '0', STR_PAD_LEFT)),
-            'type' => $docType,
-            'file_path' => '/storage/' . $path,
-            'status' => 'Uploaded',
-            'issued_at' => now(),
-            'created_by' => auth()->id(),
-            'content' => [
-                'original_name' => $file->getClientOriginalName(),
-                'mime' => $file->getClientMimeType(),
-                'size' => $file->getSize(),
-            ],
-        ]);
-
-        \App\Services\DocumentBackupService::recordVersion($document, 'created', 'Initial File Upload');
-
-        AuditService::log('UPLOAD_DOCUMENT_TO_FOLDER', 'Document Management', "Uploaded document {$docType} into folder {$case->folder_name}", $case->id);
-
-        return redirect()->back()->with('success', "Document uploaded into folder {$case->folder_name}.");
     }
 
     public function destroyFolder($id)
@@ -317,24 +471,30 @@ class DocumentController extends Controller
         if ($this->isAdmin()) {
             return redirect()->back()->with('error', 'Administrators are in View-Only mode.');
         }
-        $case = \App\Models\LuponCase::find($id);
-        if (!$case || !self::canUserAccessCase($case)) {
-            return redirect()->route('cases.index')->with('error', 'Access Denied: You do not have permission to access this case.');
+
+        try {
+            $case = \App\Models\LuponCase::find($id);
+            if (!$case || !self::canUserAccessCase($case)) {
+                return redirect()->route('cases.index')->with('error', 'Access Denied: You do not have permission to access this case.');
+            }
+
+            $folderName = $case->folder_name ?: ('case-' . str_pad($case->id, 3, '0', STR_PAD_LEFT));
+
+            // Purge or unlink document records associated with this folder
+            \App\Models\Document::where('case_id', $case->id)
+                ->orWhere('folder_name', $folderName)
+                ->delete();
+
+            // Delete case record
+            $case->delete();
+
+            AuditService::log('DELETE_CASE_FOLDER', 'Document Management', "Deleted case folder {$folderName} and purged attached documents", $case->id);
+
+            return redirect()->back()->with('success', "Folder {$folderName} deleted successfully.");
+        } catch (\Throwable $e) {
+            \Log::error('Destroy folder failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error has occurred while deleting the folder. Please reload your page or try again.');
         }
-
-        $folderName = $case->folder_name ?: ('case-' . str_pad($case->id, 3, '0', STR_PAD_LEFT));
-
-        // Purge or unlink document records associated with this folder
-        \App\Models\Document::where('case_id', $case->id)
-            ->orWhere('folder_name', $folderName)
-            ->delete();
-
-        // Delete case record
-        $case->delete();
-
-        AuditService::log('DELETE_CASE_FOLDER', 'Document Management', "Deleted case folder {$folderName} and purged attached documents", $case->id);
-
-        return redirect()->back()->with('success', "Folder {$folderName} deleted successfully.");
     }
 
     public function create($type)
@@ -343,76 +503,81 @@ class DocumentController extends Controller
             return redirect()->route('documents.templates')->with('error', 'Administrators are in View-Only mode and cannot open or fill document forms.');
         }
 
-        // Optional: pre-link to a case when opened via ?case_id=X
-        $caseId = request('case_id');
-        $case = null;
-        if ($caseId) {
-            $case = \App\Models\LuponCase::find($caseId);
-            if (!$case || !self::canUserAccessCase($case)) {
-                return redirect()->route('cases.index')->with('error', 'Access Denied: You do not have permission to access this case.');
+        try {
+            // Optional: pre-link to a case when opened via ?case_id=X
+            $caseId = request('case_id');
+            $case = null;
+            if ($caseId) {
+                $case = \App\Models\LuponCase::find($caseId);
+                if (!$case || !self::canUserAccessCase($case)) {
+                    return redirect()->route('cases.index')->with('error', 'Access Denied: You do not have permission to access this case.');
+                }
             }
-        }
 
-        // Scope caseFolders for dropdown
-        $user = auth()->user();
-        $isAdmin = $user && ($user->hasRole('Administrator') || $user->hasRole('Admin') || $user->hasRole('Lupon Secretary') || in_array(strtolower($user->role ?? ''), ['administrator', 'admin', 'lupon secretary', 'secretary']));
+            // Scope caseFolders for dropdown
+            $user = auth()->user();
+            $isAdmin = $user && ($user->hasRole('Administrator') || $user->hasRole('Admin') || $user->hasRole('Lupon Secretary') || in_array(strtolower($user->role ?? ''), ['administrator', 'admin', 'lupon secretary', 'secretary']));
 
-        $query = \App\Models\LuponCase::query();
-        if (!$isAdmin && $user) {
-            $query->where(function ($q) use ($user) {
-                $q->whereNull('created_by')
-                  ->orWhere('created_by', $user->id)
-                  ->orWhereHas('documents', function ($dq) use ($user) {
-                      $dq->where('created_by', $user->id);
-                  });
+            $query = \App\Models\LuponCase::query();
+            if (!$isAdmin && $user) {
+                $query->where(function ($q) use ($user) {
+                    $q->whereNull('created_by')
+                      ->orWhere('created_by', $user->id)
+                      ->orWhereHas('documents', function ($dq) use ($user) {
+                          $dq->where('created_by', $user->id);
+                      });
+                });
+            }
+
+            $caseFolders = $query->orderBy('created_at', 'desc')->get()->map(function ($c) {
+                return [
+                    'id' => $c->id,
+                    'folder_name' => $c->folder_name ?: ('case-' . str_pad($c->id, 3, '0', STR_PAD_LEFT)),
+                    'complainant' => $c->complainant,
+                    'respondent' => $c->respondent,
+                    'case_number' => $c->case_number,
+                ];
             });
-        }
 
-        $caseFolders = $query->orderBy('created_at', 'desc')->get()->map(function ($c) {
-            return [
-                'id' => $c->id,
-                'folder_name' => $c->folder_name ?: ('case-' . str_pad($c->id, 3, '0', STR_PAD_LEFT)),
-                'complainant' => $c->complainant,
-                'respondent' => $c->respondent,
-                'case_number' => $c->case_number,
-            ];
-        });
-
-        // Get Layout from DB or Config
-        $savedLayout = FormLayout::where('document_type', $type)->first();
-        if ($savedLayout) {
-            $fields = $savedLayout->layout_json;
-            // Merge in any footer fields missing from the saved layout (e.g. new date_split field)
-            $freshFields = FormLayouts::getLayout($type);
-            $savedNames = array_column($fields, 'name');
-            foreach ($freshFields as $ff) {
-                if (!in_array($ff['name'], $savedNames)) {
-                    $fields[] = $ff;
+            // Get Layout from DB or Config
+            $savedLayout = FormLayout::where('document_type', $type)->first();
+            if ($savedLayout) {
+                $fields = $savedLayout->layout_json;
+                // Merge in any footer fields missing from the saved layout (e.g. new date_split field)
+                $freshFields = FormLayouts::getLayout($type);
+                $savedNames = array_column($fields, 'name');
+                foreach ($freshFields as $ff) {
+                    if (!in_array($ff['name'], $savedNames)) {
+                        $fields[] = $ff;
+                    }
                 }
+            } else {
+                $fields = FormLayouts::getLayout($type);
             }
-        } else {
-            $fields = FormLayouts::getLayout($type);
-        }
 
-        // Pre-fill complainant/respondent from case if available
-        if ($case) {
-            foreach ($fields as &$field) {
-                if ($field['name'] === 'complainant' && $case->complainant) {
-                    $field['default'] = $case->complainant;
+            // Pre-fill complainant/respondent from case if available
+            if ($case) {
+                foreach ($fields as &$field) {
+                    if ($field['name'] === 'complainant' && $case->complainant) {
+                        $field['default'] = $case->complainant;
+                    }
+                    if ($field['name'] === 'respondent' && $case->respondent) {
+                        $field['default'] = $case->respondent;
+                    }
+                    if ($field['name'] === 'case_no' && $case->case_number) {
+                        $field['default'] = $case->case_number;
+                    }
                 }
-                if ($field['name'] === 'respondent' && $case->respondent) {
-                    $field['default'] = $case->respondent;
-                }
-                if ($field['name'] === 'case_no' && $case->case_number) {
-                    $field['default'] = $case->case_number;
-                }
+                unset($field);
             }
-            unset($field);
+
+            $imageBase64 = $this->generateBackgroundImage($type);
+
+            return view('documents.form-fill', compact('type', 'imageBase64', 'fields', 'case', 'caseFolders'));
+        } catch (\Throwable $e) {
+            \Log::error("Document create form error: " . $e->getMessage());
+            return redirect()->route('documents.templates')->with('error', 'An error has occurred while opening the document form. Please reload your page.');
         }
-
-        $imageBase64 = $this->generateBackgroundImage($type);
-
-        return view('documents.form-fill', compact('type', 'imageBase64', 'fields', 'case', 'caseFolders'));
     }
 
     /**
@@ -428,56 +593,61 @@ class DocumentController extends Controller
             return redirect()->route('documents.templates')->with('error', 'Administrators are in View-Only mode and cannot open document forms.');
         }
 
-        $template = \App\Models\Document::find($id);
-        if (!$template) {
-            return redirect()->route('cases.index')->with('error', 'Access Denied: Document template not found.');
+        try {
+            $template = \App\Models\Document::find($id);
+            if (!$template) {
+                return redirect()->route('cases.index')->with('error', 'Access Denied: Document template not found.');
+            }
+
+            $type = 'custom_'.$id;
+            $caseId = request('case_id');
+            $case = null;
+            if ($caseId) {
+                $case = \App\Models\LuponCase::find($caseId);
+                if (!$case || !self::canUserAccessCase($case)) {
+                    return redirect()->route('cases.index')->with('error', 'Access Denied: You do not have permission to access this case.');
+                }
+            }
+
+            // Custom fields from form builder
+            $fields = $template->content['fields'] ?? [];
+
+            // Ensure fields have default positions and 'name' if not set
+            foreach ($fields as &$field) {
+                // Map builder 'id' to 'name' for the visual editor
+                if (! isset($field['name']) && isset($field['id'])) {
+                    $field['name'] = $field['id'];
+                }
+                if (! isset($field['x'])) {
+                    $field['x'] = '10%';
+                }
+                if (! isset($field['y'])) {
+                    $field['y'] = '10%';
+                }
+                if (! isset($field['w'])) {
+                    $field['w'] = '30%';
+                }
+                if (! isset($field['h'])) {
+                    $field['h'] = 'auto';
+                }
+            }
+            unset($field);
+
+            // Generate background from uploaded PDF
+            $imageBase64 = $this->generateBackgroundImage($type, storage_path('app/public/'.$template->file_path));
+
+            return view('documents.form-fill', [
+                'type' => $type,
+                'imageBase64' => $imageBase64,
+                'fields' => $fields,
+                'case' => $case,
+                'isCustom' => true,
+                'templateId' => $id,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error("Document fillCustom failed for #{$id}: " . $e->getMessage());
+            return redirect()->route('documents.templates')->with('error', 'An error has occurred while opening the custom template. Please reload your page.');
         }
-
-        $type = 'custom_'.$id;
-        $caseId = request('case_id');
-        $case = null;
-        if ($caseId) {
-            $case = \App\Models\LuponCase::find($caseId);
-            if (!$case || !self::canUserAccessCase($case)) {
-                return redirect()->route('cases.index')->with('error', 'Access Denied: You do not have permission to access this case.');
-            }
-        }
-
-        // Custom fields from form builder
-        $fields = $template->content['fields'] ?? [];
-
-        // Ensure fields have default positions and 'name' if not set
-        foreach ($fields as &$field) {
-            // Map builder 'id' to 'name' for the visual editor
-            if (! isset($field['name']) && isset($field['id'])) {
-                $field['name'] = $field['id'];
-            }
-            if (! isset($field['x'])) {
-                $field['x'] = '10%';
-            }
-            if (! isset($field['y'])) {
-                $field['y'] = '10%';
-            }
-            if (! isset($field['w'])) {
-                $field['w'] = '30%';
-            }
-            if (! isset($field['h'])) {
-                $field['h'] = 'auto';
-            }
-        }
-        unset($field);
-
-        // Generate background from uploaded PDF
-        $imageBase64 = $this->generateBackgroundImage($type, storage_path('app/public/'.$template->file_path));
-
-        return view('documents.form-fill', [
-            'type' => $type,
-            'imageBase64' => $imageBase64,
-            'fields' => $fields,
-            'case' => $case,
-            'isCustom' => true,
-            'templateId' => $id,
-        ]);
     }
 
     /**
@@ -531,68 +701,83 @@ class DocumentController extends Controller
 
     public function show($id)
     {
-        $document = \App\Models\Document::with(['case', 'creator'])->find($id);
-        if (!$document || ($document->case && !self::canUserAccessCase($document->case))) {
-            \App\Services\AuditService::log(
-                'UNAUTHORIZED_ACCESS', 
-                'Documents', 
-                "Unauthorized URL access attempt for Document #{$id} by User #" . (auth()->id() ?? 'Guest'), 
-                $id
-            );
-            return redirect()->route('cases.index')->with('error', 'Access Denied: You do not have permission to access this case.');
-        }
+        try {
+            $document = \App\Models\Document::with(['case', 'creator'])->find($id);
+            if (!$document || ($document->case && !self::canUserAccessCase($document->case))) {
+                \App\Services\AuditService::log(
+                    'UNAUTHORIZED_ACCESS', 
+                    'Documents', 
+                    "Unauthorized URL access attempt for Document #{$id} by User #" . (auth()->id() ?? 'Guest'), 
+                    $id
+                );
+                return redirect()->route('cases.index')->with('error', 'Access Denied: You do not have permission to access this case.');
+            }
 
-        $data = $document->content ?? [];
-        $type = $document->type;
-        $case = $document->case;
+            $data = $document->content ?? [];
+            $type = $document->type;
+            $case = $document->case;
 
-        // I-log sa Audit Trail kapag binuksan ang dokumento
-        $sessionKey = 'viewed_document_' . $id;
-        if (!session()->has($sessionKey)) {
-            \App\Services\AuditService::log(
-                'READ', 
-                'Documents', 
-                "Viewed Document ({$type})" . ($case ? " for Case #{$case->case_number}" : ""), 
-                $document->id
-            );
-            session()->put($sessionKey, true);
-        }
+            // If the document is linked to a case, merge with case's document_data so all fields are available
+            if ($case && is_array($case->document_data)) {
+                $data = array_merge($case->document_data, $data);
+            }
+            if (empty($data['narrative']) && !empty($data['body_text'])) {
+                $data['narrative'] = $data['body_text'];
+            }
+            if (empty($data['For']) && !empty($data['nature_of_case'])) {
+                $data['For'] = $data['nature_of_case'];
+            }
 
-        // Get Layout
-        $savedLayout = FormLayout::where('document_type', $type)->first();
-        if ($savedLayout) {
-            $fields = $savedLayout->layout_json;
-            // Merge any missing footer fields (e.g. new date_split)
-            $freshFields = FormLayouts::getLayout($type);
-            $savedNames = array_column($fields, 'name');
-            foreach ($freshFields as $ff) {
-                if (!in_array($ff['name'], $savedNames)) {
-                    $fields[] = $ff;
+            // I-log sa Audit Trail kapag binuksan ang dokumento
+            $sessionKey = 'viewed_document_' . $id;
+            if (!session()->has($sessionKey)) {
+                \App\Services\AuditService::log(
+                    'READ', 
+                    'Documents', 
+                    "Viewed Document ({$type})" . ($case ? " for Case #{$case->case_number}" : ""), 
+                    $document->id
+                );
+                session()->put($sessionKey, true);
+            }
+
+            // Get Layout
+            $savedLayout = FormLayout::where('document_type', $type)->first();
+            if ($savedLayout) {
+                $fields = $savedLayout->layout_json;
+                // Merge any missing footer fields (e.g. new date_split)
+                $freshFields = FormLayouts::getLayout($type);
+                $savedNames = array_column($fields, 'name');
+                foreach ($freshFields as $ff) {
+                    if (!in_array($ff['name'], $savedNames)) {
+                        $fields[] = $ff;
+                    }
+                }
+            } else {
+                $fields = FormLayouts::getLayout($type);
+            }
+
+            // Populate fields with saved form data
+            foreach ($fields as &$field) {
+                if (isset($data[$field['name']])) {
+                    $field['default'] = $data[$field['name']];
                 }
             }
-        } else {
-            $fields = FormLayouts::getLayout($type);
-        }
+            unset($field);
 
-        // Populate fields with saved form data
-        foreach ($fields as &$field) {
-            if (isset($data[$field['name']])) {
-                $field['default'] = $data[$field['name']];
+            $imageBase64 = $this->generateBackgroundImage($type);
+            $readonly = request('mode') !== 'edit';
+            $missingData = empty($data);
+
+            if (request('mode') === 'edit') {
+                $documentId = $document->id;
+                return view('documents.form-fill', compact('type', 'imageBase64', 'fields', 'data', 'case', 'documentId'));
             }
+
+            return view('documents.templates.print', compact('type', 'imageBase64', 'fields', 'data', 'case', 'document'));
+        } catch (\Throwable $e) {
+            \Log::error("Document show failed for #{$id}: " . $e->getMessage());
+            return redirect()->route('documents.folders')->with('error', 'An error has occurred while retrieving the document. Please reload your page.');
         }
-        unset($field);
-
-        $imageBase64 = $this->generateBackgroundImage($type);
-        $readonly = request('mode') !== 'edit';
-        $missingData = empty($data);
-        $filePath = $document->file_path;
-
-        if (request('mode') === 'edit') {
-            $documentId = $document->id;
-            return view('documents.form-fill', compact('type', 'imageBase64', 'fields', 'data', 'case', 'documentId'));
-        }
-
-        return view('documents.visual-editor', compact('type', 'imageBase64', 'fields', 'readonly', 'case', 'missingData', 'filePath', 'document'));
     }
 
     /**
@@ -600,67 +785,72 @@ class DocumentController extends Controller
      */
     public function viewCase($id)
     {
-        $case = $this->resolveCase($id);
-        if (!$case || !self::canUserAccessCase($case)) {
-            \App\Services\AuditService::log(
-                'UNAUTHORIZED_ACCESS', 
-                'Cases', 
-                "Unauthorized URL access attempt for Case #{$id} by User #" . (auth()->id() ?? 'Guest'), 
-                $id
-            );
-            return redirect()->route('cases.index')->with('error', 'Access Denied: You do not have permission to access this case.');
-        }
+        try {
+            $case = $this->resolveCase($id);
+            if (!$case || !self::canUserAccessCase($case)) {
+                \App\Services\AuditService::log(
+                    'UNAUTHORIZED_ACCESS', 
+                    'Cases', 
+                    "Unauthorized URL access attempt for Case #{$id} by User #" . (auth()->id() ?? 'Guest'), 
+                    $id
+                );
+                return redirect()->route('cases.index')->with('error', 'Access Denied: You do not have permission to access this case.');
+            }
 
-        $data = $case->document_data ?? [];
-        $latestDoc = $case->documents()->latest()->first();
-        $type = $latestDoc->type ?? $data['document_type'] ?? $data['type'] ?? 'complaint';
+            $data = $case->document_data ?? [];
+            $latestDoc = $case->documents()->latest()->first();
+            $type = $latestDoc->type ?? $data['document_type'] ?? $data['type'] ?? 'complaint';
 
-        // I-log sa Audit Trail kapag binuksan ang detalye/dokumento ng kaso
-        $sessionKey = 'viewed_case_' . $id;
-        if (!session()->has($sessionKey)) {
-            \App\Services\AuditService::log(
-                'READ', 
-                'Cases', 
-                "Viewed documents/details for Case #{$case->case_number}", 
-                $case->case_number
-            );
-            session()->put($sessionKey, true);
-        }
+            // I-log sa Audit Trail kapag binuksan ang detalye/dokumento ng kaso
+            $sessionKey = 'viewed_case_' . $id;
+            if (!session()->has($sessionKey)) {
+                \App\Services\AuditService::log(
+                    'READ', 
+                    'Cases', 
+                    "Viewed documents/details for Case #{$case->case_number}", 
+                    $case->case_number
+                );
+                session()->put($sessionKey, true);
+            }
 
-        // Get Layout
-        $savedLayout = FormLayout::where('document_type', $type)->first();
-        if ($savedLayout) {
-            $fields = $savedLayout->layout_json;
-            // Merge any missing footer fields (e.g. new date_split)
-            $freshFields = FormLayouts::getLayout($type);
-            $savedNames = array_column($fields, 'name');
-            foreach ($freshFields as $ff) {
-                if (!in_array($ff['name'], $savedNames)) {
-                    $fields[] = $ff;
+            // Get Layout
+            $savedLayout = FormLayout::where('document_type', $type)->first();
+            if ($savedLayout) {
+                $fields = $savedLayout->layout_json;
+                // Merge any missing footer fields (e.g. new date_split)
+                $freshFields = FormLayouts::getLayout($type);
+                $savedNames = array_column($fields, 'name');
+                foreach ($freshFields as $ff) {
+                    if (!in_array($ff['name'], $savedNames)) {
+                        $fields[] = $ff;
+                    }
+                }
+            } else {
+                $fields = FormLayouts::getLayout($type);
+            }
+
+            // Populate fields with saved data
+            foreach ($fields as &$field) {
+                if (isset($data[$field['name']])) {
+                    $field['default'] = $data[$field['name']];
                 }
             }
-        } else {
-            $fields = FormLayouts::getLayout($type);
-        }
+            unset($field);
 
-        // Populate fields with saved data
-        foreach ($fields as &$field) {
-            if (isset($data[$field['name']])) {
-                $field['default'] = $data[$field['name']];
+            $imageBase64 = $this->generateBackgroundImage($type);
+            $readonly = request('mode') !== 'edit';
+            $missingData = empty($data);
+
+            if (request('mode') === 'edit') {
+                $documentId = $latestDoc->id ?? null;
+                return view('documents.form-fill', compact('type', 'imageBase64', 'fields', 'data', 'case', 'documentId'));
             }
+
+            return view('documents.templates.print', compact('type', 'imageBase64', 'fields', 'data', 'case'));
+        } catch (\Throwable $e) {
+            \Log::error("Document viewCase failed for #{$id}: " . $e->getMessage());
+            return redirect()->route('documents.folders')->with('error', 'An error has occurred while retrieving the case documents. Please reload your page.');
         }
-        unset($field);
-
-        $imageBase64 = $this->generateBackgroundImage($type);
-        $readonly = request('mode') !== 'edit';
-        $missingData = empty($data);
-
-        if (request('mode') === 'edit') {
-            $documentId = $latestDoc->id ?? null;
-            return view('documents.form-fill', compact('type', 'imageBase64', 'fields', 'data', 'case', 'documentId'));
-        }
-
-        return view('documents.templates.print', compact('type', 'imageBase64', 'fields', 'data', 'case'));
     }
 
     public function generate(Request $request)
@@ -845,7 +1035,11 @@ class DocumentController extends Controller
                 return response()->json(['success' => true, 'message' => 'Document saved successfully!']);
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error('Failed to save document record: '.$e->getMessage());
-                return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+                $isDuplicate = ($e->getCode() == 23000 || str_contains($e->getMessage(), '1062') || str_contains($e->getMessage(), 'Duplicate entry'));
+                $msg = $isDuplicate
+                    ? 'That folder number or case number already exists. Please change your case folder name / number.'
+                    : 'An error has occurred while saving the document. Please reload your page or try again.';
+                return response()->json(['success' => false, 'message' => $msg], 500);
             }
         }
 
@@ -1041,7 +1235,8 @@ class DocumentController extends Controller
      */
     public function saveLayout(Request $request)
     {
-        $type = $request->input('document_type');
+        try {
+            $type = $request->input('document_type');
         $positions = $request->input('positions'); // array: name → {x, y, w, h}
         $layout = $request->input('layout');
         $content = $request->input('content');
@@ -1192,6 +1387,10 @@ class DocumentController extends Controller
         FormLayouts::saveLayoutToFile($type, $baseFields);
 
         return response()->json(['success' => true, 'message' => 'Layout saved to database and FormLayouts.php!']);
+        } catch (\Throwable $e) {
+            \Log::error('Save layout failed: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'An error has occurred while saving the layout. Please reload your page or try again.'], 500);
+        }
     }
 
     /**
@@ -1200,74 +1399,82 @@ class DocumentController extends Controller
      */
     public function autoAlignAI(Request $request)
     {
-        $type = $request->input('document_type');
-        
-        if (!$type) {
-            return response()->json(['success' => false, 'error' => 'Missing document type'], 422);
-        }
+        try {
+            $type = $request->input('document_type');
+            
+            if (!$type) {
+                return response()->json(['success' => false, 'error' => 'Missing document type'], 422);
+            }
 
-        // Get current fields structure
-        $fields = [];
-        $filePath = null;
-        
-        if (str_starts_with($type, 'custom_')) {
-            $id = str_replace('custom_', '', $type);
-            $template = \App\Models\Document::findOrFail($id);
-            $fields = $template->content['fields'] ?? [];
-            $filePath = $template->file_path;
-        } else {
-            // Standard Form Layout from config/db
-            $savedLayout = FormLayout::where('document_type', $type)->first();
-            if ($savedLayout) {
-                $fields = $savedLayout->layout_json;
+            // Get current fields structure
+            $fields = [];
+            $filePath = null;
+            
+            if (str_starts_with($type, 'custom_')) {
+                $id = str_replace('custom_', '', $type);
+                $template = \App\Models\Document::findOrFail($id);
+                $fields = $template->content['fields'] ?? [];
+                $filePath = $template->file_path;
             } else {
-                $fields = FormLayouts::getLayout($type);
+                // Standard Form Layout from config/db
+                $savedLayout = FormLayout::where('document_type', $type)->first();
+                if ($savedLayout) {
+                    $fields = $savedLayout->layout_json;
+                } else {
+                    $fields = FormLayouts::getLayout($type);
+                }
+                // Resolve relative path for standard forms in public/forms
+                $filePath = public_path("forms/{$type}.pdf");
+                // If public file does not exist, use relative placeholder path
+                if (!file_exists($filePath)) {
+                    $filePath = "forms/{$type}.pdf";
+                }
             }
-            // Resolve relative path for standard forms in public/forms
-            $filePath = public_path("forms/{$type}.pdf");
-            // If public file does not exist, use relative placeholder path
-            if (!file_exists($filePath)) {
-                $filePath = "forms/{$type}.pdf";
-            }
-        }
 
-        // Map IDs to names
-        foreach ($fields as &$f) {
-            if (!isset($f['name']) && isset($f['id'])) {
-                $f['name'] = $f['id'];
+            // Map IDs to names
+            foreach ($fields as &$f) {
+                if (!isset($f['name']) && isset($f['id'])) {
+                    $f['name'] = $f['id'];
+                }
             }
-        }
-        unset($f);
+            unset($f);
 
-        // Run Gemini AI Alignment
-        if ($filePath) {
-            if (str_contains($filePath, public_path('forms'))) {
-                // Pass standard forms by passing absolute path directly as third param
-                $this->alignCustomTemplateWithAI(basename($filePath), $fields, $filePath);
+            // Run Gemini AI Alignment
+            if ($filePath) {
+                if (str_contains($filePath, public_path('forms'))) {
+                    // Pass standard forms by passing absolute path directly as third param
+                    $this->alignCustomTemplateWithAI(basename($filePath), $fields, $filePath);
+                } else {
+                    $this->alignCustomTemplateWithAI($filePath, $fields);
+                }
+            }
+
+            // Save layout to DB to persist positions immediately
+            if (str_starts_with($type, 'custom_')) {
+                $id = str_replace('custom_', '', $type);
+                $template = \App\Models\Document::findOrFail($id);
+                $content = $template->content;
+                $content['fields'] = $fields;
+                $template->update(['content' => $content]);
             } else {
-                $this->alignCustomTemplateWithAI($filePath, $fields);
+                FormLayout::updateOrCreate(
+                    ['document_type' => $type],
+                    ['layout_json' => $fields]
+                );
             }
-        }
 
-        // Save layout to DB to persist positions immediately
-        if (str_starts_with($type, 'custom_')) {
-            $id = str_replace('custom_', '', $type);
-            $template = \App\Models\Document::findOrFail($id);
-            $content = $template->content;
-            $content['fields'] = $fields;
-            $template->update(['content' => $content]);
-        } else {
-            FormLayout::updateOrCreate(
-                ['document_type' => $type],
-                ['layout_json' => $fields]
-            );
+            return response()->json([
+                'success' => true, 
+                'fields' => $fields,
+                'message' => 'AI successfully aligned layout positions and matched styles!'
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Auto-align AI failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error has occurred during AI alignment. Please reload your page or try again.'
+            ], 500);
         }
-
-        return response()->json([
-            'success' => true, 
-            'fields' => $fields,
-            'message' => 'AI successfully aligned layout positions and matched styles!'
-        ]);
     }
 
     // -------------------------------------------------------------------------
@@ -1839,18 +2046,22 @@ class DocumentController extends Controller
                 $extractedData['document_type'] = 'complaint';
             }
 
+            // Calculate next available sequential folder number (n + 1)
+            $assignedFolder = $this->getNextAvailableCaseFolderNumber();
+
             // Log successful upload & parse in Audit Trail
             $fileSize = round($file->getSize() / 1024, 2);
             \App\Services\AuditService::log(
                 'UPLOAD',
                 'Documents',
-                "Successfully scanned and parsed image: {$fileName} ({$fileSize} KB, {$mimeType}) via Gemini AI.",
+                "Successfully scanned and parsed image: {$fileName} ({$fileSize} KB, {$mimeType}) via Gemini AI. Automatically assigned next case folder: {$assignedFolder}.",
                 null
             );
 
             return response()->json([
                 'success' => true,
                 'temp_file' => $tempPath,
+                'assigned_folder' => $assignedFolder,
                 'data' => $extractedData
             ]);
 
@@ -1870,7 +2081,7 @@ class DocumentController extends Controller
                 str_contains($rawMsg, 'Failed to connect')) {
                 $userFacingError = 'Internet connection required for Gemini AI metadata extraction. Please check your network or enter data manually.';
             } else {
-                $userFacingError = 'Error parsing document: ' . $rawMsg;
+                $userFacingError = 'An error has occurred while parsing the document with AI. Please reload your page or try again.';
             }
 
             // Log failed upload & parse in Audit Trail
@@ -1912,6 +2123,7 @@ class DocumentController extends Controller
             'nature_of_case' => 'nullable|string',
             'summary' => 'nullable|string',
             'case_id' => 'nullable|integer',
+            'assigned_folder' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -2022,8 +2234,19 @@ class DocumentController extends Controller
                     $docContentMap['case_no'] = $caseNo;
                 }
 
+                // Automatic sequential folder assignment (n + 1)
+                $assignedFolder = trim((string)$request->input('assigned_folder'));
+                if (empty($assignedFolder)) {
+                    $folderName = $this->getNextAvailableCaseFolderNumber();
+                } else {
+                    $folderExists = \App\Models\LuponCase::withTrashed()->whereRaw('LOWER(folder_name) = ?', [strtolower($assignedFolder)])->exists()
+                        || \App\Models\Document::withTrashed()->whereRaw('LOWER(folder_name) = ?', [strtolower($assignedFolder)])->exists();
+                    $folderName = $folderExists ? $this->getNextAvailableCaseFolderNumber() : $assignedFolder;
+                }
+
                 $case = \App\Models\LuponCase::create([
                     'case_number' => $caseNo,
+                    'folder_name' => $folderName,
                     'title' => "{$complainant} vs {$respondent}",
                     'complainant' => $complainant,
                     'respondent' => $respondent,
@@ -2036,11 +2259,8 @@ class DocumentController extends Controller
                     'created_by' => auth()->id(),
                 ]);
                 $caseId = $case->id;
-                $folderName = 'case-' . str_pad($caseId, 3, '0', STR_PAD_LEFT);
-                $case->folder_name = $folderName;
-                $case->save();
                 
-                \App\Services\AuditService::log('CREATE', 'Cases', "Auto-created Case #{$caseNo} from AI scan", $caseNo);
+                \App\Services\AuditService::log('CREATE', 'Cases', "Auto-created Case #{$caseNo} in incremented folder {$folderName} from AI scan", $caseNo);
             }
 
             // Create Document record attached to Case and Folder
@@ -2050,23 +2270,17 @@ class DocumentController extends Controller
                 'type' => $type,
                 'status' => 'Issued',
                 'file_path' => $permanentPathUrl,
-                'content' => [
-                    'complainant' => $complainant,
-                    'respondent' => $respondent,
-                    'case_no' => $caseNo,
-                    'body_text' => $summary,
-                    'is_scanned' => true
-                ],
+                'content' => $docContentMap,
                 'issued_at' => now(),
                 'created_by' => auth()->id(),
             ]);
 
-            \App\Services\AuditService::log('CREATE', 'Documents', "Saved scanned {$type} document for Case #{$caseId}", $caseId);
+            \App\Services\AuditService::log('CREATE', 'Documents', "Saved scanned {$type} document in folder {$folderName} for Case #{$caseId}", $caseId);
 
             return redirect()->route('cases.index')
-                ->with('success', "Scanned document attached to Case #{$caseNo} successfully!");
+                ->with('success', "Scanned document attached to Case #{$caseNo} in folder {$folderName} successfully!");
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             if (isset($tempPath) && Storage::disk('public')->exists($tempPath)) {
                 Storage::disk('public')->delete($tempPath);
             }
@@ -2080,9 +2294,19 @@ class DocumentController extends Controller
                 null
             );
 
+            $isDuplicate = ($e instanceof \Illuminate\Database\QueryException && in_array($e->errorInfo[1] ?? 0, [1062, 19]))
+                || str_contains($e->getMessage(), '1062 Duplicate entry')
+                || str_contains($e->getMessage(), 'UNIQUE constraint failed');
+
+            $userMessage = $isDuplicate
+                ? 'That folder number already exists please change your case folder name / number'
+                : 'An error has occurred while saving the scanned document. Please reload your page or try again.';
+
             return back()->withErrors([
-                'error' => 'Error saving scanned document: ' . $e->getMessage()
-            ]);
+                'error' => $userMessage,
+                'folder_name' => $isDuplicate ? $userMessage : null,
+                'case_no' => $isDuplicate ? $userMessage : null,
+            ])->with('error', $userMessage);
         }
     }
 
@@ -2096,32 +2320,38 @@ class DocumentController extends Controller
             'type' => 'nullable|string',
         ]);
 
-        $fields = json_decode($request->input('fields'), true) ?? [];
-
-        $document = \App\Models\Document::create([
-            'type' => 'custom_form',
-            'status' => 'Draft',
-            'content' => [
-                'title' => $request->input('title'),
-                'description' => $request->input('description'),
-                'fields' => $fields,
-                'form_type' => 'answer_sheet',
-            ],
-            'issued_at' => now(),
-            'created_by' => auth()->id(),
-        ]);
-
         try {
-            app(\App\Services\AuditService::class)->log(
-                'custom_form_created',
-                "Created answer sheet: {$request->input('title')}",
-                $document
-            );
-        } catch (\Exception $e) {
-        }
+            $fields = json_decode($request->input('fields'), true) ?? [];
 
-        return redirect()->route('documents.index')
-            ->with('success', 'Answer sheet created successfully.');
+            $document = \App\Models\Document::create([
+                'type' => 'custom_form',
+                'status' => 'Draft',
+                'content' => [
+                    'title' => $request->input('title'),
+                    'description' => $request->input('description'),
+                    'fields' => $fields,
+                    'form_type' => 'answer_sheet',
+                ],
+                'issued_at' => now(),
+                'created_by' => auth()->id(),
+            ]);
+
+            try {
+                app(\App\Services\AuditService::class)->log(
+                    'custom_form_created',
+                    "Created answer sheet: {$request->input('title')}",
+                    $document
+                );
+            } catch (\Throwable $e) {
+            }
+
+            return redirect()->route('documents.index')
+                ->with('success', 'Answer sheet created successfully.');
+        } catch (\Throwable $e) {
+            \Log::error('Error storing custom form: ' . $e->getMessage());
+            return back()->with('error', 'An error has occurred while creating the answer sheet. Please reload your page or try again.')
+                ->withErrors(['error' => 'An error has occurred while creating the answer sheet. Please reload your page or try again.']);
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -2134,7 +2364,12 @@ class DocumentController extends Controller
      */
     public function newDocument()
     {
-        return \Inertia\Inertia::render('documents/new');
+        try {
+            return \Inertia\Inertia::render('documents/new');
+        } catch (\Throwable $e) {
+            \Log::error('Error rendering new document view: ' . $e->getMessage());
+            return redirect()->route('documents.index')->with('error', 'An error has occurred. Please reload your page or try again.');
+        }
     }
 
     /**
@@ -2151,68 +2386,74 @@ class DocumentController extends Controller
             'icon_name' => 'nullable|string',
         ]);
 
-        $filePath = null;
-        if ($request->hasFile('pdf')) {
-            $filePath = $request->file('pdf')
-                ->store('documents/custom', 'public');
-        }
-
-        $fields = json_decode($request->input('fields', '[]'), true) ?? [];
-
-        // Fallback: If no fields were defined, automatically add the most common Lupon fields
-        if (empty($fields)) {
-            $fields = [
-                ['id' => 'case_no',        'type' => 'text', 'label' => 'Case Number',       'required' => true],
-                ['id' => 'complainant',    'type' => 'text', 'label' => 'Complainant Name',   'required' => true],
-                ['id' => 'respondent',     'type' => 'text', 'label' => 'Respondent Name',    'required' => true],
-                ['id' => 'For',            'type' => 'text', 'label' => 'Nature of Case',    'required' => true],
-                ['id' => 'hearing_info',   'type' => 'text', 'label' => 'Hearing Date/Time', 'required' => false],
-                ['id' => 'made_this_day',  'type' => 'text', 'label' => 'Day',        'required' => false],
-                ['id' => 'made_this_month', 'type' => 'text', 'label' => 'Month',      'required' => false],
-                ['id' => 'made_this_year',  'type' => 'text', 'label' => 'Year',       'required' => false],
-                ['id' => 'witness',        'type' => 'text', 'label' => 'Witness Name',      'required' => false],
-                ['id' => 'signature',      'type' => 'text', 'label' => 'Signature Line',    'required' => false],
-            ];
-        }
-
-        // Map builder 'id' to 'name' so visual-editor and form-fill can load them correctly
-        foreach ($fields as &$f) {
-            if (!isset($f['name']) && isset($f['id'])) {
-                $f['name'] = $f['id'];
-            }
-        }
-        unset($f);
-
-        // Analyze and align layout and match fonts from the uploaded PDF
-        if ($filePath) {
-            $this->alignCustomTemplateWithAI($filePath, $fields);
-        }
-
-        $document = \App\Models\Document::create([
-            'type' => 'custom_form',
-            'status' => 'Draft',
-            'created_by' => auth()->id(),
-            'file_path' => $filePath,
-            'content' => [
-                'title' => $request->input('title'),
-                'description' => $request->input('description'),
-                'fields' => $fields,
-                'icon_name' => $request->input('icon_name', 'FileSignature'),
-                'is_view_only' => $request->boolean('is_view_only'),
-            ],
-        ]);
-
         try {
-            app(\App\Services\AuditService::class)->log(
-                'custom_form_created',
-                "Uploaded document: {$request->input('title')}",
-                $document
-            );
-        } catch (\Exception $e) {
-        }
+            $filePath = null;
+            if ($request->hasFile('pdf')) {
+                $filePath = $request->file('pdf')
+                    ->store('documents/custom', 'public');
+            }
 
-        return redirect()->route('documents.index')
-            ->with('success', "Document '{$request->input('title')}' saved successfully.");
+            $fields = json_decode($request->input('fields', '[]'), true) ?? [];
+
+            // Fallback: If no fields were defined, automatically add the most common Lupon fields
+            if (empty($fields)) {
+                $fields = [
+                    ['id' => 'case_no',        'type' => 'text', 'label' => 'Case Number',       'required' => true],
+                    ['id' => 'complainant',    'type' => 'text', 'label' => 'Complainant Name',   'required' => true],
+                    ['id' => 'respondent',     'type' => 'text', 'label' => 'Respondent Name',    'required' => true],
+                    ['id' => 'For',            'type' => 'text', 'label' => 'Nature of Case',    'required' => true],
+                    ['id' => 'hearing_info',   'type' => 'date', 'label' => 'Hearing Date/Time (12-Hour AM/PM)', 'required' => false],
+                    ['id' => 'made_this_day',  'type' => 'text', 'label' => 'Day',        'required' => false],
+                    ['id' => 'made_this_month', 'type' => 'text', 'label' => 'Month',      'required' => false],
+                    ['id' => 'made_this_year',  'type' => 'text', 'label' => 'Year',       'required' => false],
+                    ['id' => 'witness',        'type' => 'text', 'label' => 'Witness Name',      'required' => false],
+                    ['id' => 'signature',      'type' => 'text', 'label' => 'Signature Line',    'required' => false],
+                ];
+            }
+
+            // Map builder 'id' to 'name' so visual-editor and form-fill can load them correctly
+            foreach ($fields as &$f) {
+                if (!isset($f['name']) && isset($f['id'])) {
+                    $f['name'] = $f['id'];
+                }
+            }
+            unset($f);
+
+            // Analyze and align layout and match fonts from the uploaded PDF
+            if ($filePath) {
+                $this->alignCustomTemplateWithAI($filePath, $fields);
+            }
+
+            $document = \App\Models\Document::create([
+                'type' => 'custom_form',
+                'status' => 'Draft',
+                'created_by' => auth()->id(),
+                'file_path' => $filePath,
+                'content' => [
+                    'title' => $request->input('title'),
+                    'description' => $request->input('description'),
+                    'fields' => $fields,
+                    'icon_name' => $request->input('icon_name', 'FileSignature'),
+                    'is_view_only' => $request->boolean('is_view_only'),
+                ],
+            ]);
+
+            try {
+                app(\App\Services\AuditService::class)->log(
+                    'custom_form_created',
+                    "Uploaded document: {$request->input('title')}",
+                    $document
+                );
+            } catch (\Throwable $e) {
+            }
+
+            return redirect()->route('documents.index')
+                ->with('success', "Document '{$request->input('title')}' saved successfully.");
+        } catch (\Throwable $e) {
+            \Log::error('Error storing custom document: ' . $e->getMessage());
+            return back()->with('error', 'An error has occurred while saving the document. Please reload your page or try again.')
+                ->withErrors(['error' => 'An error has occurred while saving the document. Please reload your page or try again.']);
+        }
     }
 
     /**
@@ -2221,35 +2462,40 @@ class DocumentController extends Controller
      */
     public function editStandardTemplate($type)
     {
-        // Get standard fields from config
-        $standardFields = \App\Config\FormLayouts::getLayout($type);
+        try {
+            // Get standard fields from config
+            $standardFields = \App\Config\FormLayouts::getLayout($type);
 
-        // Map to builder format
-        $fields = array_map(function ($f) {
-            return [
-                'id' => $f['name'] ?? uniqid(),
-                'type' => $f['type'] ?? 'text',
-                'label' => $f['label'] ?? ucwords(str_replace(['_', '-'], ' ', $f['name'] ?? '')),
-                'placeholder' => $f['placeholder'] ?? '',
-                'required' => true,
-            ];
-        }, $standardFields);
+            // Map to builder format
+            $fields = array_map(function ($f) {
+                return [
+                    'id' => $f['name'] ?? uniqid(),
+                    'type' => $f['type'] ?? 'text',
+                    'label' => $f['label'] ?? ucwords(str_replace(['_', '-'], ' ', $f['name'] ?? '')),
+                    'placeholder' => $f['placeholder'] ?? '',
+                    'required' => true,
+                ];
+            }, $standardFields);
 
-        // Pre-fill metadata based on type
-        $title = ucwords(str_replace(['_', '-'], ' ', $type));
-        $isViewOnly = in_array($type, ['complaint', 'affidavit_withdrawal']);
+            // Pre-fill metadata based on type
+            $title = ucwords(str_replace(['_', '-'], ' ', $type));
+            $isViewOnly = in_array($type, ['complaint', 'affidavit_withdrawal']);
 
-        return \Inertia\Inertia::render('documents/new', [
-            'existingTemplate' => [
-                'id' => 0, // Flag for "new from standard"
-                'title' => $title,
-                'description' => "Customized version of {$title}",
-                'fields' => $fields,
-                'file_path' => null,
-                'icon_name' => 'FileSignature',
-                'is_view_only' => $isViewOnly,
-            ],
-        ]);
+            return \Inertia\Inertia::render('documents/new', [
+                'existingTemplate' => [
+                    'id' => 0, // Flag for "new from standard"
+                    'title' => $title,
+                    'description' => "Customized version of {$title}",
+                    'fields' => $fields,
+                    'file_path' => null,
+                    'icon_name' => 'FileSignature',
+                    'is_view_only' => $isViewOnly,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error("Error loading standard template {$type}: " . $e->getMessage());
+            return redirect()->route('documents.index')->with('error', 'An error has occurred while loading template data. Please reload your page.');
+        }
     }
 
     /**
@@ -2258,19 +2504,24 @@ class DocumentController extends Controller
      */
     public function editTemplate($id)
     {
-        $document = \App\Models\Document::findOrFail($id);
+        try {
+            $document = \App\Models\Document::findOrFail($id);
 
-        return \Inertia\Inertia::render('documents/new', [
-            'existingTemplate' => [
-                'id' => $document->id,
-                'title' => $document->content['title'] ?? '',
-                'description' => $document->content['description'] ?? '',
-                'fields' => $document->content['fields'] ?? [],
-                'file_path' => $document->file_path,
-                'icon_name' => $document->content['icon_name'] ?? 'FileSignature',
-                'is_view_only' => $document->content['is_view_only'] ?? false,
-            ],
-        ]);
+            return \Inertia\Inertia::render('documents/new', [
+                'existingTemplate' => [
+                    'id' => $document->id,
+                    'title' => $document->content['title'] ?? '',
+                    'description' => $document->content['description'] ?? '',
+                    'fields' => $document->content['fields'] ?? [],
+                    'file_path' => $document->file_path,
+                    'icon_name' => $document->content['icon_name'] ?? 'FileSignature',
+                    'is_view_only' => $document->content['is_view_only'] ?? false,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error("Error loading template {$id}: " . $e->getMessage());
+            return redirect()->route('documents.index')->with('error', 'An error has occurred while loading template data. Please reload your page.');
+        }
     }
 
     /**
@@ -2279,73 +2530,84 @@ class DocumentController extends Controller
      */
     public function updateCustom($id, Request $request)
     {
-        $document = \App\Models\Document::findOrFail($id);
-
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string|max:1000',
-            'pdf' => 'nullable|file|mimes:pdf|max:20480',
-            'fields' => 'nullable|string',
-            'icon_name' => 'nullable|string',
-        ]);
-
-        $fields = json_decode($request->input('fields', '[]'), true) ?? [];
-
-        $data = $document->content ?? [];
-        $data['title'] = $request->input('title');
-        $data['description'] = $request->input('description');
-        $data['fields'] = $fields;
-        $data['icon_name'] = $request->input('icon_name', 'FileSignature');
-        $data['is_view_only'] = $request->boolean('is_view_only');
-
-        $updatePayload = [
-            'content' => $data,
-        ];
-
-        if ($request->hasFile('pdf')) {
-            // Delete old file if exists
-            if ($document->file_path && \Storage::disk('public')->exists($document->file_path)) {
-                \Storage::disk('public')->delete($document->file_path);
-            }
-            $updatePayload['file_path'] = $request->file('pdf')->store('documents/custom', 'public');
-        }
-
-        $document->update($updatePayload);
-
         try {
-            app(\App\Services\AuditService::class)->log(
-                'custom_form_updated',
-                "Updated template: {$request->input('title')}",
-                $document
-            );
-        } catch (\Exception $e) {
-        }
+            $document = \App\Models\Document::findOrFail($id);
 
-        return redirect()->route('documents.index')
-            ->with('success', "Template '{$request->input('title')}' updated successfully.");
+            $request->validate([
+                'title' => 'required|string|max:255',
+                'description' => 'nullable|string|max:1000',
+                'pdf' => 'nullable|file|mimes:pdf|max:20480',
+                'fields' => 'nullable|string',
+                'icon_name' => 'nullable|string',
+            ]);
+
+            $fields = json_decode($request->input('fields', '[]'), true) ?? [];
+
+            $data = $document->content ?? [];
+            $data['title'] = $request->input('title');
+            $data['description'] = $request->input('description');
+            $data['fields'] = $fields;
+            $data['icon_name'] = $request->input('icon_name', 'FileSignature');
+            $data['is_view_only'] = $request->boolean('is_view_only');
+
+            $updatePayload = [
+                'content' => $data,
+            ];
+
+            if ($request->hasFile('pdf')) {
+                // Delete old file if exists
+                if ($document->file_path && \Storage::disk('public')->exists($document->file_path)) {
+                    \Storage::disk('public')->delete($document->file_path);
+                }
+                $updatePayload['file_path'] = $request->file('pdf')->store('documents/custom', 'public');
+            }
+
+            $document->update($updatePayload);
+
+            try {
+                app(\App\Services\AuditService::class)->log(
+                    'custom_form_updated',
+                    "Updated template: {$request->input('title')}",
+                    $document
+                );
+            } catch (\Throwable $e) {
+            }
+
+            return redirect()->route('documents.index')
+                ->with('success', "Template '{$request->input('title')}' updated successfully.");
+        } catch (\Throwable $e) {
+            \Log::error("Error updating template {$id}: " . $e->getMessage());
+            return back()->with('error', 'An error has occurred while updating the template. Please reload your page or try again.')
+                ->withErrors(['error' => 'An error has occurred while updating the template. Please reload your page or try again.']);
+        }
     }
 
     public function destroy($id)
     {
-        // Handle hiding "official" templates (id=0)
-        if ($id == 0 && request()->has('document_type')) {
-            $type = request('document_type');
+        try {
+            // Handle hiding "official" templates (id=0)
+            if ($id == 0 && request()->has('document_type')) {
+                $type = request('document_type');
 
-            \App\Models\FormLayout::updateOrCreate(
-                ['document_type' => $type],
-                ['is_hidden' => true]
-            );
+                \App\Models\FormLayout::updateOrCreate(
+                    ['document_type' => $type],
+                    ['is_hidden' => true]
+                );
 
-            return redirect()->route('documents.index')->with('success', 'Template removed from view.');
+                return redirect()->route('documents.index')->with('success', 'Template removed from view.');
+            }
+
+            $document = \App\Models\Document::findOrFail($id);
+
+            \App\Services\DocumentBackupService::recordVersion($document, 'soft_deleted', 'Document soft deleted (Moved to Trash)');
+
+            $document->delete();
+
+            return redirect()->route('documents.index')->with('success', 'Document deleted successfully.');
+        } catch (\Throwable $e) {
+            \Log::error("Error deleting document {$id}: " . $e->getMessage());
+            return redirect()->route('documents.index')->with('error', 'An error has occurred while deleting the document. Please reload your page or try again.');
         }
-
-        $document = \App\Models\Document::findOrFail($id);
-
-        \App\Services\DocumentBackupService::recordVersion($document, 'soft_deleted', 'Document soft deleted (Moved to Trash)');
-
-        $document->delete();
-
-        return redirect()->route('documents.index')->with('success', 'Document deleted successfully.');
     }
 
     /**
@@ -2376,8 +2638,12 @@ class DocumentController extends Controller
                 'current_version' => $versions->first()['version_number'] ?? 1,
                 'versions' => $versions,
             ]);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 404);
+        } catch (\Throwable $e) {
+            \Log::error("Error retrieving document versions for #{$id}: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error has occurred while retrieving document versions. Please reload your page.'
+            ], 500);
         }
     }
 
@@ -2390,13 +2656,18 @@ class DocumentController extends Controller
             return redirect()->back()->with('error', 'Administrators are in View-Only mode.');
         }
 
-        $document = \App\Models\Document::withTrashed()->findOrFail($id);
-        $success = \App\Services\DocumentBackupService::restoreVersion($document, (int)$versionId);
+        try {
+            $document = \App\Models\Document::withTrashed()->findOrFail($id);
+            $success = \App\Services\DocumentBackupService::restoreVersion($document, (int)$versionId);
 
-        if ($success) {
-            return redirect()->back()->with('success', "Document restored back to version #{$versionId} successfully.");
+            if ($success) {
+                return redirect()->back()->with('success', "Document restored back to version #{$versionId} successfully.");
+            }
+
+            return redirect()->back()->with('error', 'Failed to restore document version. Please reload your page or try again.');
+        } catch (\Throwable $e) {
+            \Log::error("Error restoring version #{$versionId} for document #{$id}: " . $e->getMessage());
+            return redirect()->back()->with('error', 'An error has occurred while restoring document version. Please reload your page.');
         }
-
-        return redirect()->back()->with('error', 'Failed to restore document version.');
     }
 }
