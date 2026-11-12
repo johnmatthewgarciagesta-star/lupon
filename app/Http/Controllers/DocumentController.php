@@ -169,15 +169,18 @@ class DocumentController extends Controller
     public function templates(Request $request)
     {
         try {
-            $query = \App\Models\Document::with(['case', 'creator']);
+            $query = \App\Models\Document::activeGenerated()->with(['case', 'creator']);
 
             if ($request->filled('search')) {
                 $search = $request->input('search');
                 $query->where(function ($q) use ($search) {
                     $q->where('type', 'like', "%{$search}%")
                       ->orWhereHas('case', function ($case) use ($search) {
-                          $case->where('case_number', 'like', "%{$search}%")
-                               ->orWhere('title', 'like', "%{$search}%");
+                          $case->whereNull('deleted_at')
+                               ->where(function ($inner) use ($search) {
+                                   $inner->where('case_number', 'like', "%{$search}%")
+                                         ->orWhere('title', 'like', "%{$search}%");
+                               });
                       });
                 });
             }
@@ -205,13 +208,15 @@ class DocumentController extends Controller
 
             $stats = [
                 'total' => ($standardCount - count($hiddenTemplates)) + $customCount,
-                'summons' => \App\Models\Document::whereNotNull('case_id')
+                'summons' => \App\Models\Document::activeGenerated()
+                    ->whereNotNull('case_id')
                     ->whereIn('type', ['summons', 'summons_respondent', 'summons_witness', 'notice_to_appear'])
                     ->count(),
-                'settlements' => \App\Models\Document::whereNotNull('case_id')
+                'settlements' => \App\Models\Document::activeGenerated()
+                    ->whereNotNull('case_id')
                     ->whereIn('type', ['amicable_settlement', 'arbitration_agreement', 'arbitration_award', 'katunayan_pagkakasundo'])
                     ->count(),
-                'recent' => \App\Models\Document::whereNotNull('case_id')->count(),
+                'recent' => \App\Models\Document::activeGenerated()->whereNotNull('case_id')->count(),
             ];
 
             $customTemplates = \App\Models\Document::where('type', 'custom_form')

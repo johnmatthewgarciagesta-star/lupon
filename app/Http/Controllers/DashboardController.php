@@ -14,37 +14,39 @@ class DashboardController extends Controller
         try {
             CaseController::checkMonthlyRolloverAutoArchive();
 
-            // 1. Key Metrics
-            $allCases = LuponCase::withTrashed()->get();
-            $activeCases = $allCases->filter(fn ($c) => !$c->trashed())->values();
-            $totalCases = $allCases->count();
+            // 1. Key Metrics (active, non-archived cases only)
+            $activeCases = LuponCase::with('creator')
+                ->orderBy('date_filed', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->get();
+            $totalCases = $activeCases->count();
             $concludedStatuses = ['Resolved', 'Settled', 'Dismissed', 'Withdrawn', 'Certified', 'Certified to File Action'];
-            $pendingCases = $allCases->whereNotIn('status', $concludedStatuses)->count();
-            $resolvedCases = $allCases->whereIn('status', $concludedStatuses)->count();
+            $pendingCases = $activeCases->whereNotIn('status', $concludedStatuses)->count();
+            $resolvedCases = $activeCases->whereIn('status', $concludedStatuses)->count();
 
             // Calculate new cases this month
             $currentYear = Carbon::now()->year;
             $currentMonth = Carbon::now()->month;
 
-            $latestMonthCasesCollection = LuponCase::withTrashed()
-                ->with('creator')
-                ->orderBy('date_filed', 'desc')
-                ->orderBy('created_at', 'desc')
-                ->get();
-
-            $newCasesThisMonth = $latestMonthCasesCollection->filter(function ($c) use ($currentMonth, $currentYear) {
-                $d = Carbon::parse($c->date_filed);
+            $newCasesThisMonth = $activeCases->filter(function ($c) use ($currentMonth, $currentYear) {
+                $rawDate = $c->date_filed ?: $c->created_at;
+                if (!$rawDate) {
+                    return false;
+                }
+                $d = Carbon::parse($rawDate);
                 return $d->month === $currentMonth && $d->year === $currentYear;
             })->count();
 
-            $latestMonthCases = $latestMonthCasesCollection->map(function ($case) {
+            $latestMonthCases = $activeCases->map(function ($case) {
+                $rawDate = $case->date_filed ?: $case->created_at;
+
                 return [
                     'id' => $case->id,
                     'case_number' => $case->case_number,
                     'complainant' => $case->complainant,
                     'respondent' => $case->respondent,
                     'type' => $case->nature_of_case,
-                    'date_filed' => Carbon::parse($case->date_filed)->format('M d, Y'),
+                    'date_filed' => $rawDate ? Carbon::parse($rawDate)->format('M d, Y') : 'N/A',
                     'raw_date_filed' => $case->date_filed,
                     'created_at' => $case->created_at ? $case->created_at->toISOString() : null,
                     'status' => $case->status,
@@ -52,10 +54,11 @@ class DashboardController extends Controller
                 ];
             })->values();
 
-            // 2. Explicit Case Overview Metrics
+            // 2. Explicit Case Overview Metrics (active, non-archived cases only)
             $totalAllTime = $totalCases;
-            $totalCurrentYear = $allCases->filter(function ($c) use ($currentYear) {
-                return Carbon::parse($c->date_filed)->year === $currentYear;
+            $totalCurrentYear = $activeCases->filter(function ($c) use ($currentYear) {
+                $rawDate = $c->date_filed ?: $c->created_at;
+                return $rawDate && Carbon::parse($rawDate)->year === $currentYear;
             })->count();
             $totalCurrentMonth = $newCasesThisMonth;
 
@@ -64,7 +67,7 @@ class DashboardController extends Controller
             $civilCount = 0;
             $othersCount = 0;
 
-            foreach ($allCases as $c) {
+            foreach ($activeCases as $c) {
                 $nature = strtolower($c->nature_of_case ?? '');
                 if (str_contains($nature, 'criminal') || str_contains($nature, 'injury') || str_contains($nature, 'slander') || str_contains($nature, 'threat') || str_contains($nature, 'assault') || str_contains($nature, 'theft') || str_contains($nature, 'summons')) {
                     $criminalCount++;
@@ -152,11 +155,11 @@ class DashboardController extends Controller
             // 5. Status Distribution (active cases) & Outcome Distribution
             $statusDistribution = $calcStatusBreakdown($activeCases);
 
-            $pendingCount = $allCases->where('status', 'Pending')->count();
-            $resolvedCount = $allCases->whereIn('status', ['Resolved', 'Settled'])->count();
-            $mediationCount = $allCases->where('status', 'Mediation')->count();
-            $dismissedCount = $allCases->whereIn('status', ['Dismissed', 'Withdrawn'])->count();
-            $certifiedCount = $allCases->filter(fn ($c) => str_contains(strtolower($c->status ?? ''), 'certif'))->count();
+            $pendingCount = $activeCases->where('status', 'Pending')->count();
+            $resolvedCount = $activeCases->whereIn('status', ['Resolved', 'Settled'])->count();
+            $mediationCount = $activeCases->where('status', 'Mediation')->count();
+            $dismissedCount = $activeCases->whereIn('status', ['Dismissed', 'Withdrawn'])->count();
+            $certifiedCount = $activeCases->filter(fn ($c) => str_contains(strtolower($c->status ?? ''), 'certif'))->count();
 
             $settled = $resolvedCount;
             $pendingActive = $pendingCount + $mediationCount;
@@ -206,7 +209,7 @@ class DashboardController extends Controller
                 ];
             }
 
-            // 8. Document Analytics & Overview
+            // 8. Document Analytics & Overview (active, non-archived documents/cases only)
             $hiddenTemplates = \App\Models\FormLayout::where('is_hidden', true)
                 ->pluck('document_type')
                 ->toArray();
@@ -214,24 +217,27 @@ class DashboardController extends Controller
             $standardCount = 14;
             $totalDocTemplates = ($standardCount - count($hiddenTemplates)) + $customCount;
 
-            $summonsDocCount = Document::whereNotNull('case_id')
+            $summonsDocCount = Document::activeGenerated()
+                ->whereNotNull('case_id')
                 ->whereIn('type', ['summons', 'summons_respondent', 'summons_witness', 'notice_to_appear'])
                 ->count();
 
-            $settlementsDocCount = Document::whereNotNull('case_id')
+            $settlementsDocCount = Document::activeGenerated()
+                ->whereNotNull('case_id')
                 ->whereIn('type', ['amicable_settlement', 'arbitration_agreement', 'arbitration_award', 'katunayan_pagkakasundo'])
                 ->count();
 
-            $recentDocsCount = Document::whereNotNull('case_id')->count();
+            $recentDocsCount = Document::activeGenerated()->whereNotNull('case_id')->count();
 
-            $totalDocuments = Document::count();
-            $documentsByType = Document::selectRaw('type, count(*) as count')
+            $documentsByType = Document::activeGenerated()
+                ->selectRaw('type, count(*) as count')
                 ->groupBy('type')
                 ->orderByDesc('count')
                 ->limit(5)
                 ->get();
 
-            $recentDocuments = Document::with('case')
+            $recentDocuments = Document::activeGenerated()
+                ->with('case')
                 ->orderBy('created_at', 'desc')
                 ->limit(5)
                 ->get()

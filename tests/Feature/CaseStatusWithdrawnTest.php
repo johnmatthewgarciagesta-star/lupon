@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Document;
 use App\Models\LuponCase;
 use App\Models\User;
 use Carbon\Carbon;
@@ -178,6 +179,91 @@ test('cases updated before current month auto-archive and disappear from status 
             'withdrawn' => 0,
             'settled' => 0,
         ]);
+});
+
+test('archived cases and their documents are excluded from dashboard overview, case outcomes, case overview, and document overview', function () {
+    $encoder = User::factory()->create(['status' => 'Active']);
+    $encoder->assignRole('Data Encoder');
+
+    $archivedCase = LuponCase::create([
+        'case_number' => '26-283',
+        'folder_name' => 'case-001',
+        'title' => 'Archived Complainant vs Respondent',
+        'nature_of_case' => 'Civil Dispute',
+        'complainant' => 'Archived Complainant',
+        'respondent' => 'Archived Respondent',
+        'status' => 'Settled',
+        'date_filed' => now()->toDateString(),
+        'created_by' => $encoder->id,
+    ]);
+
+    Document::create([
+        'case_id' => $archivedCase->id,
+        'folder_name' => 'case-001',
+        'type' => 'Complaint',
+        'status' => 'Issued',
+        'issued_at' => now(),
+        'created_by' => $encoder->id,
+    ]);
+
+    $activeCase = LuponCase::create([
+        'case_number' => '26-284',
+        'folder_name' => 'case-002',
+        'title' => 'Active Complainant vs Respondent',
+        'nature_of_case' => 'Complaint',
+        'complainant' => 'Active Complainant',
+        'respondent' => 'Active Respondent',
+        'status' => 'Withdrawn',
+        'date_filed' => now()->toDateString(),
+        'created_by' => $encoder->id,
+    ]);
+
+    $activeDoc = Document::create([
+        'case_id' => $activeCase->id,
+        'folder_name' => 'case-002',
+        'type' => 'summons',
+        'status' => 'Issued',
+        'issued_at' => now(),
+        'created_by' => $encoder->id,
+    ]);
+
+    // Archive only the first case
+    $this->actingAs($encoder)
+        ->post(route('cases.archive-single', $archivedCase->id))
+        ->assertRedirect();
+
+    $dashboardProps = $this->actingAs($encoder)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->viewData('page')['props'];
+
+    // Only the 1 active case & 1 active document should remain visible across all dashboard metrics
+    expect($dashboardProps['stats']['total'])->toBe(1)
+        ->and($dashboardProps['stats']['resolved'])->toBe(1)
+        ->and($dashboardProps['stats']['new_this_month'])->toBe(1)
+        ->and(count($dashboardProps['latestMonthCases']))->toBe(1)
+        ->and($dashboardProps['caseOverview']['total_all_time'])->toBe(1)
+        ->and($dashboardProps['caseOverview']['total_current_year'])->toBe(1)
+        ->and($dashboardProps['caseOverview']['total_current_month'])->toBe(1)
+        ->and($dashboardProps['caseOverview']['by_category']['civil'])->toBe(0)
+        ->and($dashboardProps['caseOverview']['by_category']['others'])->toBe(1)
+        ->and(collect($dashboardProps['outcomeStats'])->firstWhere('name', 'Settled')['value'])->toBe(0)
+        ->and(collect($dashboardProps['outcomeStats'])->firstWhere('name', 'Escalated')['value'])->toBe(1)
+        ->and($dashboardProps['documentStats']['summons'])->toBe(1)
+        ->and($dashboardProps['documentStats']['recent_count'])->toBe(1)
+        ->and(count($dashboardProps['documentStats']['by_type']))->toBe(1)
+        ->and($dashboardProps['documentStats']['by_type'][0]['type'])->toBe('summons')
+        ->and(count($dashboardProps['documentStats']['recent']))->toBe(1)
+        ->and($dashboardProps['documentStats']['recent'][0]['id'])->toBe($activeDoc->id);
+
+    $templatesProps = $this->actingAs($encoder)
+        ->get(route('documents.templates'))
+        ->assertOk()
+        ->viewData('page')['props'];
+
+    expect($templatesProps['stats']['recent'])->toBe(1)
+        ->and(count($templatesProps['documents']))->toBe(1)
+        ->and($templatesProps['documents'][0]['id'])->toBe($activeDoc->id);
 });
 
 

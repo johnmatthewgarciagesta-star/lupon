@@ -40,4 +40,21 @@ class Document extends Model
     {
         return $this->hasMany(DocumentVersion::class, 'document_id')->orderBy('version_number', 'desc');
     }
+
+    /**
+     * Scope to non-template documents whose parent case (if linked) is not soft-deleted/archived.
+     */
+    public function scopeActiveGenerated($query)
+    {
+        return $query->where('type', '!=', 'custom_form')
+            ->where(function ($q) {
+                $q->whereNull('case_id')
+                    ->orWhereExists(function ($sub) {
+                        $sub->selectRaw('1')
+                            ->from('cases')
+                            ->whereColumn('cases.id', 'documents.case_id')
+                            ->whereNull('cases.deleted_at');
+                    });
+            });
+    }
 }
