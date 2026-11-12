@@ -147,7 +147,7 @@ class DocumentController extends Controller
                                 'type' => $doc->type,
                                 'file_path' => $doc->file_path,
                                 'status' => $doc->status,
-                                'created_at' => $doc->created_at ? $doc->created_at->format('M d, Y H:i') : null,
+                                'created_at' => ($doc->issued_at ?? $doc->created_at)?->format('M d, Y H:i'),
                                 'creator' => $doc->creator ? ['name' => $doc->creator->name] : null,
                             ];
                         })->values(),
@@ -187,7 +187,7 @@ class DocumentController extends Controller
                     'id' => $doc->id,
                     'type' => $doc->type,
                     'status' => $doc->status,
-                    'date' => $doc->created_at ? $doc->created_at->toIso8601String() : null,
+                    'date' => ($doc->issued_at ?? $doc->created_at)?->toIso8601String(),
                     'case_id' => $doc->case_id,
                     'case_number' => $doc->case ? $doc->case->case_number : null,
                     'creator' => $doc->creator ? ['name' => $doc->creator->name] : null,
@@ -1956,6 +1956,7 @@ class DocumentController extends Controller
                                  "  \"complainant\": \"Name of the complainant(s) or null\"," .
                                  "  \"respondent\": \"Name of the respondent(s) or null\"," .
                                  "  \"case_no\": \"The formal case number or null\"," .
+                                 "  \"date_filed\": \"The filing, received, made, or signing date written on the document (e.g. 'Oct 15, 2026', '10/15/2026', or 'Made this 15th day of October, 2026'), formatted strictly as YYYY-MM-DD, or null if not visible\"," .
                                  "  \"nature_of_case\": \"MUST be strictly either 'Complaint' or 'Affidavit of Withdrawal'\"," .
                                  "  \"summary\": \"A short, objective summary of the narrative/statement written on the page, translated into clear Tagalog/Filipino.\"," .
                                  "  \"document_type\": \"Must be either 'complaint' (for complaint forms/disputes) or 'affidavit_withdrawal' (for affidavit of withdrawal/request for dismissal)\"" .
@@ -2034,6 +2035,17 @@ class DocumentController extends Controller
 
             $rawTextResponse = $response->json('candidates.0.content.parts.0.text');
             $extractedData = json_decode($rawTextResponse, true) ?? [];
+
+            $rawExtractedDate = trim((string) ($extractedData['date_filed'] ?? ''));
+            if ($rawExtractedDate !== '' && strtolower($rawExtractedDate) !== 'null') {
+                try {
+                    $extractedData['date_filed'] = \Carbon\Carbon::parse($rawExtractedDate)->format('Y-m-d');
+                } catch (\Throwable $e) {
+                    $extractedData['date_filed'] = null;
+                }
+            } else {
+                $extractedData['date_filed'] = null;
+            }
 
             // Normalize nature_of_case strictly to either 'Complaint' or 'Affidavit of Withdrawal'
             $docType = strtolower($extractedData['document_type'] ?? '');
@@ -2127,6 +2139,7 @@ class DocumentController extends Controller
             'complainant' => 'required|string',
             'respondent' => 'required|string',
             'case_no' => 'nullable|string',
+            'date_filed' => 'nullable|date',
             'nature_of_case' => 'nullable|string',
             'summary' => 'nullable|string',
             'case_id' => 'nullable|integer',
@@ -2199,8 +2212,19 @@ class DocumentController extends Controller
                 }
             }
 
-            $dateFiled = $request->input('date_filed');
-            $timestamp = !empty($dateFiled) ? strtotime($dateFiled) : time();
+            $dateFiledInput = trim((string) $request->input('date_filed', ''));
+            $effectiveDate = now('Asia/Manila');
+            $hasExplicitDate = false;
+            if ($dateFiledInput !== '') {
+                try {
+                    $effectiveDate = \Carbon\Carbon::parse($dateFiledInput, 'Asia/Manila')->setTime(12, 0, 0);
+                    $hasExplicitDate = true;
+                } catch (\Throwable $e) {
+                    // Fallback to current date if malformed
+                }
+            }
+
+            $timestamp = $effectiveDate->timestamp;
             $docContentMap = [
                 'case_no' => $caseNo,
                 'complainant' => $complainant,
@@ -2212,6 +2236,7 @@ class DocumentController extends Controller
                 'made_this_day' => date('jS', $timestamp),
                 'year' => date('y', $timestamp),
                 'type' => $type,
+                'date_filed' => $effectiveDate->format('Y-m-d'),
                 'is_scanned' => true
             ];
 
@@ -2230,7 +2255,7 @@ class DocumentController extends Controller
                         'nature_of_case' => $natureOfCase,
                         'title' => "{$complainant} vs {$respondent}",
                         'complaint_narrative' => $summary ?: $case->complaint_narrative,
-                        'date_filed' => now(),
+                        'date_filed' => $hasExplicitDate ? $effectiveDate->format('Y-m-d') : ($case->date_filed ?: $effectiveDate->format('Y-m-d')),
                         'document_data' => $docContentMap,
                     ]);
                     \App\Services\AuditService::log('UPDATE', 'Cases', "Updated Case #{$case->case_number} details from AI scan", $case->case_number);
@@ -2259,7 +2284,7 @@ class DocumentController extends Controller
                     'respondent' => $respondent,
                     'nature_of_case' => $natureOfCase,
                     'status' => 'Pending',
-                    'date_filed' => now(),
+                    'date_filed' => $effectiveDate->format('Y-m-d'),
                     'complaint_narrative' => $summary,
                     'admin_notes' => 'Created via Scanned AI Ingestion',
                     'document_data' => $docContentMap,
@@ -2278,7 +2303,7 @@ class DocumentController extends Controller
                 'status' => 'Issued',
                 'file_path' => $permanentPathUrl,
                 'content' => $docContentMap,
-                'issued_at' => now(),
+                'issued_at' => $effectiveDate->copy(),
                 'created_by' => auth()->id(),
             ]);
 

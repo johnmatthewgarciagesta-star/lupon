@@ -191,6 +191,7 @@ export default function DocumentsTemplates({ documents, stats, customTemplates, 
     const [complainant, setComplainant] = useState('');
     const [respondent, setRespondent] = useState('');
     const [caseNo, setCaseNo] = useState('');
+    const [dateFiled, setDateFiled] = useState('');
     const [natureOfCase, setNatureOfCase] = useState('');
     const [summary, setSummary] = useState('');
     
@@ -336,6 +337,7 @@ export default function DocumentsTemplates({ documents, stats, customTemplates, 
                 (ext.complainant && ext.complainant.trim()) ||
                 (ext.respondent && ext.respondent.trim()) ||
                 (ext.case_no && ext.case_no.trim()) ||
+                (ext.date_filed && ext.date_filed.trim()) ||
                 (ext.summary && ext.summary.trim())
             );
 
@@ -353,6 +355,7 @@ export default function DocumentsTemplates({ documents, stats, customTemplates, 
             setComplainant(ext.complainant || '');
             setRespondent(ext.respondent || '');
             setCaseNo(ext.case_no || '');
+            setDateFiled(ext.date_filed || '');
             setNatureOfCase(ext.nature_of_case || '');
             setSummary(ext.summary || '');
 
@@ -404,6 +407,7 @@ export default function DocumentsTemplates({ documents, stats, customTemplates, 
             complainant,
             respondent,
             case_no: caseNo,
+            date_filed: dateFiled || null,
             nature_of_case: natureOfCase,
             summary,
             case_id: caseId,
@@ -437,6 +441,7 @@ export default function DocumentsTemplates({ documents, stats, customTemplates, 
         setComplainant('');
         setRespondent('');
         setCaseNo('');
+        setDateFiled('');
         setNatureOfCase('');
         setSummary('');
         setAssignedFolder(nextFolderNumber || '');
@@ -1175,6 +1180,18 @@ export default function DocumentsTemplates({ documents, stats, customTemplates, 
                                     {caseNoError && (
                                         <p className="text-xs text-red-600 font-semibold mt-1">{caseNoError}</p>
                                     )}
+                                </div>
+
+                                {/* Date Filed / Document Date */}
+                                <div className="space-y-1.5 col-span-2">
+                                    <Label htmlFor="date-filed" className="text-xs font-semibold">Date Filed / Document Date</Label>
+                                    <Input
+                                        id="date-filed"
+                                        type="date"
+                                        value={dateFiled}
+                                        onChange={(e) => setDateFiled(e.target.value)}
+                                        className="h-9 text-xs"
+                                    />
                                 </div>
 
                                 {/* Complainant */}

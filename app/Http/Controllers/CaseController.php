@@ -199,12 +199,14 @@ class CaseController extends Controller
                     'creator' => ['name' => $case->creator ? $case->creator->name : ($case->created_by ? 'Encoder #'.$case->created_by : 'System Admin')],
                     'documents_count' => $case->documents->count(),
                     'documents' => $case->documents->map(function ($doc) {
+                        $displayDate = $doc->issued_at ?? $doc->created_at;
+
                         return [
                             'id' => $doc->id,
                             'type' => $doc->type,
                             'file_path' => $doc->file_path,
                             'status' => $doc->status,
-                            'created_at' => $doc->created_at ? $doc->created_at->format('M d, Y H:i') : null,
+                            'created_at' => $displayDate ? $displayDate->format('M d, Y H:i') : null,
                             'creator' => $doc->creator ? ['name' => $doc->creator->name] : null,
                         ];
                     })->values(),

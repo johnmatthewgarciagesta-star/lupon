@@ -236,11 +236,13 @@ class DashboardController extends Controller
                 ->limit(5)
                 ->get()
                 ->map(function ($doc) {
+                    $displayDate = $doc->issued_at ?? $doc->created_at;
+
                     return [
                         'id' => $doc->id,
                         'type' => $doc->type, 
                         'case_number' => $doc->case ? $doc->case->case_number : 'N/A',
-                        'created_at' => $doc->created_at ? $doc->created_at->format('M d, Y') : 'N/A',
+                        'created_at' => $displayDate ? $displayDate->format('M d, Y') : 'N/A',
                         'status' => $doc->status,
                     ];
                 });

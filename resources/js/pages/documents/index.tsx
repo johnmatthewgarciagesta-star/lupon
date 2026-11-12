@@ -264,6 +264,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
     const [complainant, setComplainant] = useState('');
     const [respondent, setRespondent] = useState('');
     const [caseNo, setCaseNo] = useState('');
+    const [dateFiled, setDateFiled] = useState('');
     const [natureOfCase, setNatureOfCase] = useState('');
     const [summary, setSummary] = useState('');
     
@@ -367,6 +368,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                     (data.complainant && data.complainant.trim()) ||
                     (data.respondent && data.respondent.trim()) ||
                     (data.case_no && data.case_no.trim()) ||
+                    (data.date_filed && data.date_filed.trim()) ||
                     (data.summary && data.summary.trim())
                 );
 
@@ -385,6 +387,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                 setComplainant(data.complainant || '');
                 setRespondent(data.respondent || '');
                 setCaseNo(data.case_no || '');
+                setDateFiled(data.date_filed || '');
                 setNatureOfCase(data.nature_of_case || '');
                 setSummary(data.summary || '');
                 
@@ -447,6 +450,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
             complainant,
             respondent,
             case_no: caseNo,
+            date_filed: dateFiled || null,
             nature_of_case: natureOfCase,
             summary,
             case_id: caseId,
@@ -480,6 +484,7 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
         setComplainant('');
         setRespondent('');
         setCaseNo('');
+        setDateFiled('');
         setNatureOfCase('');
         setSummary('');
         setAssignedFolder(nextFolderNumber || '');
@@ -1341,6 +1346,18 @@ export default function Documents({ documents, stats, customTemplates, hiddenTem
                                     {caseNoError && (
                                         <p className="text-xs text-red-600 font-semibold mt-1">{caseNoError}</p>
                                     )}
+                                </div>
+
+                                {/* Date Filed / Document Date */}
+                                <div className="space-y-1.5 col-span-2">
+                                    <Label htmlFor="date-filed" className="text-xs font-semibold">Date Filed / Document Date</Label>
+                                    <Input
+                                        id="date-filed"
+                                        type="date"
+                                        value={dateFiled}
+                                        onChange={(e) => setDateFiled(e.target.value)}
+                                        className="h-9 text-xs"
+                                    />
                                 </div>
 
                                 {/* Complainant */}
