@@ -7,6 +7,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use App\Services\BrowsershotService;
 use Spatie\Browsershot\Browsershot;
 
 class ReportController extends Controller
@@ -33,20 +34,10 @@ class ReportController extends Controller
         $html = view('reports.pdf', compact('stats', 'type', 'startDate', 'endDate'))->render();
 
         try {
-            $browsershot = Browsershot::html($html);
-            if (env('CHROME_PATH')) {
-                $browsershot->setChromePath(env('CHROME_PATH'));
-            }
-
-            $pdf = $browsershot
+            $pdf = BrowsershotService::html($html)
                 ->format('A4')
                 ->margins(10, 10, 10, 10)
                 ->showBackground()
-                ->waitUntilNetworkIdle()
-                ->timeout(120)
-                ->noSandbox()
-                ->ignoreHttpsErrors()
-                ->setOption('args', ['--disable-web-security'])
                 ->pdf();
 
             $filename = "System_Report_{$type}_".date('Ymd_His').'.pdf';

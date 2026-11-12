@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\SimpleType\TblWidth;
+use App\Services\BrowsershotService;
 use Spatie\Browsershot\Browsershot;
 
 class DocumentController extends Controller
@@ -895,12 +896,7 @@ class DocumentController extends Controller
 
         // Generate PDF using Browsershot
         try {
-            $browsershot = Browsershot::html($html);
-            if (env('CHROME_PATH')) {
-                $browsershot->setChromePath(env('CHROME_PATH'));
-            }
-
-            $pdf = $browsershot
+            $pdf = BrowsershotService::html($html)
                 ->format('A4')
                 ->margins(0, 0, 0, 0)
                 // Lock viewport to exactly one A4 page (210mm × 297mm at 96 DPI ≈ 794×1123 px).
@@ -910,11 +906,6 @@ class DocumentController extends Controller
                 ->showBackground()
                 ->setOption('displayHeaderFooter', false)
                 ->setOption('printBackground', true)
-                ->waitUntilNetworkIdle()
-                ->timeout(120) // Extended timeout
-                ->noSandbox() // Crucial for some environments
-                ->ignoreHttpsErrors() // Ignore SSL issues
-                ->setOption('args', ['--disable-web-security']) // Allow loading local resources if needed
                 ->pdf();
         } catch (\Exception $e) {
             return response('PDF Generation Error: '.$e->getMessage(), 500);
