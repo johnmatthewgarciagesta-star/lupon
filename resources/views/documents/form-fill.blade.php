@@ -1190,6 +1190,58 @@
     </div>
 </div>
 
+<!-- Create New Case Folder Modal -->
+<div class="confirm-modal-overlay" id="createFolderModal" style="display:none; position:fixed !important; inset:0 !important; top:0 !important; left:0 !important; right:0 !important; bottom:0 !important; width:100vw !important; height:100vh !important; background:rgba(15, 23, 42, 0.72) !important; backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); z-index:999999 !important; align-items:center !important; justify-content:center !important; padding:20px; box-sizing:border-box;" onclick="if(event.target === this) closeCreateFolderModal();">
+    <div class="confirm-modal-card" style="background:#ffffff !important; border-radius:20px; max-width:480px; width:100%; padding:28px 24px; box-shadow:0 25px 50px -12px rgba(0, 0, 0, 0.35); text-align:left; position:relative; z-index:1000000; box-sizing:border-box;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div style="width:36px; height:36px; border-radius:10px; background:#eff6ff; display:flex; align-items:center; justify-content:center; color:#2563eb; font-size:18px;">📁</div>
+                <h3 style="margin:0; font-size:18px; font-weight:700; color:#0f172a;">Create Case Folder</h3>
+            </div>
+            <button type="button" onclick="closeCreateFolderModal()" style="background:none; border:none; font-size:22px; line-height:1; color:#94a3b8; cursor:pointer; padding:4px;">&times;</button>
+        </div>
+        <p style="margin:0 0 16px 0; font-size:13px; color:#64748b; line-height:1.4;">
+            Create a new folder to organize this form and related case files.
+        </p>
+
+        <form id="inlineCreateFolderForm" onsubmit="event.preventDefault(); submitCreateFolderInline();">
+            <div style="margin-bottom:12px;">
+                <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">Folder Name / Number <span style="color:#ef4444;">*</span></label>
+                <input type="text" id="inline_folder_name" name="folder_name" value="{{ $nextFolderNumber ?? 'case-001' }}" required style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;">
+                <span id="inline_folder_error" style="display:none; color:#ef4444; font-size:11px; margin-top:3px; font-weight:600;"></span>
+            </div>
+
+            <div style="margin-bottom:12px;">
+                <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">Case Number <span style="font-weight:400; color:#94a3b8;">(Optional)</span></label>
+                <input type="text" id="inline_case_number" name="case_number" placeholder="e.g. KP-{{ date('Y') }}-001" style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;">
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+                <div>
+                    <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">Complainant</label>
+                    <input type="text" id="inline_complainant" name="complainant" placeholder="Full Name" style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;">
+                </div>
+                <div>
+                    <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">Respondent</label>
+                    <input type="text" id="inline_respondent" name="respondent" placeholder="Full Name" style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;">
+                </div>
+            </div>
+
+            <div style="margin-bottom:18px;">
+                <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">Nature of Case</label>
+                <input type="text" id="inline_nature_of_case" name="nature_of_case" placeholder="e.g. Barangay Dispute / Collection" style="width:100%; padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;">
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button type="button" onclick="closeCreateFolderModal()" style="padding:8px 16px; border:1px solid #cbd5e1; background:#f8fafc; border-radius:8px; font-size:13px; font-weight:600; color:#475569; cursor:pointer;">Cancel</button>
+                <button type="submit" id="btnSubmitInlineFolder" style="padding:8px 18px; border:none; background:#2563eb; color:#fff; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                    <span>Create & Assign</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Header -->
 <header class="page-header">
     <div class="header-inner">
@@ -1202,17 +1254,26 @@
             <div class="header-subtitle">Lupon ng Tagapamayapa</div>
             <div class="header-title">{{ ucwords(str_replace('_', ' ', $type)) }}</div>
         </div>
-        <div class="header-actions" style="display: flex; align-items: center; gap: 12px;">
+        <div class="header-actions" style="display: flex; align-items: center; gap: 10px;">
             <div style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.07); padding: 4px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);">
                 <label for="header_target_folder" style="font-size: 11px; font-weight: 700; color: #fbbc04; white-space: nowrap; text-transform: uppercase;">Target Folder:</label>
-                <select id="header_target_folder" onchange="document.getElementById('hidden_target_folder').value = this.value;" style="background: #1e293b; color: #fff; border: 1px solid #475569; border-radius: 6px; padding: 4px 8px; font-size: 12px; font-weight: 600; outline: none; cursor: pointer;">
-                    <option value="">📁 Unassigned / Standalone</option>
+                <select id="header_target_folder" onchange="onTargetFolderChange(this)" style="background: #1e293b; color: #fff; border: 1px solid #475569; border-radius: 6px; padding: 4px 8px; font-size: 12px; font-weight: 600; outline: none; cursor: pointer; max-width: 220px;">
+                    <option value="" data-case-id="" data-case-no="" data-complainant="" data-respondent="">📁 Unassigned / Standalone</option>
+                    <option value="__NEW_FOLDER__" style="color: #38bdf8; font-weight: 700;">➕ + Create New Case Folder...</option>
                     @foreach($caseFolders ?? [] as $f)
-                        <option value="{{ $f['folder_name'] }}" {{ (isset($case) && ($case->folder_name == $f['folder_name'] || 'case-'.sprintf('%03d', $case->id) == $f['folder_name'])) ? 'selected' : '' }}>
+                        <option value="{{ $f['folder_name'] }}" 
+                                data-case-id="{{ $f['case_id'] ?? $f['id'] ?? '' }}"
+                                data-case-no="{{ $f['case_number'] }}"
+                                data-complainant="{{ $f['complainant'] }}"
+                                data-respondent="{{ $f['respondent'] }}"
+                                {{ (isset($case) && ($case->folder_name == $f['folder_name'] || 'case-'.sprintf('%03d', $case->id) == $f['folder_name'])) ? 'selected' : '' }}>
                             📁 {{ $f['folder_name'] }} ({{ $f['complainant'] }} vs {{ $f['respondent'] }})
                         </option>
                     @endforeach
                 </select>
+                <button type="button" onclick="openCreateFolderModal()" style="background: #2563eb; color: #fff; border: none; border-radius: 6px; padding: 4px 9px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;" title="Create new case folder">
+                    + New Folder
+                </button>
             </div>
             <button class="btn-header btn-header-amber" onclick="openCalibration()" title="Open Word Editor">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -1234,17 +1295,15 @@
 <!-- Main Container -->
 <div class="container">
 
-    @if($case)
-    <div class="case-banner">
+    <div class="case-banner" id="dynamicCaseBanner" style="{{ $case ? 'display:flex;' : 'display:none;' }}">
         <svg class="case-banner-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
         <div class="case-banner-text">
-            <strong>Linked to Case #{{ $case->case_number }}</strong>
-            <span>{{ $case->title ?? ($case->complainant . ' vs ' . $case->respondent) }}</span>
+            <strong id="bannerCaseTitle">{{ $case ? ('Linked to Case #' . ($case->case_number ?? $case->folder_name)) : '' }}</strong>
+            <span id="bannerCaseSubtitle">{{ $case ? ($case->title ?? ($case->complainant . ' vs ' . $case->respondent)) : '' }}</span>
         </div>
     </div>
-    @endif
 
     <!-- Title Card -->
     <div class="form-card title-card">
@@ -1271,10 +1330,8 @@
         <input type="hidden" name="action" value="preview">
         <input type="hidden" name="layout_overrides" id="layout-overrides" value="">
         <input type="hidden" name="folder_name" id="hidden_target_folder" value="{{ isset($case) ? ($case->folder_name ?? ('case-'.sprintf('%03d', $case->id))) : '' }}">
-        <input type="hidden" name="document_id" value="{{ $documentId ?? $document->id ?? $id ?? '' }}">
-        @if($case)
-            <input type="hidden" name="case_id" value="{{ $case->id }}">
-        @endif
+        <input type="hidden" name="document_id" id="hidden_document_id" value="{{ $documentId ?? $document->id ?? $id ?? '' }}">
+        <input type="hidden" name="case_id" id="hidden_case_id" value="{{ isset($case) ? $case->id : '' }}">
 
         @php
             // Group fields into sections - some are "footer" fields
@@ -2210,8 +2267,226 @@
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             closeConfirmModal();
+            closeCreateFolderModal();
         }
     });
+
+    // ============================
+    // INLINE CASE FOLDER MODAL & SYNC
+    // ============================
+    function setFormInputValueIfEmpty(fieldName, value) {
+        if (!value) return;
+        const input = document.querySelector(`[name="${fieldName}"]`);
+        if (input && !input.value.trim()) {
+            input.value = value;
+            if (typeof updatePreview === 'function') {
+                updatePreview(fieldName, value);
+            }
+        }
+    }
+
+    function openCreateFolderModal() {
+        const compInput = document.querySelector('[name="complainant"]');
+        const respInput = document.querySelector('[name="respondent"]');
+        const caseNoInput = document.querySelector('[name="case_no"]');
+        const forInput = document.querySelector('[name="For"]');
+
+        const inlineComp = document.getElementById('inline_complainant');
+        const inlineResp = document.getElementById('inline_respondent');
+        const inlineCaseNo = document.getElementById('inline_case_number');
+        const inlineNature = document.getElementById('inline_nature_of_case');
+        const inlineErr = document.getElementById('inline_folder_error');
+
+        if (inlineErr) {
+            inlineErr.style.display = 'none';
+            inlineErr.innerText = '';
+        }
+
+        if (inlineComp && compInput && compInput.value && !inlineComp.value) inlineComp.value = compInput.value;
+        if (inlineResp && respInput && respInput.value && !inlineResp.value) inlineResp.value = respInput.value;
+        if (inlineCaseNo && caseNoInput && caseNoInput.value && !inlineCaseNo.value) inlineCaseNo.value = caseNoInput.value;
+        if (inlineNature && forInput && forInput.value && !inlineNature.value) inlineNature.value = forInput.value;
+
+        const modal = document.getElementById('createFolderModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            const folderInput = document.getElementById('inline_folder_name');
+            if (folderInput) folderInput.focus();
+        }
+    }
+
+    function closeCreateFolderModal() {
+        const modal = document.getElementById('createFolderModal');
+        if (modal) modal.style.display = 'none';
+
+        const select = document.getElementById('header_target_folder');
+        const currentFolder = document.getElementById('hidden_target_folder')?.value || '';
+        if (select && select.value === '__NEW_FOLDER__') {
+            select.value = currentFolder;
+        }
+    }
+
+    function onTargetFolderChange(sel) {
+        if (!sel) return;
+        if (sel.value === '__NEW_FOLDER__') {
+            openCreateFolderModal();
+            return;
+        }
+
+        const hiddenFolder = document.getElementById('hidden_target_folder');
+        const hiddenCaseId = document.getElementById('hidden_case_id');
+
+        if (!sel.value) {
+            if (hiddenFolder) hiddenFolder.value = '';
+            if (hiddenCaseId) hiddenCaseId.value = '';
+            updateCaseBanner(null);
+            return;
+        }
+
+        const opt = sel.options[sel.selectedIndex];
+        const caseId = opt ? (opt.getAttribute('data-case-id') || '') : '';
+        const caseNo = opt ? (opt.getAttribute('data-case-no') || '') : '';
+        const comp = opt ? (opt.getAttribute('data-complainant') || '') : '';
+        const resp = opt ? (opt.getAttribute('data-respondent') || '') : '';
+
+        if (hiddenFolder) hiddenFolder.value = sel.value;
+        if (hiddenCaseId) hiddenCaseId.value = caseId;
+
+        setFormInputValueIfEmpty('complainant', comp);
+        setFormInputValueIfEmpty('respondent', resp);
+        setFormInputValueIfEmpty('case_no', caseNo);
+
+        updateCaseBanner(sel.value, caseNo, comp, resp);
+    }
+
+    function updateCaseBanner(folderName, caseNo, comp, resp) {
+        const banner = document.getElementById('dynamicCaseBanner');
+        const title = document.getElementById('bannerCaseTitle');
+        const subtitle = document.getElementById('bannerCaseSubtitle');
+        if (!banner) return;
+
+        if (!folderName) {
+            banner.style.display = 'none';
+            return;
+        }
+
+        banner.style.display = 'flex';
+        if (title) {
+            title.innerText = 'Linked to Case #' + (caseNo || folderName);
+        }
+        if (subtitle) {
+            subtitle.innerText = (comp && resp) ? (comp + ' vs ' + resp) : folderName;
+        }
+    }
+
+    function submitCreateFolderInline() {
+        const btn = document.getElementById('btnSubmitInlineFolder');
+        const errEl = document.getElementById('inline_folder_error');
+        const folderName = document.getElementById('inline_folder_name')?.value?.trim();
+        const caseNo = document.getElementById('inline_case_number')?.value?.trim();
+        const comp = document.getElementById('inline_complainant')?.value?.trim();
+        const resp = document.getElementById('inline_respondent')?.value?.trim();
+        const nature = document.getElementById('inline_nature_of_case')?.value?.trim();
+
+        if (!folderName) {
+            if (errEl) {
+                errEl.innerText = 'Folder name is required.';
+                errEl.style.display = 'block';
+            }
+            return;
+        }
+
+        if (errEl) {
+            errEl.style.display = 'none';
+            errEl.innerText = '';
+        }
+
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span>Creating...</span>';
+        }
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+        fetch('{{ route("documents.create-folder") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                folder_name: folderName,
+                case_number: caseNo,
+                complainant: comp,
+                respondent: resp,
+                nature_of_case: nature
+            })
+        })
+        .then(async response => {
+            const data = await response.json();
+            if (!response.ok) {
+                const msg = data.message || (data.errors ? Object.values(data.errors).flat().join(', ') : 'Failed to create folder.');
+                throw new Error(msg);
+            }
+            return data;
+        })
+        .then(data => {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<span>Create & Assign</span>';
+            }
+
+            const newCase = data.case || {};
+            const newFolderName = newCase.folder_name || folderName;
+            const newCaseId = newCase.id || '';
+            const newCaseNo = newCase.case_number || caseNo || '';
+            const newComp = newCase.complainant || comp || '';
+            const newResp = newCase.respondent || resp || '';
+
+            const hiddenFolder = document.getElementById('hidden_target_folder');
+            if (hiddenFolder) hiddenFolder.value = newFolderName;
+            const hiddenCaseId = document.getElementById('hidden_case_id');
+            if (hiddenCaseId) hiddenCaseId.value = newCaseId;
+
+            setFormInputValueIfEmpty('complainant', newComp);
+            setFormInputValueIfEmpty('respondent', newResp);
+            setFormInputValueIfEmpty('case_no', newCaseNo);
+
+            const select = document.getElementById('header_target_folder');
+            if (select) {
+                let opt = Array.from(select.options).find(o => o.value === newFolderName);
+                if (!opt) {
+                    opt = document.createElement('option');
+                    opt.value = newFolderName;
+                    opt.setAttribute('data-case-id', newCaseId);
+                    opt.setAttribute('data-case-no', newCaseNo);
+                    opt.setAttribute('data-complainant', newComp);
+                    opt.setAttribute('data-respondent', newResp);
+                    opt.textContent = `📁 ${newFolderName} (${newComp} vs ${newResp})`;
+                    select.appendChild(opt);
+                }
+                select.value = newFolderName;
+            }
+
+            updateCaseBanner(newFolderName, newCaseNo, newComp, newResp);
+            closeCreateFolderModal();
+            alert('Folder created and assigned successfully!');
+        })
+        .catch(err => {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<span>Create & Assign</span>';
+            }
+            if (errEl) {
+                errEl.innerText = err.message || 'Error creating folder.';
+                errEl.style.display = 'block';
+            } else {
+                alert(err.message || 'Error creating folder.');
+            }
+        });
+    }
 
     // ============================
     // SUBMIT FORM → Generate PDF
@@ -2276,6 +2551,18 @@
             if (loader) loader.classList.remove('active');
             if (loaderText) loaderText.innerText = 'Generating PDF...'; // reset loader text
             if (data && data.success) {
+                if (data.document_id) {
+                    const docInput = document.getElementById('hidden_document_id');
+                    if (docInput) docInput.value = data.document_id;
+                }
+                if (data.case_id) {
+                    const caseInput = document.getElementById('hidden_case_id');
+                    if (caseInput) caseInput.value = data.case_id;
+                }
+                if (data.folder_name) {
+                    const folderInput = document.getElementById('hidden_target_folder');
+                    if (folderInput) folderInput.value = data.folder_name;
+                }
                 alert('Success! ' + (data.message || 'Document saved successfully.'));
                 window.location.href = '/cases';
             } else {

@@ -289,9 +289,45 @@ class DocumentController extends Controller
         return redirect()->route('documents.folders');
     }
 
+    public function getScopedCaseFolders(): array
+    {
+        $user = auth()->user();
+        $isAdmin = $user && ($user->hasRole('Administrator') || $user->hasRole('Admin') || $user->hasRole('Lupon Secretary') || in_array(strtolower($user->role ?? ''), ['administrator', 'admin', 'lupon secretary', 'secretary']));
+
+        $query = \App\Models\LuponCase::query();
+        if (!$isAdmin && $user) {
+            $query->where(function ($q) use ($user) {
+                $q->whereNull('created_by')
+                  ->orWhere('created_by', $user->id)
+                  ->orWhereHas('documents', function ($dq) use ($user) {
+                      $dq->where('created_by', $user->id);
+                  });
+            });
+        }
+
+        $caseFolders = $query->orderBy('created_at', 'desc')->get()->map(function ($c) {
+            return [
+                'id' => $c->id,
+                'case_id' => $c->id,
+                'folder_name' => $c->folder_name ?: ('case-' . str_pad($c->id, 3, '0', STR_PAD_LEFT)),
+                'complainant' => $c->complainant,
+                'respondent' => $c->respondent,
+                'case_number' => $c->case_number,
+                'nature_of_case' => $c->nature_of_case,
+            ];
+        })->values()->all();
+
+        $nextFolderNumber = $this->getNextAvailableCaseFolderNumber();
+
+        return [$caseFolders, $nextFolderNumber];
+    }
+
     public function createFolder(Request $request)
     {
         if ($this->isAdmin()) {
+            if ($request->wantsJson() || $request->is('api/*') || $request->ajax()) {
+                return response()->json(['message' => 'Administrators are in View-Only mode.'], 403);
+            }
             return redirect()->back()->with('error', 'Administrators are in View-Only mode.');
         }
 
@@ -318,7 +354,7 @@ class DocumentController extends Controller
 
             if ($folderExistsInCases || $folderExistsInDocs) {
                 $duplicateMsg = 'That folder number already exists please change your case folder name / number';
-                if ($request->wantsJson() || $request->is('api/*')) {
+                if ($request->wantsJson() || $request->is('api/*') || $request->ajax()) {
                     return response()->json([
                         'message' => $duplicateMsg,
                         'errors' => ['folder_name' => [$duplicateMsg]]
@@ -338,7 +374,7 @@ class DocumentController extends Controller
 
                 if ($caseExists) {
                     $duplicateMsg = 'That folder number already exists please change your case folder name / number';
-                    if ($request->wantsJson() || $request->is('api/*')) {
+                    if ($request->wantsJson() || $request->is('api/*') || $request->ajax()) {
                         return response()->json([
                             'message' => $duplicateMsg,
                             'errors' => ['case_number' => [$duplicateMsg]]
@@ -370,7 +406,7 @@ class DocumentController extends Controller
 
             AuditService::log('CREATE_CASE_FOLDER', 'Document Management', "Created case folder {$folderName}", $case->id);
 
-            if ($request->wantsJson() || $request->is('api/*')) {
+            if ($request->wantsJson() || $request->is('api/*') || $request->ajax()) {
                 return response()->json([
                     'success' => true,
                     'message' => "Case folder {$folderName} created successfully.",
@@ -388,7 +424,7 @@ class DocumentController extends Controller
                 ? 'That folder number already exists please change your case folder name / number'
                 : 'An error has occurred. Please reload your page or try again.';
 
-            if ($request->wantsJson() || $request->is('api/*')) {
+            if ($request->wantsJson() || $request->is('api/*') || $request->ajax()) {
                 return response()->json([
                     'message' => $userFacingMessage,
                     'errors' => ['folder_name' => [$userFacingMessage]]
@@ -407,7 +443,7 @@ class DocumentController extends Controller
             \Log::error('Create folder error: ' . $e->getMessage());
             $userFacingMessage = 'An error has occurred. Please reload your page or try again.';
 
-            if ($request->wantsJson() || $request->is('api/*')) {
+            if ($request->wantsJson() || $request->is('api/*') || $request->ajax()) {
                 return response()->json(['message' => $userFacingMessage], 500);
             }
 
@@ -520,29 +556,7 @@ class DocumentController extends Controller
             }
 
             // Scope caseFolders for dropdown
-            $user = auth()->user();
-            $isAdmin = $user && ($user->hasRole('Administrator') || $user->hasRole('Admin') || $user->hasRole('Lupon Secretary') || in_array(strtolower($user->role ?? ''), ['administrator', 'admin', 'lupon secretary', 'secretary']));
-
-            $query = \App\Models\LuponCase::query();
-            if (!$isAdmin && $user) {
-                $query->where(function ($q) use ($user) {
-                    $q->whereNull('created_by')
-                      ->orWhere('created_by', $user->id)
-                      ->orWhereHas('documents', function ($dq) use ($user) {
-                          $dq->where('created_by', $user->id);
-                      });
-                });
-            }
-
-            $caseFolders = $query->orderBy('created_at', 'desc')->get()->map(function ($c) {
-                return [
-                    'id' => $c->id,
-                    'folder_name' => $c->folder_name ?: ('case-' . str_pad($c->id, 3, '0', STR_PAD_LEFT)),
-                    'complainant' => $c->complainant,
-                    'respondent' => $c->respondent,
-                    'case_number' => $c->case_number,
-                ];
-            });
+            [$caseFolders, $nextFolderNumber] = $this->getScopedCaseFolders();
 
             // Get Layout from DB or Config
             $savedLayout = FormLayout::where('document_type', $type)->first();
@@ -578,7 +592,7 @@ class DocumentController extends Controller
 
             $imageBase64 = $this->generateBackgroundImage($type);
 
-            return view('documents.form-fill', compact('type', 'imageBase64', 'fields', 'case', 'caseFolders'));
+            return view('documents.form-fill', compact('type', 'imageBase64', 'fields', 'case', 'caseFolders', 'nextFolderNumber'));
         } catch (\Throwable $e) {
             \Log::error("Document create form error: " . $e->getMessage());
             return redirect()->route('documents.templates')->with('error', 'An error has occurred while opening the document form. Please reload your page.');
@@ -641,11 +655,15 @@ class DocumentController extends Controller
             // Generate background from uploaded PDF
             $imageBase64 = $this->generateBackgroundImage($type, storage_path('app/public/'.$template->file_path));
 
+            [$caseFolders, $nextFolderNumber] = $this->getScopedCaseFolders();
+
             return view('documents.form-fill', [
                 'type' => $type,
                 'imageBase64' => $imageBase64,
                 'fields' => $fields,
                 'case' => $case,
+                'caseFolders' => $caseFolders,
+                'nextFolderNumber' => $nextFolderNumber,
                 'isCustom' => true,
                 'templateId' => $id,
             ]);
@@ -775,7 +793,8 @@ class DocumentController extends Controller
 
             if (request('mode') === 'edit') {
                 $documentId = $document->id;
-                return view('documents.form-fill', compact('type', 'imageBase64', 'fields', 'data', 'case', 'documentId'));
+                [$caseFolders, $nextFolderNumber] = $this->getScopedCaseFolders();
+                return view('documents.form-fill', compact('type', 'imageBase64', 'fields', 'data', 'case', 'documentId', 'caseFolders', 'nextFolderNumber'));
             }
 
             return view('documents.templates.print', compact('type', 'imageBase64', 'fields', 'data', 'case', 'document'));
@@ -848,7 +867,8 @@ class DocumentController extends Controller
 
             if (request('mode') === 'edit') {
                 $documentId = $latestDoc->id ?? null;
-                return view('documents.form-fill', compact('type', 'imageBase64', 'fields', 'data', 'case', 'documentId'));
+                [$caseFolders, $nextFolderNumber] = $this->getScopedCaseFolders();
+                return view('documents.form-fill', compact('type', 'imageBase64', 'fields', 'data', 'case', 'documentId', 'caseFolders', 'nextFolderNumber'));
             }
 
             return view('documents.templates.print', compact('type', 'imageBase64', 'fields', 'data', 'case'));
@@ -856,6 +876,170 @@ class DocumentController extends Controller
             \Log::error("Document viewCase failed for #{$id}: " . $e->getMessage());
             return redirect()->route('documents.folders')->with('error', 'An error has occurred while retrieving the case documents. Please reload your page.');
         }
+    }
+
+    /**
+     * Resolve existing LuponCase or create exactly one new case (with its folder), preventing duplicates.
+     */
+    protected function resolveOrCreateCaseForDocument(Request $request, array $contentToSave, string $type): array
+    {
+        $caseId = $request->input('case_id') ?: null;
+        $folderName = trim((string)$request->input('folder_name'));
+        $caseNo = trim((string)($contentToSave['case_no'] ?? $request->input('case_number') ?? ''));
+        $complainant = trim((string)($contentToSave['complainant'] ?? $request->input('complainant') ?? ''));
+        $respondent = trim((string)($contentToSave['respondent'] ?? $request->input('respondent') ?? ''));
+        $natureOfCase = $contentToSave['For'] ?? $contentToSave['nature_of_case'] ?? ucwords(str_replace(['_', '-'], ' ', $type));
+        $narrative = $contentToSave['narrative'] ?? $contentToSave['complaint_narrative'] ?? '';
+
+        $targetCase = null;
+
+        // 1. Resolve by explicit case_id if provided
+        if ($caseId) {
+            $targetCase = \App\Models\LuponCase::withTrashed()->find($caseId);
+        }
+
+        // 2. Resolve by folder_name if provided and not unassigned
+        if (!$targetCase && !empty($folderName) && $folderName !== '__NEW_FOLDER__') {
+            $targetCase = \App\Models\LuponCase::withTrashed()
+                ->whereRaw('LOWER(folder_name) = ?', [strtolower($folderName)])
+                ->first();
+        }
+
+        // 3. Resolve by case_number if provided
+        if (!$targetCase && !empty($caseNo)) {
+            $targetCase = \App\Models\LuponCase::withTrashed()
+                ->whereRaw('LOWER(case_number) = ?', [strtolower($caseNo)])
+                ->first();
+        }
+
+        // 4. Update existing case without creating a duplicate
+        if ($targetCase) {
+            if ($targetCase->trashed()) {
+                $targetCase->restore();
+            }
+
+            if (!empty($folderName) && $folderName !== '__NEW_FOLDER__' && empty($targetCase->folder_name)) {
+                $targetCase->folder_name = $folderName;
+            } elseif (empty($folderName) || $folderName === '__NEW_FOLDER__') {
+                $folderName = $targetCase->folder_name ?: ('case-' . str_pad($targetCase->id, 3, '0', STR_PAD_LEFT));
+            }
+
+            if (!empty($complainant)) {
+                $targetCase->complainant = $complainant;
+            }
+            if (!empty($respondent)) {
+                $targetCase->respondent = $respondent;
+            }
+            if (!empty($complainant) || !empty($respondent)) {
+                $comp = $targetCase->complainant ?: 'Complainant';
+                $resp = $targetCase->respondent ?: 'Respondent';
+                $targetCase->title = "{$comp} vs {$resp}";
+            }
+            if (!empty($caseNo) && empty($targetCase->case_number)) {
+                $targetCase->case_number = $caseNo;
+            }
+            if (!empty($narrative) && empty($targetCase->complaint_narrative)) {
+                $targetCase->complaint_narrative = $narrative;
+            }
+
+            $targetCase->document_data = $contentToSave;
+            $targetCase->save();
+
+            return [$targetCase->id, $targetCase->folder_name ?: $folderName, $targetCase];
+        }
+
+        // 5. No existing case -> create exactly ONE new case
+        if (empty($caseNo)) {
+            $caseNo = 'KP-' . date('Y') . '-' . rand(100, 999);
+            while (\App\Models\LuponCase::withTrashed()->where('case_number', $caseNo)->exists()) {
+                $caseNo = 'KP-' . date('Y') . '-' . rand(1000, 9999);
+            }
+        }
+
+        if (empty($folderName) || $folderName === '__NEW_FOLDER__') {
+            $folderName = $this->getNextAvailableCaseFolderNumber();
+        } else {
+            // Check if folder name exists (including soft deletes)
+            $folderExists = \App\Models\LuponCase::withTrashed()->whereRaw('LOWER(folder_name) = ?', [strtolower($folderName)])->exists()
+                || \App\Models\Document::withTrashed()->whereRaw('LOWER(folder_name) = ?', [strtolower($folderName)])->exists();
+            if ($folderExists) {
+                $existingFolderCase = \App\Models\LuponCase::withTrashed()->whereRaw('LOWER(folder_name) = ?', [strtolower($folderName)])->first();
+                if ($existingFolderCase) {
+                    if ($existingFolderCase->trashed()) $existingFolderCase->restore();
+                    $existingFolderCase->document_data = $contentToSave;
+                    $existingFolderCase->save();
+                    return [$existingFolderCase->id, $existingFolderCase->folder_name ?: $folderName, $existingFolderCase];
+                }
+                $folderName = $this->getNextAvailableCaseFolderNumber();
+            }
+        }
+
+        $comp = $complainant ?: 'Unknown Complainant';
+        $resp = $respondent ?: 'Unknown Respondent';
+
+        $newCase = \App\Models\LuponCase::create([
+            'case_number' => $caseNo,
+            'folder_name' => $folderName,
+            'title' => "{$comp} vs {$resp}",
+            'complainant' => $comp,
+            'respondent' => $resp,
+            'nature_of_case' => $natureOfCase,
+            'status' => 'Pending',
+            'date_filed' => now()->format('Y-m-d'),
+            'complaint_narrative' => $narrative,
+            'admin_notes' => 'Auto-generated from Document Form',
+            'document_data' => $contentToSave,
+            'created_by' => auth()->id(),
+        ]);
+
+        \App\Services\AuditService::log('CREATE', 'Cases', "Auto-created Case #{$newCase->case_number} in folder {$folderName} from {$type}", $caseNo);
+
+        return [$newCase->id, $folderName, $newCase];
+    }
+
+    /**
+     * Resolve existing Document or create exactly one new document record, preventing duplicates.
+     */
+    protected function resolveOrCreateDocument(Request $request, int $caseId, string $folderName, string $type, array $contentToSave): \App\Models\Document
+    {
+        $documentId = $request->input('document_id') ?: $request->input('id');
+        $doc = null;
+
+        if ($documentId) {
+            $doc = \App\Models\Document::find($documentId);
+        }
+
+        // If not found by document_id, check if a document of this type already exists for this case
+        if (!$doc && $caseId && $type) {
+            $doc = \App\Models\Document::where('case_id', $caseId)
+                ->where('type', $type)
+                ->latest()
+                ->first();
+        }
+
+        if ($doc) {
+            $doc->update([
+                'case_id' => $caseId,
+                'folder_name' => $folderName ?: $doc->folder_name,
+                'type' => $type ?: $doc->type,
+                'content' => $contentToSave,
+                'status' => 'Issued',
+            ]);
+            \App\Services\DocumentBackupService::recordVersion($doc, 'edited', 'Document Form Updated & Saved');
+        } else {
+            $doc = \App\Models\Document::create([
+                'case_id' => $caseId,
+                'folder_name' => $folderName,
+                'type' => $type,
+                'content' => $contentToSave,
+                'status' => 'Issued',
+                'issued_at' => now(),
+                'created_by' => auth()->id(),
+            ]);
+            \App\Services\DocumentBackupService::recordVersion($doc, 'created', 'Form Created & Saved');
+        }
+
+        return $doc;
     }
 
     public function generate(Request $request)
@@ -918,126 +1102,22 @@ class DocumentController extends Controller
 
         if ($request->input('action') === 'save_only') {
             try {
-                $caseId = $request->input('case_id') ?: null;
                 $skipKeys = ['fields', 'imageBase64', 'action', 'layout_overrides', '_token'];
                 $contentToSave = array_diff_key($data, array_flip($skipKeys));
 
-                // Dynamically create a case if one doesn't exist
-                if (!$caseId) {
-                    $caseNo = $contentToSave['case_no'] ?? null;
-                    
-                    if ($caseNo) {
-                        $existingCase = \App\Models\LuponCase::withTrashed()->where('case_number', $caseNo)->first();
-                        if ($existingCase) {
-                            return back()->withErrors([
-                                'case_no' => 'Case Number already exists in the records.'
-                            ])->withInput();
-                        }
-                    } else {
-                        $caseNo = 'CAS-' . date('YmdHis');
-                    }
+                [$caseId, $folderName, $case] = $this->resolveOrCreateCaseForDocument($request, $contentToSave, $type);
 
-                    $complainant = $contentToSave['complainant'] ?? 'Unknown Complainant';
-                    $respondent = $contentToSave['respondent'] ?? 'Unknown Respondent';
-                        
-                    $case = \App\Models\LuponCase::create([
-                        'case_number' => $caseNo,
-                        'title' => $complainant . ' vs ' . $respondent,
-                        'complainant' => $complainant,
-                        'respondent' => $respondent,
-                        'nature_of_case' => $contentToSave['For'] ?? ucwords(str_replace(['_', '-'], ' ', $type)),
-                        'status' => 'Pending',
-                        'date_filed' => now(),
-                        'complaint_narrative' => $contentToSave['narrative'] ?? '',
-                        'admin_notes' => 'Auto-generated from Document',
-                        'document_data' => $contentToSave,
-                        'created_by' => auth()->id(),
-                    ]);
-                    $caseId = $case->id;
-                    AuditService::log('CREATE', 'Cases', "Auto-created Case #{$case->case_number} from {$type}", $caseNo);
-                }
-
-                $folderName = $request->input('folder_name');
-                if ($folderName) {
-                    $targetCase = \App\Models\LuponCase::where('folder_name', $folderName)->first();
-                    if ($targetCase) {
-                        $caseId = $targetCase->id;
-                    }
-                } elseif ($caseId) {
-                    $targetCase = \App\Models\LuponCase::find($caseId);
-                    if ($targetCase && $targetCase->folder_name) {
-                        $folderName = $targetCase->folder_name;
-                    } elseif ($caseId) {
-                        $folderName = 'case-' . str_pad($caseId, 3, '0', STR_PAD_LEFT);
-                    }
-                }
-
-                $documentId = $request->input('document_id') ?: $request->input('id');
-                $createdDoc = null;
-                if ($documentId) {
-                    $createdDoc = \App\Models\Document::find($documentId);
-                }
-                if (!$createdDoc && $caseId && $type) {
-                    $createdDoc = \App\Models\Document::where('case_id', $caseId)->where('type', $type)->latest()->first();
-                }
-
-                if ($createdDoc) {
-                    $createdDoc->update([
-                        'case_id' => $caseId ?: $createdDoc->case_id,
-                        'folder_name' => $folderName ?: $createdDoc->folder_name,
-                        'type' => $type ?: $createdDoc->type,
-                        'content' => $contentToSave,
-                        'status' => 'Issued',
-                    ]);
-                    \App\Services\DocumentBackupService::recordVersion($createdDoc, 'edited', 'Document Form Updated & Saved');
-                } else {
-                    $createdDoc = \App\Models\Document::create([
-                        'case_id' => $caseId,
-                        'folder_name' => $folderName,
-                        'type' => $type,
-                        'content' => $contentToSave,
-                        'status' => 'Issued',
-                        'issued_at' => now(),
-                        'created_by' => auth()->id(),
-                    ]);
-                    \App\Services\DocumentBackupService::recordVersion($createdDoc, 'created', 'Form Created & Saved');
-                }
+                $createdDoc = $this->resolveOrCreateDocument($request, $caseId, $folderName, $type, $contentToSave);
 
                 AuditService::log('CREATE', 'Documents', "Saved {$type} for Case #{$caseId}", $caseId);
 
-                // Sync Parties and Data back to parent Case if we have one
-                $case = \App\Models\LuponCase::withTrashed()->find($caseId);
-                if ($case) {
-                    $updated = false;
-                    
-                    // Always restore if it was archived
-                    if ($case->trashed()) {
-                        $case->restore();
-                        $updated = true;
-                    }
-
-                    if (! empty($data['complainant'])) {
-                        $case->complainant = $data['complainant'];
-                        $updated = true;
-                    }
-                    if (! empty($data['respondent'])) {
-                        $case->respondent = $data['respondent'];
-                        $updated = true;
-                    }
-                    
-                    // Sync the full document data to the case for global functions
-                    $case->document_data = $contentToSave;
-                    $updated = true;
-
-                    if ($updated) {
-                        $comp = $case->complainant ?? 'Unknown';
-                        $resp = $case->respondent ?? 'Unknown';
-                        $case->title = "$comp vs $resp";
-                        $case->save();
-                    }
-                }
-
-                return response()->json(['success' => true, 'message' => 'Document saved successfully!']);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Document saved successfully!',
+                    'case_id' => $caseId,
+                    'folder_name' => $folderName,
+                    'document_id' => $createdDoc->id,
+                ]);
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error('Failed to save document record: '.$e->getMessage());
                 $isDuplicate = ($e->getCode() == 23000 || str_contains($e->getMessage(), '1062') || str_contains($e->getMessage(), 'Duplicate entry'));
@@ -1047,7 +1127,6 @@ class DocumentController extends Controller
                 return response()->json(['success' => false, 'message' => $msg], 500);
             }
         }
-
 
         if (! file_exists($pdfPath)) {
             $pdfPath = public_path('forms/complaint.pdf');
@@ -1115,115 +1194,14 @@ class DocumentController extends Controller
 
         // Always save a Document record so it appears in the Documents list
         try {
-            $caseId = $request->input('case_id') ?: null;
-
-            // Only persist the user-filled field values — NOT the layout or the base64 image
-            // (imageBase64 alone can be hundreds of KB and breaks SQLite inserts silently)
             $skipKeys = ['fields', 'imageBase64', 'action', 'layout_overrides', '_token'];
             $contentToSave = array_diff_key($data, array_flip($skipKeys));
 
-            // Dynamically create a case if one doesn't exist
-            if (!$caseId) {
-                $caseNo = $contentToSave['case_no'] ?? null;
-                
-                if ($caseNo) {
-                    // Check if case already exists by number
-                    $existingCase = \App\Models\LuponCase::withTrashed()->where('case_number', $caseNo)->first();
-                    
-                    if ($existingCase) {
-                        return back()->withErrors([
-                            'case_no' => 'Case Number already exists in the records.'
-                        ])->withInput();
-                    }
-                } else {
-                    $caseNo = 'CAS-' . date('YmdHis');
-                }
+            [$caseId, $folderName, $case] = $this->resolveOrCreateCaseForDocument($request, $contentToSave, $type);
 
-                $complainant = $contentToSave['complainant'] ?? 'Unknown Complainant';
-                $respondent = $contentToSave['respondent'] ?? 'Unknown Respondent';
-                
-                $case = \App\Models\LuponCase::create([
-                    'case_number' => $caseNo,
-                    'title' => $complainant . ' vs ' . $respondent,
-                    'complainant' => $complainant,
-                    'respondent' => $respondent,
-                    'nature_of_case' => $contentToSave['For'] ?? ucwords(str_replace(['_', '-'], ' ', $type)),
-                    'status' => 'Pending',
-                    'date_filed' => now(),
-                    'complaint_narrative' => $contentToSave['narrative'] ?? '',
-                    'admin_notes' => 'Auto-generated from Document',
-                    'document_data' => $contentToSave,
-                    'created_by' => auth()->id(),
-                ]);
-                $caseId = $case->id;
-                AuditService::log('CREATE', 'Cases', "Auto-created Case #{$case->case_number} from {$type}", $caseNo);
-            }
+            $createdDocPdf = $this->resolveOrCreateDocument($request, $caseId, $folderName, $type, $contentToSave);
 
-            $documentId = $request->input('document_id') ?: $request->input('id');
-            $createdDocPdf = null;
-            if ($documentId) {
-                $createdDocPdf = \App\Models\Document::find($documentId);
-            }
-            if (!$createdDocPdf && $caseId && $type) {
-                $createdDocPdf = \App\Models\Document::where('case_id', $caseId)->where('type', $type)->latest()->first();
-            }
-
-            if ($createdDocPdf) {
-                $createdDocPdf->update([
-                    'case_id' => $caseId ?: $createdDocPdf->case_id,
-                    'type' => $type ?: $createdDocPdf->type,
-                    'content' => $contentToSave,
-                    'status' => 'Issued',
-                ]);
-                \App\Services\DocumentBackupService::recordVersion($createdDocPdf, 'edited', 'Form Content Updated & Issued');
-            } else {
-                $createdDocPdf = \App\Models\Document::create([
-                    'case_id' => $caseId,
-                    'type' => $type,
-                    'content' => $contentToSave,
-                    'status' => 'Issued',
-                    'issued_at' => now(),
-                    'created_by' => auth()->id(),
-                ]);
-                \App\Services\DocumentBackupService::recordVersion($createdDocPdf, 'created', 'Form Generated & Output Issued');
-            }
-
-            $auditDetail = "Generated {$type} for Case #{$caseId}";
-            AuditService::log('CREATE', 'Documents', $auditDetail, $caseId);
-
-            // Sync Parties and Data back to parent Case if we have one
-            if ($caseId) {
-                $case = \App\Models\LuponCase::withTrashed()->find($caseId);
-                if ($case) {
-                    $updated = false;
-
-                    // Always restore if it was archived
-                    if ($case->trashed()) {
-                        $case->restore();
-                        $updated = true;
-                    }
-
-                    if (! empty($data['complainant'])) {
-                        $case->complainant = $data['complainant'];
-                        $updated = true;
-                    }
-                    if (! empty($data['respondent'])) {
-                        $case->respondent = $data['respondent'];
-                        $updated = true;
-                    }
-
-                    // Sync the full document data to the case for global functions
-                    $case->document_data = $contentToSave;
-                    $updated = true;
-
-                    if ($updated) {
-                        $comp = $case->complainant ?? 'Unknown';
-                        $resp = $case->respondent ?? 'Unknown';
-                        $case->title = "$comp vs $resp";
-                        $case->save();
-                    }
-                }
-            }
+            AuditService::log('CREATE', 'Documents', "Generated {$type} for Case #{$caseId}", $caseId);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Failed to save document record: '.$e->getMessage());
             // Don't block the PDF download if DB save fails
@@ -1274,18 +1252,22 @@ class DocumentController extends Controller
             return response()->json(['error' => 'Invalid data'], 422);
         }
 
-        // Save a record of the entered text as well so it appears as a Document
+        // Save/sync a record of the entered text as well if an active document exists (never create rogue unlinked drafts)
         if (is_array($content)) {
-            \App\Models\Document::create([
-                'case_id' => $caseId,
-                'type' => $type,
-                'content' => $content,
-                'status' => 'Draft',
-                'issued_at' => now(),
-                'created_by' => auth()->id(),
-            ]);
-            
-            \App\Services\AuditService::log('CREATE', 'Documents', "Saved draft & layout for {$type}", $caseId);
+            $docId = $request->input('document_id') ?: $request->input('id');
+            $existing = null;
+            if ($docId) {
+                $existing = \App\Models\Document::find($docId);
+            }
+            if (!$existing && $caseId && $type) {
+                $existing = \App\Models\Document::where('case_id', $caseId)->where('type', $type)->latest()->first();
+            }
+            if ($existing) {
+                $existing->update([
+                    'content' => array_merge($existing->content ?: [], $content),
+                ]);
+                \App\Services\AuditService::log('UPDATE', 'Documents', "Updated draft & layout for {$type}", $caseId);
+            }
         }
 
         if (str_starts_with($type, 'custom_')) {
@@ -1791,55 +1773,9 @@ class DocumentController extends Controller
 
         // Record the document in the DB
         try {
-            $caseId = $request->input('case_id') ?: null;
+            [$caseId, $folderName, $case] = $this->resolveOrCreateCaseForDocument($request, $fieldValues, $type);
 
-            if (!$caseId) {
-                // Try to infer case details from document
-                $caseNo = $fieldValues['case_no'] ?? ('CAS-' . date('YmdHis'));
-                
-                // Check if case already exists by number
-                $existingCase = \App\Models\LuponCase::where('case_number', $caseNo)->first();
-                
-                if ($existingCase) {
-                    $caseId = $existingCase->id;
-                } else {
-                    $complainant = $fieldValues['complainant'] ?? 'Unknown Complainant';
-                    $respondent = $fieldValues['respondent'] ?? 'Unknown Respondent';
-                    
-                    $case = \App\Models\LuponCase::create([
-                        'case_number' => $caseNo,
-                        'title' => $complainant . ' vs ' . $respondent,
-                        'complainant' => $complainant,
-                        'respondent' => $respondent,
-                        'nature_of_case' => $fieldValues['For'] ?? ucwords(str_replace(['_', '-'], ' ', $type)),
-                        'status' => 'Pending',
-                        'date_filed' => now(),
-                        'complaint_narrative' => $fieldValues['narrative'] ?? '',
-                        'admin_notes' => 'Auto-generated from Word Document',
-                        'document_data' => $fieldValues,
-                        'created_by' => auth()->id(),
-                    ]);
-                    $caseId = $case->id;
-                    \App\Services\AuditService::log('CREATE', 'Cases', "Auto-created Case #{$case->case_number} from Word Document", $caseNo);
-                }
-            }
-
-            \App\Models\Document::create([
-                'case_id' => $caseId,
-                'type' => $type,
-                'content' => $fieldValues,
-                'status' => 'Issued',
-                'issued_at' => now(),
-                'created_by' => auth()->id(),
-            ]);
-
-            // Sync Case Data
-            $case = \App\Models\LuponCase::withTrashed()->find($caseId);
-            if ($case) {
-                if ($case->trashed()) $case->restore();
-                $case->document_data = $fieldValues;
-                $case->save();
-            }
+            $this->resolveOrCreateDocument($request, $caseId, $folderName, $type, $fieldValues);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Word doc DB save failed: '.$e->getMessage());
         }
